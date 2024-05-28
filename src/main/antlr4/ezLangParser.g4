@@ -4,127 +4,29 @@ options {
     tokenVocab = ezLangLexer;
 }
 
+compilationUnit: namespaceDeclaration importDeclaration* typeDeclaration*;
 
-compilationUnit
-    : packageDeclaration? importDeclaration* typeDeclaration*
-    | moduleDeclaration EOF
-    ;
+namespaceDeclaration: NAMESPACE qualifiedName;
 
-packageDeclaration
-    : annotation* PACKAGE qualifiedName
-    ;
+importDeclaration: IMPORT qualifiedName ('.' '*')?;
 
-importDeclaration
-    : IMPORT STATIC? qualifiedName ('.' '*')?
-    ;
+typeDeclaration: classDeclaration | traitDeclaration;
 
-typeDeclaration
-    : classOrInterfaceModifier* (
-        classDeclaration
-        | enumDeclaration
-        | interfaceDeclaration
-        | annotationTypeDeclaration
-        | recordDeclaration
-    )
-    ;
+classDeclaration: CLASS identifier typeParameters? COLON typeType '{' classMemberDeclaration* '}';
 
-modifier
-    : classOrInterfaceModifier
-    | NATIVE
-    | SYNCHRONIZED
-    | TRANSIENT
-    | VOLATILE
-    ;
+typeParameters: '<' identifier (',' identifier)* '>';
 
-classOrInterfaceModifier
-    : annotation
-    | PUBLIC
-    | PROTECTED
-    | PRIVATE
-    | STATIC
-    | ABSTRACT
-    | FINAL // FINAL for class only -- does not apply to interfaces
-    | STRICTFP
-    | SEALED     // Java17
-    | NON_SEALED // Java17
-    ;
 
-variableModifier
-    : FINAL
-    | annotation
-    ;
+traitDeclaration: TRAIT identifier typeParameters?  '{' traitMemberDeclaration* '}';
 
-classDeclaration
-    : CLASS identifier typeParameters? (EXTENDS typeType)? (IMPLEMENTS typeList)? (
-        PERMITS typeList
-    )? // Java17
-    classBody
-    ;
-
-typeParameters
-    : '<' typeParameter (',' typeParameter)* '>'
-    ;
-
-typeParameter
-    : annotation* identifier (EXTENDS annotation* typeBound)?
-    ;
-
-typeBound
-    : typeType ('&' typeType)*
-    ;
-
-enumDeclaration
-    : ENUM identifier (IMPLEMENTS typeList)? '{' enumConstants? ','? enumBodyDeclarations? '}'
-    ;
-
-enumConstants
-    : enumConstant (',' enumConstant)*
-    ;
-
-enumConstant
-    : annotation* identifier arguments? classBody?
-    ;
-
-enumBodyDeclarations
-    : ';' classBodyDeclaration*
-    ;
-
-interfaceDeclaration
-    : INTERFACE identifier typeParameters? (EXTENDS typeList)? (PERMITS typeList)? interfaceBody
-    ;
-
-classBody
-    : '{' classBodyDeclaration* '}'
-    ;
-
-interfaceBody
-    : '{' interfaceBodyDeclaration* '}'
-    ;
-
-classBodyDeclaration
-    : ';'
-    | STATIC? block
-    | modifier* memberDeclaration
-    ;
-
-memberDeclaration
-    : recordDeclaration //Java17
-    | methodDeclaration
+classMemberDeclaration:
+     methodDeclaration
     | genericMethodDeclaration
     | fieldDeclaration
     | constructorDeclaration
     | genericConstructorDeclaration
-    | interfaceDeclaration
-    | annotationTypeDeclaration
-    | classDeclaration
-    | enumDeclaration
     ;
 
-/* We use rule this even for void methods which cannot have [] after parameters.
-   This simplifies grammar and we can consider void to be a type, which
-   renders the [] matching as a context-sensitive issue or a semantic check
-   for invalid return type after parsing.
- */
 methodDeclaration
     : typeTypeOrVoid identifier formalParameters ('[' ']')* (THROWS qualifiedNameList)? methodBody
     ;
@@ -159,20 +61,11 @@ fieldDeclaration
     : typeType variableDeclarators ';'
     ;
 
-interfaceBodyDeclaration
-    : modifier* interfaceMemberDeclaration
-    | ';'
-    ;
 
-interfaceMemberDeclaration
-    : recordDeclaration // Java17
-    | constDeclaration
+traitMemberDeclaration
+    : constDeclaration
     | interfaceMethodDeclaration
     | genericInterfaceMethodDeclaration
-    | interfaceDeclaration
-    | annotationTypeDeclaration
-    | classDeclaration
-    | enumDeclaration
     ;
 
 constDeclaration
@@ -183,10 +76,6 @@ constantDeclarator
     : identifier ('[' ']')* '=' variableInitializer
     ;
 
-// Early versions of Java allows brackets after the method name, eg.
-// public int[] return2DArray() [] { ... }
-// is the same as
-// public int[][] return2DArray() { ... }
 interfaceMethodDeclaration
     : interfaceMethodModifier* interfaceCommonBodyDeclaration
     ;
@@ -301,119 +190,6 @@ integerLiteral
 floatLiteral
     : FLOAT_LITERAL
     | HEX_FLOAT_LITERAL
-    ;
-
-// ANNOTATIONS
-altAnnotationQualifiedName
-    : (identifier DOT)* '@' identifier
-    ;
-
-annotation
-    : ('@' qualifiedName | altAnnotationQualifiedName) (
-        '(' ( elementValuePairs | elementValue)? ')'
-    )?
-    ;
-
-elementValuePairs
-    : elementValuePair (',' elementValuePair)*
-    ;
-
-elementValuePair
-    : identifier '=' elementValue
-    ;
-
-elementValue
-    : expression
-    | annotation
-    | elementValueArrayInitializer
-    ;
-
-elementValueArrayInitializer
-    : '{' (elementValue (',' elementValue)*)? ','? '}'
-    ;
-
-annotationTypeDeclaration
-    : '@' INTERFACE identifier annotationTypeBody
-    ;
-
-annotationTypeBody
-    : '{' annotationTypeElementDeclaration* '}'
-    ;
-
-annotationTypeElementDeclaration
-    : modifier* annotationTypeElementRest
-    | ';' // this is not allowed by the grammar, but apparently allowed by the actual compiler
-    ;
-
-annotationTypeElementRest
-    : typeType annotationMethodOrConstantRest ';'
-    | classDeclaration ';'?
-    | interfaceDeclaration ';'?
-    | enumDeclaration ';'?
-    | annotationTypeDeclaration ';'?
-    | recordDeclaration ';'? // Java17
-    ;
-
-annotationMethodOrConstantRest
-    : annotationMethodRest
-    | annotationConstantRest
-    ;
-
-annotationMethodRest
-    : identifier '(' ')' defaultValue?
-    ;
-
-annotationConstantRest
-    : variableDeclarators
-    ;
-
-defaultValue
-    : DEFAULT elementValue
-    ;
-
-// MODULES - Java9
-
-moduleDeclaration
-    : OPEN? MODULE qualifiedName moduleBody
-    ;
-
-moduleBody
-    : '{' moduleDirective* '}'
-    ;
-
-moduleDirective
-    : REQUIRES requiresModifier* qualifiedName ';'
-    | EXPORTS qualifiedName (TO qualifiedName)? ';'
-    | OPENS qualifiedName (TO qualifiedName)? ';'
-    | USES qualifiedName ';'
-    | PROVIDES qualifiedName WITH qualifiedName ';'
-    ;
-
-requiresModifier
-    : TRANSITIVE
-    | STATIC
-    ;
-
-// RECORDS - Java 17
-
-recordDeclaration
-    : RECORD identifier typeParameters? recordHeader (IMPLEMENTS typeList)? recordBody
-    ;
-
-recordHeader
-    : '(' recordComponentList? ')'
-    ;
-
-recordComponentList
-    : recordComponent (',' recordComponent)*
-    ;
-
-recordComponent
-    : typeType identifier
-    ;
-
-recordBody
-    : '{' (classBodyDeclaration | compactConstructorDeclaration)* '}'
     ;
 
 // STATEMENTS / BLOCKS
