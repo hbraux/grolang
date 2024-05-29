@@ -22,7 +22,7 @@ INT_LITERAL : ('0' | [1-9] Digits?);
 DEC_LITERAL: (Digits '.' Digits? | '.' Digits) ExponentPart? ;
 BOOL_LITERAL: 'True' | 'False';
 STRING_LITERAL: '"' (~["\\\r\n] | EscapeSequence)* '"';
-NULL_LITERAL: 'NULL';
+NULL_LITERAL: 'Null';
 
 // Separators
 LPAREN : '(';

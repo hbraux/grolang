@@ -2,6 +2,7 @@ package fr.braux.ezlang
 
 import fr.braux.ezlang.parser.EzLangLexer
 import fr.braux.ezlang.parser.EzLangParser
+import fr.braux.ezlang.parser.EzLangParser.*
 import fr.braux.ezlang.parser.EzLangParserBaseVisitor
 import org.antlr.v4.runtime.*
 import org.antlr.v4.runtime.misc.ParseCancellationException
@@ -9,11 +10,19 @@ import org.slf4j.LoggerFactory
 
 object Parser {
 
-  fun parse(expression: String): String {
+  fun parse(expression: String): Expression {
     val lexer = EzLangLexer(CharStreams.fromString(expression))
     val parser = EzLangParser(CommonTokenStream(lexer))
-    val visitor = object : EzLangParserBaseVisitor<String>() {
+    val visitor = object : EzLangParserBaseVisitor<Expression>() {
 
+      override fun visitLiteral(ctx: LiteralContext): Expression = when (ctx.start.type) {
+        INT_LITERAL -> IntExpression(ctx.INT_LITERAL().text.toLong())
+        DEC_LITERAL -> DecExpression(ctx.DEC_LITERAL().text.toDouble())
+        STRING_LITERAL -> StringExpression(ctx.STRING_LITERAL().text)
+        BOOL_LITERAL -> BoolExpression(ctx.BOOL_LITERAL().text.lowercase().toBoolean())
+        NULL_LITERAL -> NullExpression
+        else -> throw ParserException("Unknown token ${ctx.start}")
+      }
     }
     lexer.removeErrorListeners()
     parser.removeErrorListeners()
