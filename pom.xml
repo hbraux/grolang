@@ -77,10 +77,10 @@
         <version>${antlr.version}</version>
         <configuration>
           <visitor>true</visitor>
-          <outputDirectory>${project.build.directory}/generated-sources/java/fr/braux/ezlang/parser/antlr</outputDirectory>
+          <outputDirectory>${project.build.directory}/generated-sources/java/fr/braux/ezlang/parser</outputDirectory>
           <arguments>
             <argument>-package</argument>
-            <argument>fr.braux.ezlang.parser.antlr</argument>
+            <argument>fr.braux.ezlang.parser</argument>
           </arguments>
         </configuration>
         <executions>
@@ -98,6 +98,7 @@
         <groupId>org.jetbrains.kotlin</groupId>
         <artifactId>kotlin-maven-plugin</artifactId>
         <version>${kotlin.version}</version>
+
         <configuration>
           <jvmTarget>${java.version}</jvmTarget>
           <sourceDirs>
