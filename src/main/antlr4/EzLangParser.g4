@@ -1,6 +1,10 @@
 parser grammar EzLangParser;
 
 
+options {
+    tokenVocab = EzLangLexer;
+}
+
 block
     : LBRACE NL* statements NL* RBRACE
     ;

@@ -1,6 +1,6 @@
 .idea/*
 target/*
-
+gen/*
 
 # Compiled class file
 *.class
