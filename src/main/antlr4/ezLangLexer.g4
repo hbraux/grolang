@@ -61,9 +61,11 @@ CARET    : '^';
 MOD      : '%';
 ARROW    : '->';
 
-// Whitespace and comments
-WS           : [ \t\r\n\u000C]+ -> channel(HIDDEN);
-LINE_COMMENT : '//' ~[\r\n]*    -> channel(HIDDEN);
+// Newline, whitespace and comments
+WS       : [ \t\r\n\u000C]+ -> channel(HIDDEN);
+COMMENT  : '#' ~[\r\n]*    -> channel(HIDDEN);
+NL       : '\n' | '\r' '\n'?;
+
 
 // Identifiers
 IDENTIFIER: Letter LetterOrDigit*;
