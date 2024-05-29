@@ -1,36 +1,34 @@
 package fr.braux.ezlang
 
 interface Expression {
-  fun eval(): Any
-  fun print(): String
+  fun eval(context: Context): Any
 }
 
-object NullExpression: Expression {
-  override fun eval(): Any = Lang.Null
-  override fun print() = "Null"
+object NullLiteral: Expression {
+  override fun eval(context: Context): Any = Lang.Null
 }
 
-class IntExpression(private val value: Long): Expression {
-  override fun eval() = value
-  override fun print() = value.toString()
+data class IntegerLiteral(private val value: Long): Expression {
+  override fun eval(context: Context) = value
 }
 
-class DecExpression(private val value: Double): Expression {
-  override fun eval() = value
-  override fun print() = value.toString()
+data class DecimalLiteral(private val value: Double): Expression {
+  override fun eval(context: Context) = value
 }
 
-class StringExpression(private val value: String): Expression {
-  override fun eval() = value
-  override fun print() = "\"$value\""
+data class StringLiteral(private val value: String): Expression {
+  override fun eval(context: Context) = value
 }
 
-class BoolExpression(private val value: Boolean): Expression {
-  override fun eval() = value
-  override fun print() = value.toString().replaceFirstChar { it.titlecase() }
+data class BooleanLiteral(private val value: Boolean): Expression {
+  override fun eval(context: Context) = value
 }
 
-class SymbolExpression(private val value: String): Expression {
-  override fun eval() = value
-  override fun print() = "'$value"
+data class SymbolLiteral(private val value: String): Expression {
+  override fun eval(context: Context) = value
+}
+
+data class Assignment(val symbol: String, val value: Expression): Expression {
+  override fun eval(context: Context): Any = value.eval(context).also {  context.assign(symbol, it) }
+
 }

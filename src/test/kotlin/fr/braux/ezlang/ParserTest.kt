@@ -1,5 +1,6 @@
 package fr.braux.ezlang.fr.braux.ezlang
 
+import fr.braux.ezlang.Context
 import fr.braux.ezlang.Lang
 import fr.braux.ezlang.Parser
 import org.junit.Test
@@ -20,5 +21,6 @@ class ParserTest {
     assertEquals("Hello",  eval("'Hello"))
   }
 
-  private fun eval(s: String) = Parser.parse(s).eval()
+  private val context = Context()
+  private fun eval(s: String) = Parser.parse(s).eval(context)
 }

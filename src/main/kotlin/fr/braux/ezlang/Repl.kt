@@ -4,11 +4,15 @@ import fr.braux.ezlang.Lang.NAME
 import fr.braux.ezlang.Lang.VERSION
 
 object Repl {
-  fun loop(debug: Boolean) {
+
+  fun loop(debug: Boolean = false) {
+    val context = Context()
     println("Welcome to $NAME $VERSION REPL")
+    var index = 1
     while (true) {
       print(PROMPT)
       val input: String
+      val expression: Expression
       try {
         input = readln()
       } catch (e: Exception) {
@@ -16,11 +20,19 @@ object Repl {
       }
       if (input.startsWith(EXIT))
         break
-      val expression = Parser.parse(input)
-      if (debug) {
-        expression.print()
+      try {
+        expression = Parser.parse(input)
+      } catch (e: Exception) {
+        println("SYNTAX ERROR: ${e.message}")
+        continue
       }
-      val result = expression.eval()
+      val variable = "res${index++}"
+      val assignment = Assignment(variable, expression)
+      if (debug) {
+        println("DEBUG: $assignment")
+      }
+      val result = assignment.eval(context)
+      print("$variable: ")
       prettyPrint(result)
     }
   }
