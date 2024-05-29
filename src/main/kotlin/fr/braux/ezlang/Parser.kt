@@ -1,11 +1,11 @@
 package fr.braux.ezlang
 
-import com.sun.org.slf4j.internal.LoggerFactory
 import fr.braux.ezlang.parser.EzLangLexer;
 import fr.braux.ezlang.parser.EzLangParser;
 import fr.braux.ezlang.parser.EzLangParserBaseVisitor;
 import org.antlr.v4.runtime.*
 import org.antlr.v4.runtime.misc.ParseCancellationException
+import org.slf4j.LoggerFactory
 import sun.tools.jstat.ParserException
 
 object Parser {
