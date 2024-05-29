@@ -16,11 +16,12 @@ object Parser {
     val visitor = object : EzLangParserBaseVisitor<Expression>() {
 
       override fun visitLiteral(ctx: LiteralContext): Expression = when (ctx.start.type) {
-        INT_LITERAL -> IntExpression(ctx.INT_LITERAL().text.toLong())
-        DEC_LITERAL -> DecExpression(ctx.DEC_LITERAL().text.toDouble())
-        STRING_LITERAL -> StringExpression(ctx.STRING_LITERAL().text)
-        BOOL_LITERAL -> BoolExpression(ctx.BOOL_LITERAL().text.lowercase().toBoolean())
+        INTEGER_LITERAL -> IntExpression(ctx.text.toLong())
+        DECIMAL_LITERAL -> DecExpression(ctx.text.toDouble())
+        STRING_LITERAL -> StringExpression(ctx.text.unquote())
+        BOOLEAN_LITERAL -> BoolExpression(ctx.text.lowercase().toBoolean())
         NULL_LITERAL -> NullExpression
+        SYMBOL_LITERAL -> SymbolExpression(ctx.text.substring(1))
         else -> throw ParserException("Unknown token ${ctx.start}")
       }
     }
@@ -39,8 +40,10 @@ object Parser {
   private val logger = LoggerFactory.getLogger(Parser::class.java)
 
   private val errorListener = object: BaseErrorListener() {
-    override fun syntaxError(recognizer: Recognizer<*, *>?, offendingSymbol: Any?, line: Int, charPositionInLine: Int, msg: String, e: RecognitionException?) {
+    override fun syntaxError(recognizer: Recognizer<*, *>, offendingSymbol: Any, line: Int, charPositionInLine: Int, msg: String, e: RecognitionException) {
       throw ParseCancellationException("at position $charPositionInLine, $msg")
     }
   }
+
+  private fun String.unquote() = substring(1, length -1)
 }

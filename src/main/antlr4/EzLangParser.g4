@@ -31,8 +31,9 @@ parenthesizedExpression
     ;
 
 literal
-    : INT_LITERAL
-    | DEC_LITERAL
+    : INTEGER_LITERAL
+    | DECIMAL_LITERAL
     | NULL_LITERAL
-    | BOOL_LITERAL
-    | STRING_LITERAL;
+    | BOOLEAN_LITERAL
+    | STRING_LITERAL
+    | SYMBOL_LITERAL;

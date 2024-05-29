@@ -1,6 +1,6 @@
 package fr.braux.ezlang.fr.braux.ezlang
 
-import fr.braux.ezlang.NullValue
+import fr.braux.ezlang.Lang
 import fr.braux.ezlang.Parser
 import org.junit.Test
 import kotlin.test.assertEquals
@@ -15,7 +15,9 @@ class ParserTest {
     assertEquals(1.234E11,  eval("12.340e10"))
     assertEquals(true,  eval("True"))
     assertEquals(false,  eval("False"))
-    assertEquals(NullValue,  eval("Null"))
+    assertEquals(Lang.Null,  eval("Null"))
+    assertEquals("some string",  eval(""""some string""""))
+    assertEquals("Hello",  eval("'Hello"))
   }
 
   private fun eval(s: String) = Parser.parse(s).eval()

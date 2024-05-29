@@ -18,11 +18,12 @@ VAR          : 'var';
 VAL          : 'val';
 
 // Literals
-INT_LITERAL : ('0' | [1-9] Digits?);
-DEC_LITERAL: (Digits '.' Digits? | '.' Digits) ExponentPart? ;
-BOOL_LITERAL: 'True' | 'False';
-STRING_LITERAL: '"' (~["\\\r\n] | EscapeSequence)* '"';
-NULL_LITERAL: 'Null';
+INTEGER_LITERAL : ('0' | [1-9] Digits?);
+DECIMAL_LITERAL : (Digits '.' Digits? | '.' Digits) ExponentPart? ;
+BOOLEAN_LITERAL : 'True' | 'False';
+STRING_LITERAL  : '"' (~["\\\r\n] | EscapeSequence)* '"';
+NULL_LITERAL    : 'Null';
+SYMBOL_LITERAL  : '\'' Letter LetterOrDigit*;
 
 // Separators
 LPAREN : '(';
