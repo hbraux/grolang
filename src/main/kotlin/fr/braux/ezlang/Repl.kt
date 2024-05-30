@@ -8,7 +8,6 @@ object Repl {
   fun loop(debug: Boolean = false) {
     val context = Context()
     println("Welcome to $NAME $VERSION REPL")
-    var index = 1
     while (true) {
       print(PROMPT)
       val input: String
@@ -26,13 +25,10 @@ object Repl {
         println("SYNTAX ERROR: ${e.message}")
         continue
       }
-      val variable = "res${index++}"
-      val assignment = Assignment(variable, expression)
       if (debug) {
-        println("DEBUG: $assignment")
+        println("DEBUG: $expression")
       }
-      val result = assignment.eval(context)
-      print("$variable: ")
+      val result = expression.eval(context)
       prettyPrint(result)
     }
   }

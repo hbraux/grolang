@@ -4,6 +4,10 @@ object Lang {
   const val NAME = "ezLang"
   const val VERSION = "0.1"
 
+
+  val rootNamespace = Namespace("lang")
   // the Null object
   object Null
 }
+
+
