@@ -29,13 +29,10 @@ object Repl {
         println("DEBUG: $expression")
       }
       val result = expression.eval(context)
-      prettyPrint(result)
+      println(result.asString())
     }
   }
 
-  private fun prettyPrint(result: Any) {
-    println(result)
-  }
 
   private const val PROMPT = "> "
   private const val EXIT = ":exit"

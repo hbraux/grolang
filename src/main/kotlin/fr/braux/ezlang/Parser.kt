@@ -6,21 +6,24 @@ import fr.braux.ezlang.parser.EzLangParser.*
 import fr.braux.ezlang.parser.EzLangParserBaseVisitor
 import org.antlr.v4.runtime.*
 import org.antlr.v4.runtime.misc.ParseCancellationException
+import java.io.IOException
+import kotlin.Any
 
 object Parser {
+  class ParserException(message: String): IOException(message)
 
-  fun parse(expression: String): Expression {
-    val lexer = EzLangLexer(CharStreams.fromString(expression))
+  fun parse(str: String): Expression {
+    val lexer = EzLangLexer(CharStreams.fromString(str))
     val parser = EzLangParser(CommonTokenStream(lexer))
     val visitor = object : EzLangParserBaseVisitor<Expression>() {
 
       override fun visitLiteral(ctx: LiteralContext): Expression = when (ctx.start.type) {
-        INTEGER_LITERAL -> IntegerLiteral(ctx.text.toLong())
-        DECIMAL_LITERAL -> DecimalLiteral(ctx.text.toDouble())
-        STRING_LITERAL -> StringLiteral(ctx.text.unquote())
-        BOOLEAN_LITERAL -> BooleanLiteral(ctx.text.lowercase().toBoolean())
-        NULL_LITERAL -> NullLiteral
-        SYMBOL_LITERAL -> SymbolLiteral(ctx.text.substring(1))
+        INTEGER_LITERAL -> LiteralExpression(ctx.text.toLong())
+        DECIMAL_LITERAL -> LiteralExpression(ctx.text.toDouble())
+        STRING_LITERAL -> LiteralExpression(ctx.text.unquote())
+        BOOLEAN_LITERAL -> LiteralExpression(ctx.text.lowercase().toBoolean())
+        NULL_LITERAL -> LiteralExpression(null)
+        SYMBOL_LITERAL -> LiteralExpression(ctx.text.substring(1))
         else -> throw ParserException("Unknown token ${ctx.start}")
       }
     }

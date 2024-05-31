@@ -1,31 +1,26 @@
 package fr.braux.ezlang
 
-interface Expression {
-  fun eval(context: Context): Any
+import fr.braux.ezlang.Lang.NULL
+
+interface Expression: AnyObject {
+  override fun getClass(): AnyObject = clazz
+  companion object {
+    private val clazz = ClassObject("Expression")
+  }
 }
 
-object NullLiteral: Expression {
-  override fun eval(context: Context): Any = Lang.Null
-}
 
-data class IntegerLiteral(private val value: Long): Expression {
-  override fun eval(context: Context) = value
-}
+class LiteralExpression<T>(private val value: T?): Expression {
+  override fun eval(context: Context): AnyObject = when {
+    value == null  -> NullObject
+    value is Long -> IntObject(value)
+    value is Double -> DecObject(value)
+    value is String -> StrObject(value)
+    value is Boolean -> BoolObject(value)
+    else -> throw IllegalArgumentException()
+  }
+  override fun asString(): String = value?.toString() ?: NULL
 
-data class DecimalLiteral(private val value: Double): Expression {
-  override fun eval(context: Context) = value
-}
-
-data class StringLiteral(private val value: String): Expression {
-  override fun eval(context: Context) = value
-}
-
-data class BooleanLiteral(private val value: Boolean): Expression {
-  override fun eval(context: Context) = value
-}
-
-data class SymbolLiteral(private val value: String): Expression {
-  override fun eval(context: Context) = value
 }
 
 
