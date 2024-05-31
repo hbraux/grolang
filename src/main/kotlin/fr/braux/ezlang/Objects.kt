@@ -30,7 +30,7 @@ open class ClassObject(private val name: String): AnyObject {
   override fun getClass(): AnyObject = classClass
 }
 
-abstract class LiteralObject<T>(private val value: T?, private val clazz: ClassObject): AnyObject {
+abstract class LiteralObject<T>(val value: T?, private val clazz: ClassObject): AnyObject {
   override fun eval(context: Context): AnyObject = this
   override fun asString(): String = value?.toString() ?: NULL
   override fun getClass(): AnyObject = clazz

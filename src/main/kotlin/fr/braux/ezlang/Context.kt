@@ -6,6 +6,5 @@ class Context() {
   fun assign(symbol: String, value: Any) {
     variables[symbol] = value
   }
-  fun import(namespace: Namespace, symbol: String) {}
 }
 
