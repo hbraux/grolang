@@ -38,7 +38,7 @@ abstract class LiteralObject<T>(val value: T?, private val clazz: ClassObject): 
 
 object NullObject: LiteralObject<Any>(null, classNull)
 class IntObject(value: Long): LiteralObject<Long>(value, classInt)
-class DecObject(value: Double): LiteralObject<Double>(value, classDec)
+class FloatObject(value: Double): LiteralObject<Double>(value, classDec)
 class BoolObject(value: Boolean): LiteralObject<Boolean>(value, classBool)
 class StrObject(value: String): LiteralObject<String>(value, classStr)
 

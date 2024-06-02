@@ -11,7 +11,7 @@ object Repl {
     println("type :h for help, :q to quit")
     while (true) {
       print(PROMPT)
-      val input: String
+      var input: String
       val expression: Expression
       try {
         input = readln()
@@ -24,6 +24,10 @@ object Repl {
           ":h" -> printHelp()
         }
         continue
+      }
+      // automatically adds VAR prefix if needed
+      ASSIGNMENT.find(input)?.let { if (!context.isDefined(it.value))
+          input = "VAR $input"
       }
       try {
         expression = Parser.parse(input)
@@ -46,4 +50,5 @@ object Repl {
 
 
   private const val PROMPT = "> "
+  private val ASSIGNMENT = """\W*(\w+)\W*=""".toRegex()
 }

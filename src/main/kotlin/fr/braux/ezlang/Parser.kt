@@ -16,16 +16,24 @@ object Parser {
     val visitor = object : EzLangParserBaseVisitor<Expression>() {
 
       override fun visitLiteral(ctx: LiteralContext) = when (ctx.start.type) {
-        INTEGER_LITERAL -> LiteralExpression(ctx.text.toLong())
-        DECIMAL_LITERAL -> LiteralExpression(ctx.text.toDouble())
-        STRING_LITERAL -> LiteralExpression(ctx.text.unquote())
-        BOOLEAN_LITERAL -> LiteralExpression(ctx.text.lowercase().toBoolean())
-        NULL_LITERAL -> LiteralExpression(null)
-        SYMBOL_LITERAL -> LiteralExpression(ctx.text.substring(1))
+        INTEGER_LITERAL -> LiteralExpression(ctx.text.toLong(), "INT")
+        DECIMAL_LITERAL -> LiteralExpression(ctx.text.toDouble(), "FLOATT")
+        STRING_LITERAL -> LiteralExpression(ctx.text.unquote(), "STR")
+        BOOLEAN_LITERAL -> LiteralExpression(ctx.text.lowercase().toBoolean(), "BOOL")
+        NULL_LITERAL -> LiteralExpression(null ,"NULL")
+        SYMBOL_LITERAL -> LiteralExpression(ctx.text.substring(1), "INT")
         else -> throw LangException(LangExceptionType.SYNTAX_ERROR, "Unknown token ${ctx.start}")
       }
 
-      override fun visitSimpleIdentifier(ctx: SimpleIdentifierContext) = IdentifierExpression(ctx.text)
+      override fun visitIdentifier(ctx: IdentifierContext) = IdentifierExpression(ctx.text)
+
+      override fun visitAssignment(ctx: AssignmentContext): Expression {
+        val right = this.visit(ctx.expression())
+        val declaredType = ctx.type?.text
+        if (declaredType != null && declaredType != right.evalType)
+          throw LangException(LangExceptionType.TYPE_ERROR, "Declared type $declaredType not matching ${right.evalType}")
+        return AssignmentExpression(ctx.symbol.text, declaredType?: right.evalType , ctx.prefix.isVar(), right)
+      }
 
     }
     lexer.removeErrorListeners()
@@ -46,4 +54,5 @@ object Parser {
   }
 
   private fun String.unquote() = substring(1, length -1)
+  private fun Token.isVar() = this.text == "var"
 }

@@ -24,7 +24,7 @@ expressions
 
 expression
      : literal
-     | simpleIdentifier
+     | identifier
      | methodCall
      ;
 
@@ -33,18 +33,10 @@ methodCall
     ;
 
 assignment
-    : (VAR|VAL)? typeParameter '=' NL* expression
+    : prefix=(VAR|VAL) symbol=IDENTIFIER (':' type=IDENTIFIER)? '=' expression
     ;
 
-typeParameter
-    : simpleIdentifier (':' typeReference)?
-    ;
-
-typeReference
-    : simpleIdentifier
-    ;
-
-simpleIdentifier
+identifier
     : IDENTIFIER
     ;
 

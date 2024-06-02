@@ -9,6 +9,8 @@ class Context() {
       throw LangException(LangExceptionType.ALREADY_DEFINED, "$symbol already defined")
     variables[symbol] = value
   }
+  fun isDefined(symbol: String): Boolean = symbol in variables
+
   fun get(symbol: String) : AnyObject =
     variables.get(symbol) ?: throw LangException(LangExceptionType.NOT_DEFINED, "$symbol already defined")
 
