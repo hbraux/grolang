@@ -6,26 +6,27 @@ import fr.braux.ezlang.parser.EzLangParser.*
 import fr.braux.ezlang.parser.EzLangParserBaseVisitor
 import org.antlr.v4.runtime.*
 import org.antlr.v4.runtime.misc.ParseCancellationException
-import java.io.IOException
 import kotlin.Any
 
 object Parser {
-  class ParserException(message: String): IOException(message)
 
   fun parse(str: String): Expression {
     val lexer = EzLangLexer(CharStreams.fromString(str))
     val parser = EzLangParser(CommonTokenStream(lexer))
     val visitor = object : EzLangParserBaseVisitor<Expression>() {
 
-      override fun visitLiteral(ctx: LiteralContext): Expression = when (ctx.start.type) {
+      override fun visitLiteral(ctx: LiteralContext) = when (ctx.start.type) {
         INTEGER_LITERAL -> LiteralExpression(ctx.text.toLong())
         DECIMAL_LITERAL -> LiteralExpression(ctx.text.toDouble())
         STRING_LITERAL -> LiteralExpression(ctx.text.unquote())
         BOOLEAN_LITERAL -> LiteralExpression(ctx.text.lowercase().toBoolean())
         NULL_LITERAL -> LiteralExpression(null)
         SYMBOL_LITERAL -> LiteralExpression(ctx.text.substring(1))
-        else -> throw ParserException("Unknown token ${ctx.start}")
+        else -> throw LangException(LangExceptionType.SYNTAX_ERROR, "Unknown token ${ctx.start}")
       }
+
+      override fun visitSimpleIdentifier(ctx: SimpleIdentifierContext) = IdentifierExpression(ctx.text)
+
     }
     lexer.removeErrorListeners()
     parser.removeErrorListeners()
@@ -34,7 +35,7 @@ object Parser {
     try {
       return visitor.visit(parser.expression())
     } catch (e: ParseCancellationException) {
-      throw ParserException(e.localizedMessage)
+      throw LangException(LangExceptionType.SYNTAX_ERROR, e.localizedMessage)
     }
   }
 

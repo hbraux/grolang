@@ -19,7 +19,7 @@ interface AnyObject {
     val classInt = ClassObject("Int")
     val classDec = ClassObject("Dec")
     val classBool = ClassObject("Bool")
-    val classNull = ClassObject("NullType")
+    val classNull = ClassObject("Null")
     val classStr = ClassObject("Str")
   }
 }

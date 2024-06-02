@@ -8,6 +8,7 @@ object Repl {
   fun loop(debug: Boolean = false) {
     val context = Context()
     println("Welcome to $NAME $VERSION REPL")
+    println("type :h for help, :q to quit")
     while (true) {
       print(PROMPT)
       val input: String
@@ -17,8 +18,13 @@ object Repl {
       } catch (e: Exception) {
         break
       }
-      if (input.startsWith(EXIT))
-        break
+      if (input.startsWith(":")) {
+        when (input) {
+          ":q" -> break
+          ":h" -> printHelp()
+        }
+        continue
+      }
       try {
         expression = Parser.parse(input)
       } catch (e: Exception) {
@@ -31,9 +37,13 @@ object Repl {
       val result = expression.eval(context)
       println(result.asString())
     }
+    println("$NAME terminated")
+  }
+
+  private fun printHelp() {
+    println("TODO")
   }
 
 
   private const val PROMPT = "> "
-  private const val EXIT = ":exit"
 }

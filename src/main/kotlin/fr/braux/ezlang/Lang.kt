@@ -5,8 +5,6 @@ object Lang {
   const val VERSION = "0.1"
   const val NULL = "Null"
 
-
-
 }
 
 

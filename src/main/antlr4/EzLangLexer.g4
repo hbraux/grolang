@@ -11,7 +11,6 @@ IS           : 'is';
 NAMESPACE    : 'namespace';
 PUBLIC       : 'public';
 RETURN       : 'return';
-SUPER        : 'super';
 THIS         : 'this';
 TRAIT        : 'trait';
 VAR          : 'var';
@@ -20,9 +19,9 @@ VAL          : 'val';
 // Literals
 INTEGER_LITERAL : ('0' | [1-9] Digits?);
 DECIMAL_LITERAL : (Digits '.' Digits? | '.' Digits) ExponentPart? ;
-BOOLEAN_LITERAL : 'True' | 'False';
+BOOLEAN_LITERAL : 'true' | 'false';
 STRING_LITERAL  : '"' (~["\\\r\n] | EscapeSequence)* '"';
-NULL_LITERAL    : 'Null';
+NULL_LITERAL    : 'null';
 SYMBOL_LITERAL  : '\'' Letter LetterOrDigit*;
 
 // Separators

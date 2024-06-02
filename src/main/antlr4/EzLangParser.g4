@@ -14,20 +14,38 @@ statements
     ;
 
 statement
-    :  expression
+    : expression
+    | assignment
+    ;
+
+expressions
+    : expression (',' expression)*
     ;
 
 expression
-     : primaryExpression
+     : literal
+     | simpleIdentifier
+     | methodCall
      ;
 
-primaryExpression
-    : parenthesizedExpression
-    | literal
+methodCall
+    : (IDENTIFIER | THIS) '(' expressions? ')'
     ;
 
-parenthesizedExpression
-    : LPAREN NL* expression NL* RPAREN
+assignment
+    : (VAR|VAL)? typeParameter '=' NL* expression
+    ;
+
+typeParameter
+    : simpleIdentifier (':' typeReference)?
+    ;
+
+typeReference
+    : simpleIdentifier
+    ;
+
+simpleIdentifier
+    : IDENTIFIER
     ;
 
 literal
