@@ -7,9 +7,11 @@ import fr.braux.ezlang.parser.EzLangParser.*
 import fr.braux.ezlang.parser.EzLangParserBaseVisitor
 import org.antlr.v4.runtime.*
 import org.antlr.v4.runtime.misc.ParseCancellationException
+import org.slf4j.LoggerFactory
 import kotlin.Any
 
 object Parser {
+  private val logger = LoggerFactory.getLogger(Parser::class.java)
 
   fun parse(str: String): Expression {
     val lexer = EzLangLexer(CharStreams.fromString(str))
@@ -33,11 +35,11 @@ object Parser {
       override fun visitDeclarationAssignment(ctx: DeclarationAssignmentContext): Expression {
         val right = this.visit(ctx.expression())
         ctx.type?.text?.let {
-          if (it != right.evalType)
-            throw LangException(LangExceptionType.TYPE_ERROR, it)
-          return BlockExpression(listOf(AssignmentExpression(ctx.symbol.text, right)))
+          if (it != right.evalType) throw LangException(LangExceptionType.TYPE_ERROR, it)
         }
-        return AssignmentExpression(ctx.symbol.text, right)
+        return BlockExpression(
+          DeclarationExpression(ctx.symbol.text, right.evalType, ctx.prefix.isVar()),
+          AssignmentExpression(ctx.symbol.text, right))
       }
 
     }
@@ -46,14 +48,15 @@ object Parser {
     lexer.addErrorListener(errorListener)
     parser.addErrorListener(errorListener)
     try {
-      return visitor.visit(parser.expression())
+      return visitor.visit(parser.statement())
     } catch (e: ParseCancellationException) {
+      logger.error("parse error", e)
       throw LangException(LangExceptionType.PARSE_ERROR, e.localizedMessage)
     }
   }
 
   private val errorListener = object: BaseErrorListener() {
-    override fun syntaxError(recognizer: Recognizer<*, *>, offendingSymbol: Any, line: Int, charPositionInLine: Int, msg: String, e: RecognitionException) {
+    override fun syntaxError(recognizer: Recognizer<*, *>?, offendingSymbol: Any?, line: Int, charPositionInLine: Int, msg: String, e: RecognitionException?) {
       throw ParseCancellationException("at position $charPositionInLine, $msg")
     }
   }

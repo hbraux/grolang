@@ -14,10 +14,10 @@ statements
     ;
 
 statement
-    : expression
-    | declaration
+    : declaration
     | assignment
     | declarationAssignment
+    | expression
     ;
 
 expressions

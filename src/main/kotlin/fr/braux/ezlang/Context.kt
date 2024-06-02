@@ -8,7 +8,7 @@ class Context() {
   fun declare(name: String, type: String, isMutable: Boolean): NullObject {
     if (name in symbols)
       throw LangException(LangExceptionType.ALREADY_DEFINED, name)
-    symbols[name] = Symbol(type, isMutable)
+    symbols[name] = Symbol(name, type, isMutable)
     return NullObject
   }
 
@@ -20,7 +20,7 @@ class Context() {
     return value
   }
 
-  fun assign(name: String, value: AnyObject, isMutable: Boolean) : AnyObject {
+  fun assign(name: String, isMutable: Boolean, value: AnyObject) : AnyObject {
     declare(name, value.getClass().asString(), isMutable)
     return assign(name, value)
   }
@@ -35,6 +35,6 @@ class Context() {
     return variables[symbol] ?: throw LangException(LangExceptionType.NOT_SET, name)
   }
 
-  data class Symbol(val type: String, val isMutable: Boolean)
+  data class Symbol(val name: String, val type: String, val isMutable: Boolean)
 }
 

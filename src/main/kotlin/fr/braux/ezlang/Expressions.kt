@@ -17,12 +17,12 @@ sealed interface Expression: AnyObject {
   }
 }
 
-data class BlockExpression(val block: List<Expression>) : Expression {
+data class BlockExpression(private val block: List<Expression>) : Expression {
+  constructor(vararg args: Expression) : this(args.toList())
   override val evalType: String = block.lastOrNull()?.evalType ?: TYPE_NULL
-
   override fun eval(context: Context): AnyObject {
     var result: AnyObject = NullObject
-    block.forEach {  result = it.eval(context) }
+    block.forEach { result = it.eval(context) }
     return result
   }
   override fun asString(): String = block.joinToString(prefix = "_block(", separator = ",", postfix = ")") { it.asString() }
@@ -42,7 +42,7 @@ data class LiteralExpression<T>(private val value: T?, override val evalType: St
 }
 
 data class IdentifierExpression(private val symbol: String): Expression {
-  override val evalType: String = TYPE_SYMBOL // TODO: not ok
+  override val evalType: String = TYPE_SYMBOL // FIXME: not ok
   override fun eval(context: Context): AnyObject = context.get(symbol)
   override fun asString(): String = "'$symbol"
 }
@@ -50,12 +50,12 @@ data class IdentifierExpression(private val symbol: String): Expression {
 data class DeclarationExpression(private val symbol: String, val type: String, private val isMutable: Boolean): Expression {
   override val evalType: String = TYPE_NULL
   override fun eval(context: Context): NullObject = context.declare(symbol, type, isMutable)
-  override fun asString(): String = "_def('$symbol,$type,isMutable)"
+  override fun asString(): String = "_def('$symbol,\"$type\",$isMutable)"
 }
 
 
 data class AssignmentExpression(private val symbol: String, private val right: Expression): Expression {
   override val evalType = right.evalType
   override fun eval(context: Context): AnyObject = right.eval(context).also { context.assign(symbol, it) }
-  override fun asString(): String = "_assign('$symbol, $right)"
+  override fun asString(): String = "_assign('$symbol, ${right.asString()})"
 }

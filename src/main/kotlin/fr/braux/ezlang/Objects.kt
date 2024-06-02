@@ -8,7 +8,7 @@ import fr.braux.ezlang.AnyObject.Companion.classNull
 import fr.braux.ezlang.AnyObject.Companion.classStr
 
 
-interface AnyObject {
+sealed interface AnyObject {
   fun eval(context: Context): AnyObject
   fun asString(): String
   fun getClass(): AnyObject

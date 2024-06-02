@@ -24,12 +24,24 @@ class ParserTest {
 
   @Test
   fun testIdentifiers() {
-    assertEquals(1L,  eval("someint"))
+    assertEquals(1L,  eval("someInt"))
+  }
+
+  @Test
+  fun testDeclaration() {
+    assertEquals("_def('anInt,\"Int\",false)",  read("val anInt :Int"))
+    assertEquals("_def('aFloat,\"Float\",true)",  read("var aFloat :Float"))
+    assertEquals("_block(_def('myBool,\"Bool\",false),_assign('myBool, true))",  read("val myBool = true"))
+    // type inference
+    assertEquals(3L,  eval("val inferInt = 3"))
+    assertEquals(3.0,  eval("val inferFloat = 3.0"))
+    assertEquals(true,  eval("val inferBool = true"))
   }
 
   private val context = Context().also {
-    it.assign("someint", IntObject(1L), false)
+    it.assign("someInt", false, IntObject(1L))
   }
 
   private fun eval(s: String) = (Parser.parse(s).eval(context) as LiteralObject<*>).value
+  private fun read(s: String) = Parser.parse(s).asString()
 }

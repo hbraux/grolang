@@ -6,11 +6,11 @@ class LangException(val type: LangExceptionType, arg: Any): IOException(type.msg
 
 enum class LangExceptionType(val msg: String) {
   PARSE_ERROR("%s"),
-  TYPE_ERROR("Declared type %s not matching"),
+  TYPE_ERROR("Declared type '%s not matching"),
   UNKNOWN_TOKEN("Unknown token %s"),
-  ALREADY_DEFINED("variable %s is already defined"),
-  NOT_DEFINED("variable %s is not defined"),
-  NOT_SET("variable %s is unset"),
-  NOT_MUTABLE("variable %s is not mutable")
+  ALREADY_DEFINED("variable '%s is already defined"),
+  NOT_DEFINED("variable '%s is not defined"),
+  NOT_SET("variable '%s is unset"),
+  NOT_MUTABLE("variable '%s is not mutable")
 }
 

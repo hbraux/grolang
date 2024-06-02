@@ -22,27 +22,44 @@ object Repl {
         }
         continue
       }
-      // automatically adds VAR prefix if needed
-      ASSIGNMENT.find(input)?.let { if (!context.isDefined(it.value))
-          input = "VAR $input"
+      // automatically adds 'var' if needed
+      ASSIGNMENT.find(input)?.let { if (!context.isDefined(it.groupValues[1]))
+          input = "var $input"
       }
       try {
         expression = Parser.parse(input)
-      } catch (e: Exception) {
-        println("SYNTAX ERROR: ${e.message}")
+      } catch (e: LangException) {
+        println("READ ERROR: ${e.message}")
         continue
       }
       if (debug) {
-        println("DEBUG: $expression")
+        println("READ OUTPUT: ${expression.asString()}")
       }
-      val result = expression.eval(context)
-      println(result.asString())
+      val result: AnyObject
+      try {
+         result = expression.eval(context)
+      } catch (e: LangException) {
+        println("EVAL ERROR: ${e.message}")
+        continue
+      }
+      val output: String
+      try {
+        output = result.asString()
+      } catch (e: LangException) {
+        println("PRINT ERROR: ${e.message}")
+        continue
+      }
+      prettyPrint(output)
     }
     println("$LANG_NAME terminated")
   }
 
   private fun printHelp() {
-    println("TODO")
+    println("Some help to be added..")
+  }
+
+  private fun prettyPrint(output: String) {
+    println("\u001B[1m$output\u001B")
   }
 
 
