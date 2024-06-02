@@ -1,5 +1,6 @@
 package fr.braux.ezlang
 
+
 import fr.braux.ezlang.parser.EzLangLexer
 import fr.braux.ezlang.parser.EzLangParser
 import fr.braux.ezlang.parser.EzLangParser.*
@@ -16,23 +17,27 @@ object Parser {
     val visitor = object : EzLangParserBaseVisitor<Expression>() {
 
       override fun visitLiteral(ctx: LiteralContext) = when (ctx.start.type) {
-        INTEGER_LITERAL -> LiteralExpression(ctx.text.toLong(), "INT")
-        DECIMAL_LITERAL -> LiteralExpression(ctx.text.toDouble(), "FLOATT")
-        STRING_LITERAL -> LiteralExpression(ctx.text.unquote(), "STR")
-        BOOLEAN_LITERAL -> LiteralExpression(ctx.text.lowercase().toBoolean(), "BOOL")
-        NULL_LITERAL -> LiteralExpression(null ,"NULL")
-        SYMBOL_LITERAL -> LiteralExpression(ctx.text.substring(1), "INT")
-        else -> throw LangException(LangExceptionType.SYNTAX_ERROR, "Unknown token ${ctx.start}")
+        INTEGER_LITERAL -> LiteralExpression(ctx.text.toLong(), TYPE_INT)
+        DECIMAL_LITERAL -> LiteralExpression(ctx.text.toDouble(), TYPE_FLOAT)
+        STRING_LITERAL -> LiteralExpression(ctx.text.unquote(), TYPE_STR)
+        BOOLEAN_LITERAL -> LiteralExpression(ctx.text.lowercase().toBoolean(), TYPE_BOOL)
+        NULL_LITERAL -> LiteralExpression(null, TYPE_NULL)
+        SYMBOL_LITERAL -> LiteralExpression(ctx.text.substring(1), TYPE_SYMBOL)
+        else -> throw LangException(LangExceptionType.UNKNOWN_TOKEN, ctx.start.text)
       }
 
       override fun visitIdentifier(ctx: IdentifierContext) = IdentifierExpression(ctx.text)
+      override fun visitDeclaration(ctx: DeclarationContext) = DeclarationExpression(ctx.symbol.text, ctx.type.text, ctx.prefix.isVar())
+      override fun visitAssignment(ctx: AssignmentContext) = AssignmentExpression(ctx.symbol.text, visit(ctx.expression()))
 
-      override fun visitAssignment(ctx: AssignmentContext): Expression {
+      override fun visitDeclarationAssignment(ctx: DeclarationAssignmentContext): Expression {
         val right = this.visit(ctx.expression())
-        val declaredType = ctx.type?.text
-        if (declaredType != null && declaredType != right.evalType)
-          throw LangException(LangExceptionType.TYPE_ERROR, "Declared type $declaredType not matching ${right.evalType}")
-        return AssignmentExpression(ctx.symbol.text, declaredType?: right.evalType , ctx.prefix.isVar(), right)
+        ctx.type?.text?.let {
+          if (it != right.evalType)
+            throw LangException(LangExceptionType.TYPE_ERROR, it)
+          return BlockExpression(listOf(AssignmentExpression(ctx.symbol.text, right)))
+        }
+        return AssignmentExpression(ctx.symbol.text, right)
       }
 
     }
@@ -43,7 +48,7 @@ object Parser {
     try {
       return visitor.visit(parser.expression())
     } catch (e: ParseCancellationException) {
-      throw LangException(LangExceptionType.SYNTAX_ERROR, e.localizedMessage)
+      throw LangException(LangExceptionType.PARSE_ERROR, e.localizedMessage)
     }
   }
 

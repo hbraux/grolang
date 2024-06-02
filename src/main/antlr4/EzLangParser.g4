@@ -15,11 +15,13 @@ statements
 
 statement
     : expression
+    | declaration
     | assignment
+    | declarationAssignment
     ;
 
 expressions
-    : expression (',' expression)*
+    : expression (COMMA expression)*
     ;
 
 expression
@@ -29,11 +31,19 @@ expression
      ;
 
 methodCall
-    : (IDENTIFIER | THIS) '(' expressions? ')'
+    : (IDENTIFIER | THIS) LPAREN expressions? RPAREN
+    ;
+
+declaration
+    : prefix=(VAR|VAL) symbol=IDENTIFIER COLON type=IDENTIFIER
     ;
 
 assignment
-    : prefix=(VAR|VAL) symbol=IDENTIFIER (':' type=IDENTIFIER)? '=' expression
+    : symbol=IDENTIFIER ASSIGN expression
+    ;
+
+declarationAssignment
+    : prefix=(VAR|VAL) symbol=IDENTIFIER (COLON type=IDENTIFIER)? ASSIGN expression
     ;
 
 identifier

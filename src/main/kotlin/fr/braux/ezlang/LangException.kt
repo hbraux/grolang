@@ -2,12 +2,15 @@ package fr.braux.ezlang
 
 import java.io.IOException
 
-class LangException(val type: LangExceptionType, message: String): IOException(message)
+class LangException(val type: LangExceptionType, arg: Any): IOException(type.msg.format(arg))
 
-enum class LangExceptionType {
-  TYPE_ERROR,
-  SYNTAX_ERROR,
-  ALREADY_DEFINED,
-  NOT_DEFINED
+enum class LangExceptionType(val msg: String) {
+  PARSE_ERROR("%s"),
+  TYPE_ERROR("Declared type %s not matching"),
+  UNKNOWN_TOKEN("Unknown token %s"),
+  ALREADY_DEFINED("variable %s is already defined"),
+  NOT_DEFINED("variable %s is not defined"),
+  NOT_SET("variable %s is unset"),
+  NOT_MUTABLE("variable %s is not mutable")
 }
 

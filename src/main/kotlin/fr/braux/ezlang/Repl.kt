@@ -1,13 +1,10 @@
 package fr.braux.ezlang
 
-import fr.braux.ezlang.Lang.NAME
-import fr.braux.ezlang.Lang.VERSION
-
 object Repl {
 
   fun loop(debug: Boolean = false) {
     val context = Context()
-    println("Welcome to $NAME $VERSION REPL")
+    println("Welcome to $LANG_NAME $LANG_VERSION REPL")
     println("type :h for help, :q to quit")
     while (true) {
       print(PROMPT)
@@ -41,7 +38,7 @@ object Repl {
       val result = expression.eval(context)
       println(result.asString())
     }
-    println("$NAME terminated")
+    println("$LANG_NAME terminated")
   }
 
   private fun printHelp() {

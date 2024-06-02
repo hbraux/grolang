@@ -28,7 +28,7 @@ class ParserTest {
   }
 
   private val context = Context().also {
-    it.assign("someint" , IntObject(1L))
+    it.assign("someint", IntObject(1L), false)
   }
 
   private fun eval(s: String) = (Parser.parse(s).eval(context) as LiteralObject<*>).value
