@@ -29,9 +29,9 @@ class ParserTest {
 
   @Test
   fun testDeclaration() {
-    assertEquals("_def('anInt,\"Int\",false)",  read("val anInt :Int"))
-    assertEquals("_def('aFloat,\"Float\",true)",  read("var aFloat :Float"))
-    assertEquals("_block(_def('myBool,\"Bool\",false),_assign('myBool, true))",  read("val myBool = true"))
+    assertEquals("_declare('anInt,\"Int\",false)",  read("val anInt :Int"))
+    assertEquals("_declare('aFloat,\"Float\",true)",  read("var aFloat :Float"))
+    assertEquals("_block(_declare('myBool,\"Bool\",false),_assign('myBool, true))",  read("val myBool = true"))
     // type inference
     assertEquals(3L,  eval("val inferInt = 3"))
     assertEquals(3.0,  eval("val inferFloat = 3.0"))

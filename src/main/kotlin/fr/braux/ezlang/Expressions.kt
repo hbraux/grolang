@@ -50,7 +50,7 @@ data class IdentifierExpression(private val symbol: String): Expression {
 data class DeclarationExpression(private val symbol: String, val type: String, private val isMutable: Boolean): Expression {
   override val evalType: String = TYPE_NULL
   override fun eval(context: Context): NullObject = context.declare(symbol, type, isMutable)
-  override fun asString(): String = "_def('$symbol,\"$type\",$isMutable)"
+  override fun asString(): String = "_declare('$symbol,\"$type\",$isMutable)"
 }
 
 
