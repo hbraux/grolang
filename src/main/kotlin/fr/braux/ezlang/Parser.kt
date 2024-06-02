@@ -7,12 +7,9 @@ import fr.braux.ezlang.parser.EzLangParser.*
 import fr.braux.ezlang.parser.EzLangParserBaseVisitor
 import org.antlr.v4.runtime.*
 import org.antlr.v4.runtime.misc.ParseCancellationException
-import org.slf4j.LoggerFactory
-import kotlin.Any
 
 object Parser {
-  private val logger = LoggerFactory.getLogger(Parser::class.java)
-
+  
   fun parse(str: String): Expression {
     val lexer = EzLangLexer(CharStreams.fromString(str))
     val parser = EzLangParser(CommonTokenStream(lexer))
@@ -50,8 +47,7 @@ object Parser {
     try {
       return visitor.visit(parser.statement())
     } catch (e: ParseCancellationException) {
-      logger.error("parse error", e)
-      throw LangException(LangExceptionType.PARSE_ERROR, e.localizedMessage)
+      throw LangException(LangExceptionType.SYNTAX_ERROR, e.localizedMessage)
     }
   }
 
