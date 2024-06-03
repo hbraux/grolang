@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>fr.braux</groupId>
-  <artifactId>ezlang</artifactId>
+  <artifactId>grolang</artifactId>
   <version>0.0.1-SNAPSHOT</version>
   <packaging>jar</packaging>
 
@@ -88,10 +88,10 @@
         <version>${antlr.version}</version>
         <configuration>
           <visitor>true</visitor>
-          <outputDirectory>target/generated-sources/java/fr/braux/ezlang/parser</outputDirectory>
+          <outputDirectory>target/generated-sources/java/fr/braux/grolang/parser</outputDirectory>
           <arguments>
             <argument>-package</argument>
-            <argument>fr.braux.ezlang.parser</argument>
+            <argument>fr.braux.grolang.parser</argument>
           </arguments>
         </configuration>
         <executions>

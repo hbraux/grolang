@@ -1,4 +1,4 @@
-package fr.braux.ezlang
+package fr.braux.grolang
 
 object Repl {
 

@@ -1,19 +1,19 @@
-package fr.braux.ezlang
+package fr.braux.grolang
 
 
-import fr.braux.ezlang.parser.EzLangLexer
-import fr.braux.ezlang.parser.EzLangParser
-import fr.braux.ezlang.parser.EzLangParser.*
-import fr.braux.ezlang.parser.EzLangParserBaseVisitor
+import fr.braux.grolang.parser.GroLexer
+import fr.braux.grolang.parser.GroParser
+import fr.braux.grolang.parser.GroParser.*
+import fr.braux.grolang.parser.GroParserBaseVisitor
 import org.antlr.v4.runtime.*
 import org.antlr.v4.runtime.misc.ParseCancellationException
 
 object Parser {
   
   fun parse(str: String): Expression {
-    val lexer = EzLangLexer(CharStreams.fromString(str))
-    val parser = EzLangParser(CommonTokenStream(lexer))
-    val visitor = object : EzLangParserBaseVisitor<Expression>() {
+    val lexer = GroLexer(CharStreams.fromString(str))
+    val parser = GroParser(CommonTokenStream(lexer))
+    val visitor = object : GroParserBaseVisitor<Expression>() {
 
       override fun visitLiteral(ctx: LiteralContext) = when (ctx.start.type) {
         INTEGER_LITERAL -> LiteralExpression(ctx.text.toLong(), TYPE_INT)

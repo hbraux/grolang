@@ -1,4 +1,4 @@
-package fr.braux.ezlang
+package fr.braux.grolang
 
 const val LANG_NAME = "ezLang"
 const val LANG_VERSION = "0.1"

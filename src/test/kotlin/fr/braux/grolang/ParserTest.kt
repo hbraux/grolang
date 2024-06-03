@@ -1,9 +1,9 @@
-package fr.braux.ezlang.fr.braux.ezlang
+package fr.braux.grolang.fr.braux.ezlang
 
-import fr.braux.ezlang.Context
-import fr.braux.ezlang.IntObject
-import fr.braux.ezlang.LiteralObject
-import fr.braux.ezlang.Parser
+import fr.braux.grolang.Context
+import fr.braux.grolang.IntObject
+import fr.braux.grolang.LiteralObject
+import fr.braux.grolang.Parser
 import org.junit.Test
 import kotlin.test.assertEquals
 
@@ -39,7 +39,7 @@ class ParserTest {
   }
 
   private val context = Context().also {
-    it.assign("someInt", false, IntObject(1L))
+    it.assign("someInt",  IntObject(1L))
   }
 
   private fun eval(s: String) = (Parser.parse(s).eval(context) as LiteralObject<*>).value

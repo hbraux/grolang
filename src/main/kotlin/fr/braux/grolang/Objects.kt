@@ -1,17 +1,19 @@
-package fr.braux.ezlang
+package fr.braux.grolang
 
-import fr.braux.ezlang.AnyObject.Companion.classBool
-import fr.braux.ezlang.AnyObject.Companion.classClass
-import fr.braux.ezlang.AnyObject.Companion.classFloat
-import fr.braux.ezlang.AnyObject.Companion.classInt
-import fr.braux.ezlang.AnyObject.Companion.classNull
-import fr.braux.ezlang.AnyObject.Companion.classStr
+import fr.braux.grolang.AnyObject.Companion.classBool
+import fr.braux.grolang.AnyObject.Companion.classClass
+import fr.braux.grolang.AnyObject.Companion.classFloat
+import fr.braux.grolang.AnyObject.Companion.classInt
+import fr.braux.grolang.AnyObject.Companion.classNull
+import fr.braux.grolang.AnyObject.Companion.classStr
+import fr.braux.grolang.AnyObject.Companion.classSymbol
 
 
 sealed interface AnyObject {
   fun eval(context: Context): AnyObject
   fun asString(): String
   fun getClass(): AnyObject
+  fun getType(): String = getClass().asString()
 
   companion object {
     val classClass = ClassObject(TYPE_CLASS)
@@ -20,6 +22,7 @@ sealed interface AnyObject {
     val classBool = ClassObject(TYPE_BOOL)
     val classNull = ClassObject(TYPE_NULL)
     val classStr = ClassObject(TYPE_STR)
+    val classSymbol = ClassObject(TYPE_SYMBOL)
   }
 }
 
@@ -40,5 +43,6 @@ class IntObject(value: Long): LiteralObject<Long>(value, classInt)
 class FloatObject(value: Double): LiteralObject<Double>(value, classFloat)
 class BoolObject(value: Boolean): LiteralObject<Boolean>(value, classBool)
 class StrObject(value: String): LiteralObject<String>(value, classStr)
+class SymbolObject(value: String): LiteralObject<String>(value, classSymbol)
 
 

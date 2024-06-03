@@ -1,8 +1,8 @@
-parser grammar EzLangParser;
+parser grammar GroParser;
 
 
 options {
-    tokenVocab = EzLangLexer;
+    tokenVocab = GroLexer;
 }
 
 block

@@ -1,3 +1,3 @@
-# ezlang
+# grolang
 
 * test

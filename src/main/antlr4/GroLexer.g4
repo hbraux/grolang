@@ -1,4 +1,4 @@
-lexer grammar EzLangLexer;
+lexer grammar GroLexer;
 
 // Keywords
 CLASS        : 'class';

@@ -1,6 +1,6 @@
-package fr.braux.ezlang
+package fr.braux.grolang
 
-import fr.braux.ezlang.Expression.Companion.formatToString
+import fr.braux.grolang.Expression.Companion.formatToString
 
 sealed interface Expression: AnyObject {
   override fun getClass(): AnyObject = clazz
@@ -49,13 +49,13 @@ data class IdentifierExpression(private val symbol: String): Expression {
 
 data class DeclarationExpression(private val symbol: String, val type: String, private val isMutable: Boolean): Expression {
   override val evalType: String = TYPE_NULL
-  override fun eval(context: Context): NullObject = context.declare(symbol, type, isMutable)
-  override fun asString(): String = "_declare('$symbol,\"$type\",$isMutable)"
+  override fun eval(context: Context): SymbolObject = context.declare(symbol, type, isMutable)
+  override fun asString(): String = "_declare('$symbol,'$type,$isMutable)"
 }
 
 
 data class AssignmentExpression(private val symbol: String, private val right: Expression): Expression {
   override val evalType = right.evalType
-  override fun eval(context: Context): AnyObject = right.eval(context).also { context.assign(symbol, it) }
+  override fun eval(context: Context): AnyObject = right.eval(context).also { context.assign(symbol, it, evalType) }
   override fun asString(): String = "_assign('$symbol, ${right.asString()})"
 }
