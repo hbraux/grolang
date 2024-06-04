@@ -4,7 +4,7 @@ import fr.braux.grolang.Expression.Companion.formatToString
 
 sealed interface Expression: AnyObject {
   override fun getClass(): AnyObject = clazz
-  val evalType: String
+  val evalType: String?
 
   companion object {
     private val clazz = ClassObject("Expr")
@@ -42,20 +42,20 @@ data class LiteralExpression<T>(private val value: T?, override val evalType: St
 }
 
 data class IdentifierExpression(private val symbol: String): Expression {
-  override val evalType: String = TYPE_SYMBOL // FIXME: not ok
+  override val evalType: String? = null
   override fun eval(context: Context): AnyObject = context.get(symbol)
   override fun asString(): String = "'$symbol"
 }
 
-data class DeclarationExpression(private val symbol: String, val type: String, private val isMutable: Boolean): Expression {
-  override val evalType: String = TYPE_NULL
-  override fun eval(context: Context): SymbolObject = context.declare(symbol, type, isMutable)
-  override fun asString(): String = "_declare('$symbol,'$type,$isMutable)"
+data class DeclarationExpression(private val symbol: String, val declaredType: String, private val isMutable: Boolean): Expression {
+  override val evalType = declaredType
+  override fun eval(context: Context): SymbolObject = context.declare(symbol, declaredType, isMutable)
+  override fun asString(): String = "_declare('$symbol,'$declaredType,$isMutable)"
 }
 
 
 data class AssignmentExpression(private val symbol: String, private val right: Expression): Expression {
   override val evalType = right.evalType
-  override fun eval(context: Context): AnyObject = right.eval(context).also { context.assign(symbol, it, evalType) }
+  override fun eval(context: Context): AnyObject = right.eval(context).also { context.assign(symbol, it) }
   override fun asString(): String = "_assign('$symbol, ${right.asString()})"
 }

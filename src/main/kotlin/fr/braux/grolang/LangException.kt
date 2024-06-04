@@ -9,6 +9,7 @@ class LangException(message: String, val type: LangExceptionType): IOException(m
 enum class LangExceptionType(val msg: String) {
   SYNTAX_ERROR("Cannot parse expression"),
   TYPE_ERROR("Declared type '%s not matching"),
+  TYPE_NOT_INFERRED("Cannot infer type of '%s"),
   UNKNOWN_TOKEN("Unknown token %s"),
   ALREADY_DEFINED("variable '%s is already defined"),
   NOT_DEFINED("variable '%s is not defined"),

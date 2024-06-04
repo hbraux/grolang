@@ -30,12 +30,12 @@ object Parser {
       override fun visitAssignment(ctx: AssignmentContext) = AssignmentExpression(ctx.symbol.text, visit(ctx.expression()))
 
       override fun visitDeclarationAssignment(ctx: DeclarationAssignmentContext): Expression {
-        val right = this.visit(ctx.expression())
-        ctx.type?.text?.let {
-          if (it != right.evalType) throw LangException(LangExceptionType.TYPE_ERROR, it)
-        }
+          val name = ctx.symbol.text
+          val right = this.visit(ctx.expression())
+          val inferredType = ctx.type?.text ?: right.evalType ?: throw LangException(LangExceptionType.TYPE_NOT_INFERRED, name)     
+          if (inferredType != right.evalType) throw LangException(LangExceptionType.TYPE_ERROR, name)
         return BlockExpression(
-          DeclarationExpression(ctx.symbol.text, right.evalType, ctx.prefix.isVar()),
+          DeclarationExpression(ctx.symbol.text, inferredType, ctx.prefix.isVar()),
           AssignmentExpression(ctx.symbol.text, right))
       }
 
