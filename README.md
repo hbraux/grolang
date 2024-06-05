@@ -1,5 +1,8 @@
 # GroLang
 
+![Build](https://github.com/hbraux/grolang/workflows/maven/badge.svg)
+
+
 GroLang est un langage de programmation interprété à destination des jeunes (et moins jeunes) qui souhaitent apprendre à coder.
 
 Contrairement à Python, ce langage se veut plus formel et plus moderne en particulier en respectant les bonnes pratiques issues des
