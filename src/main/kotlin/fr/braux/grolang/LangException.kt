@@ -3,7 +3,7 @@ package fr.braux.grolang
 import java.io.IOException
 
 class LangException(message: String, val type: LangExceptionType): IOException(message) {
-  constructor(type: LangExceptionType, vararg args: Any) : this(type.msg.format(args), type)
+  constructor(type: LangExceptionType, vararg args: Any) : this(type.msg.format(*args), type)
 }
 
 enum class LangExceptionType(val msg: String) {

@@ -10,7 +10,7 @@ import fr.braux.grolang.AnyObject.Companion.classSymbol
 
 
 sealed interface AnyObject {
-  fun eval(context: Context): AnyObject
+  fun eval(ctx: Context): AnyObject
   fun asString(): String
   fun getClass(): AnyObject
   fun getType(): String = getClass().asString()
@@ -23,17 +23,18 @@ sealed interface AnyObject {
     val classNull = ClassObject(TYPE_NULL)
     val classStr = ClassObject(TYPE_STR)
     val classSymbol = ClassObject(TYPE_SYMBOL)
+    val builtInClasses = listOf(classInt, classFloat, classBool, classNull, classStr, classSymbol)
   }
 }
 
 open class ClassObject(private val name: String): AnyObject {
-  override fun eval(context: Context) = this
+  override fun eval(ctx: Context) = this
   override fun asString(): String = name
   override fun getClass(): AnyObject = classClass
 }
 
 abstract class LiteralObject<T>(val value: T?, private val clazz: ClassObject): AnyObject {
-  override fun eval(context: Context): AnyObject = this
+  override fun eval(ctx: Context): AnyObject = this
   override fun asString(): String = value?.toString() ?: STRING_NULL
   override fun getClass(): AnyObject = clazz
 }

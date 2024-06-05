@@ -25,11 +25,11 @@ data class BlockExpression(private val block: List<Expression>) : Expression {
     block.forEach { result = it.eval(context) }
     return result
   }
-  override fun asString(): String = block.joinToString(prefix = "_block(", separator = ",", postfix = ")") { it.asString() }
+  override fun asString(): String = block.joinToString("; ") { it.asString() }
 }
 
 data class LiteralExpression<T>(private val value: T?, override val evalType: String): Expression {
-  override fun eval(context: Context): AnyObject = when {
+  override fun eval(ctx: Context): AnyObject = when {
     value == null  -> NullObject
     value is Long -> IntObject(value)
     value is Double -> FloatObject(value)
@@ -43,19 +43,19 @@ data class LiteralExpression<T>(private val value: T?, override val evalType: St
 
 data class IdentifierExpression(private val symbol: String): Expression {
   override val evalType: String? = null
-  override fun eval(context: Context): AnyObject = context.get(symbol)
+  override fun eval(ctx: Context): AnyObject = ctx.get(symbol)
   override fun asString(): String = "'$symbol"
 }
 
 data class DeclarationExpression(private val symbol: String, val declaredType: String, private val isMutable: Boolean): Expression {
   override val evalType = declaredType
-  override fun eval(context: Context): SymbolObject = context.declare(symbol, declaredType, isMutable)
-  override fun asString(): String = "_declare('$symbol,'$declaredType,$isMutable)"
+  override fun eval(ctx: Context): SymbolObject = ctx.declare(symbol, declaredType, isMutable)
+  override fun asString(): String = "lang.def${if (isMutable) "var" else "val"}('$symbol,'$declaredType)"
 }
 
 
 data class AssignmentExpression(private val symbol: String, private val right: Expression): Expression {
   override val evalType = right.evalType
-  override fun eval(context: Context): AnyObject = right.eval(context).also { context.assign(symbol, it) }
-  override fun asString(): String = "_assign('$symbol, ${right.asString()})"
+  override fun eval(ctx: Context): AnyObject = right.eval(ctx).also { ctx.assign(symbol, it) }
+  override fun asString(): String = "lang.assign('$symbol, ${right.asString()})"
 }
