@@ -51,7 +51,6 @@ object Repl {
       }
       prettyPrint(output)
     }
-    println("$LANG_NAME terminated")
   }
 
   private fun printHelp() {
@@ -59,7 +58,7 @@ object Repl {
   }
 
   private fun prettyPrint(output: String) {
-    println("\u001B[1m$output\u001B")
+    println("\u001B[1m$output\u001B[0m")
   }
 
 
