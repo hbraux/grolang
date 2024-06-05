@@ -41,16 +41,16 @@ data class LiteralExpression<T>(private val value: T?, override val evalType: St
 
 }
 
-data class IdentifierExpression(private val symbol: String): Expression {
+data class IdentifierExpression(private val identifier: String): Expression {
   override val evalType: String? = null
-  override fun eval(ctx: Context): AnyObject = ctx.get(symbol)
-  override fun asString(): String = "'$symbol"
+  override fun eval(ctx: Context): AnyObject = ctx.getObject(identifier)
+  override fun asString(): String = "'$identifier"
 }
 
-data class DeclarationExpression(private val symbol: String, val declaredType: String, private val isMutable: Boolean): Expression {
+data class DeclarationExpression(private val identifier: String, val declaredType: String, private val isMutable: Boolean): Expression {
   override val evalType = declaredType
-  override fun eval(ctx: Context): SymbolObject = ctx.declare(symbol, declaredType, isMutable)
-  override fun asString(): String = "lang.def${if (isMutable) "var" else "val"}('$symbol,'$declaredType)"
+  override fun eval(ctx: Context): SymbolObject = ctx.defSymbol(identifier, declaredType, isMutable)
+  override fun asString(): String = "lang.def${if (isMutable) "var" else "val"}('$identifier,'$declaredType)"
 }
 
 

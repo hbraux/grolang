@@ -39,7 +39,7 @@ class ParserTest {
   }
 
   private val context = Context().also {
-    it.assign("someInt",  IntObject(1L))
+    it.declare("someInt",  IntObject(1L))
   }
 
   private fun eval(s: String) = (Parser.parse(s).eval(context) as LiteralObject<*>).value

@@ -15,7 +15,7 @@ enum class LangExceptionType(val msg: String) {
   NOT_DEFINED("variable '%s is not defined"),
   NOT_SET("variable '%s is unset"),
   NOT_MUTABLE("variable '%s is not mutable"),
-  NOT_TYPE("variable '%s is not of expected type '%s"),
+  NOT_EXPECTED_TYPE("variable '%s is not of expected type '%s"),
   UNKNOWN_TYPE("Unknown type '%s"),
   UNKNOWN_CLASS("'Unknown class '%s")
 }
