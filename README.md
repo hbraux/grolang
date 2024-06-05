@@ -17,7 +17,7 @@ Très brièvement, GroLang s'appuie sur
 
 ## Versions
 
-*Ce projet est en cours de développement et n'a pas encore été releasée *
+*Ce projet est en cours de développement et n'a pas encore été releasé!*
 
 ## Exemple
 

@@ -20,13 +20,14 @@ sealed interface Expression: AnyObject {
 data class BlockExpression(private val block: List<Expression>) : Expression {
   constructor(vararg args: Expression) : this(args.toList())
   override val evalType: String = block.lastOrNull()?.evalType ?: TYPE_NULL
-  override fun eval(context: Context): AnyObject {
+  override fun eval(ctx: Context): AnyObject {
     var result: AnyObject = NullObject
-    block.forEach { result = it.eval(context) }
+    block.forEach { result = it.eval(ctx) }
     return result
   }
   override fun asString(): String = block.joinToString("; ") { it.asString() }
 }
+
 
 data class LiteralExpression<T>(private val value: T?, override val evalType: String): Expression {
   override fun eval(ctx: Context): AnyObject = when {
@@ -41,21 +42,28 @@ data class LiteralExpression<T>(private val value: T?, override val evalType: St
 
 }
 
-data class IdentifierExpression(private val identifier: String): Expression {
+data class IdentifierExpression(private val id: String): Expression {
   override val evalType: String? = null
-  override fun eval(ctx: Context): AnyObject = ctx.getObject(identifier)
-  override fun asString(): String = "'$identifier"
+  override fun eval(ctx: Context): AnyObject = ctx.getObject(id)
+  override fun asString(): String = "'$id"
 }
 
-data class DeclarationExpression(private val identifier: String, val declaredType: String, private val isMutable: Boolean): Expression {
+data class DeclarationExpression(private val id: String, val declaredType: String, private val isMutable: Boolean): Expression {
   override val evalType = declaredType
-  override fun eval(ctx: Context): SymbolObject = ctx.defSymbol(identifier, declaredType, isMutable)
-  override fun asString(): String = "lang.def${if (isMutable) "var" else "val"}('$identifier,'$declaredType)"
+  override fun eval(ctx: Context): SymbolObject = ctx.defSymbol(id, declaredType, isMutable)
+  override fun asString(): String = "def${if (isMutable) "var" else "val"}('$id,'$declaredType)"
 }
 
-
-data class AssignmentExpression(private val symbol: String, private val right: Expression): Expression {
+data class AssignmentExpression(private val id: String, private val right: Expression): Expression {
   override val evalType = right.evalType
-  override fun eval(ctx: Context): AnyObject = right.eval(ctx).also { ctx.assign(symbol, it) }
-  override fun asString(): String = "lang.assign('$symbol, ${right.asString()})"
+  override fun eval(ctx: Context): AnyObject = right.eval(ctx).also { ctx.assign(id, it) }
+  override fun asString(): String = "assign('$id, ${right.asString()})"
 }
+
+
+data class CallExpression(private val target: String, private val method: String, val expressions: List<Expression>): Expression {
+  override val evalType = null
+  override fun eval(ctx: Context): AnyObject = ctx.getObject(target).callMethod(method, expressions.map { eval(ctx) })
+  override fun asString(): String = "$target.$method()"
+}
+

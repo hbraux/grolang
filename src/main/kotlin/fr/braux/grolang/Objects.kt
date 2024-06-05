@@ -6,6 +6,7 @@ sealed interface AnyObject {
   fun asString(): String
   fun getClass(): AnyObject
   fun getType(): String = getClass().asString()
+  fun callMethod(name: String, args: List<AnyObject>): AnyObject = TODO()
 }
 
 data class ClassObject(private val name: String): AnyObject {

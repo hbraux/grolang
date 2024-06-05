@@ -3,6 +3,7 @@ package fr.braux.grolang
 const val LANG_NAME = "ezLang"
 const val LANG_VERSION = "0.1"
 const val STRING_NULL = "null"
+const val STRING_THIS = "this"
 
 // primary types (which are also classes)
 const val TYPE_INT = "Int"

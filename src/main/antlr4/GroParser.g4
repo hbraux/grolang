@@ -20,10 +20,6 @@ statement
     | expression
     ;
 
-expressions
-    : expression (COMMA expression)*
-    ;
-
 expression
      : literal
      | identifier
@@ -31,19 +27,19 @@ expression
      ;
 
 methodCall
-    : (IDENTIFIER | THIS) LPAREN expressions? RPAREN
+    : (target=(IDENTIFIER|THIS) DOT)? method=IDENTIFIER LPAREN (expression? (COMMA expression)*) RPAREN
     ;
 
 declaration
-    : prefix=(VAR|VAL) symbol=IDENTIFIER COLON type=IDENTIFIER
+    : prefix=(VAR|VAL) id=IDENTIFIER COLON type=IDENTIFIER
     ;
 
 assignment
-    : symbol=IDENTIFIER ASSIGN expression
+    : id=IDENTIFIER ASSIGN expression
     ;
 
 declarationAssignment
-    : prefix=(VAR|VAL) symbol=IDENTIFIER (COLON type=IDENTIFIER)? ASSIGN expression
+    : prefix=(VAR|VAL) id=IDENTIFIER (COLON type=IDENTIFIER)? ASSIGN expression
     ;
 
 identifier

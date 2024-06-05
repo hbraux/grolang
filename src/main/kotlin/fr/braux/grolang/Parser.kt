@@ -24,21 +24,21 @@ object Parser {
         SYMBOL_LITERAL -> LiteralExpression(ctx.text.substring(1), TYPE_SYMBOL)
         else -> throw LangException(LangExceptionType.UNKNOWN_TOKEN, ctx.start.text)
       }
-
       override fun visitIdentifier(ctx: IdentifierContext) = IdentifierExpression(ctx.text)
-      override fun visitDeclaration(ctx: DeclarationContext) = DeclarationExpression(ctx.symbol.text, ctx.type.text, ctx.prefix.isVar())
-      override fun visitAssignment(ctx: AssignmentContext) = AssignmentExpression(ctx.symbol.text, visit(ctx.expression()))
+      override fun visitDeclaration(ctx: DeclarationContext) = DeclarationExpression(ctx.id.text, ctx.type.text, ctx.prefix.isVar())
+      override fun visitAssignment(ctx: AssignmentContext) = AssignmentExpression(ctx.id.text, visit(ctx.expression()))
 
       override fun visitDeclarationAssignment(ctx: DeclarationAssignmentContext): Expression {
-          val name = ctx.symbol.text
+          val name = ctx.id.text
           val right = this.visit(ctx.expression())
           val inferredType = ctx.type?.text ?: right.evalType ?: throw LangException(LangExceptionType.TYPE_NOT_INFERRED, name)     
           if (inferredType != right.evalType) throw LangException(LangExceptionType.TYPE_ERROR, name)
         return BlockExpression(
-          DeclarationExpression(ctx.symbol.text, inferredType, ctx.prefix.isVar()),
-          AssignmentExpression(ctx.symbol.text, right))
+          DeclarationExpression(ctx.id.text, inferredType, ctx.prefix.isVar()),
+          AssignmentExpression(ctx.id.text, right))
       }
 
+      override fun visitMethodCall(ctx: MethodCallContext) = CallExpression(ctx.target?.text ?: STRING_THIS, ctx.method.text, ctx.expression().map { visit(it) })
     }
     lexer.removeErrorListeners()
     parser.removeErrorListeners()
