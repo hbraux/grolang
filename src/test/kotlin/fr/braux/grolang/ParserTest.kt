@@ -67,8 +67,8 @@ class ParserTest {
   companion object {
     @JvmStatic
     @BeforeClass
-    fun before(): Unit {
-      Message.load("EN")
+    fun before() {
+      Lang.init()
     }
   }
 }

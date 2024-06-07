@@ -1,5 +1,9 @@
 package fr.braux.grolang
 
+
+import java.io.BufferedReader
+import java.io.File
+
 const val LANG_NAME = "ezLang"
 const val LANG_VERSION = "0.1"
 const val STRING_NIL = "nil"
@@ -15,3 +19,17 @@ const val TYPE_SYMBOL = "Symbol"
 const val TYPE_CLASS = "Class"
 
 
+object Lang {
+
+  fun init(language: String = "EN") {
+    val stream = javaClass.classLoader.getResourceAsStream(File("messages_$language.properties").name)
+      ?: throw RuntimeException("no resource file for $language")
+    BufferedReader(stream.reader()).readLines().forEach {
+      if (it.contains("=")) messages[it.substringBefore('=').trim()] = it.substringAfter('=').trim()
+    }
+  }
+
+  fun message(id: String, vararg args: Any): String = messages[id]?.let { String.format(it, *args) } ?: "NO MESSAGE $id"
+
+  private val messages = mutableMapOf<String, String>()
+}
