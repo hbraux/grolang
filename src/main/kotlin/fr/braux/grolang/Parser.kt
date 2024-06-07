@@ -31,16 +31,16 @@ object Parser {
       override fun visitDeclarationAssignment(ctx: DeclarationAssignmentContext): Expression {
           val name = ctx.id.text
           val right = this.visit(ctx.expression())
-          val declaredType = ctx.type?.text ?: right.evalType ?: throw LangException(ExceptionType.CANNOT_INFER, name)
+          val declaredType = ctx.type?.text ?: right.evalType ?: throw LangException(ExceptionType.INFER_ERROR, name)
           right.evalType?.let {
-            if (it != declaredType) throw LangException(ExceptionType.ASSIGN_ERROR, it, declaredType)
+            if (it != declaredType) throw LangException(ExceptionType.ASSIGN_ERROR, declaredType, it)
           }
         return BlockExpression(
           DeclarationExpression(ctx.id.text, declaredType, ctx.prefix.isVar()),
           AssignmentExpression(ctx.id.text, right))
       }
 
-      override fun visitMethodCall(ctx: MethodCallContext) = CallExpression(ctx.target?.text ?: STRING_THIS, ctx.method.text, ctx.expression().map { visit(it) })
+      override fun visitMethodCall(ctx: MethodCallContext) = CallExpression(ctx.method.text, ctx.target?.text, ctx.expression().map { visit(it) })
     }
     lexer.removeErrorListeners()
     parser.removeErrorListeners()

@@ -3,23 +3,20 @@ package fr.braux.grolang
 import java.io.IOException
 
 class LangException(message: String, val type: ExceptionType): IOException(message) {
-
-  constructor(type: ExceptionType, vararg args: Any) : this(Message.format(type.msgId(), *args), type)
+  constructor(type: ExceptionType, vararg args: Any) : this(Message.format(type.msgId, *args), type)
 }
 
-enum class ExceptionType() {
-  SYNTAX_ERROR,
-  ASSIGN_ERROR,
-  CANNOT_INFER,
-  UNKNOWN_TOKEN,
-  ALREADY_DEFINED,
-  NOT_DEFINED,
-  NOT_SET,
-  NOT_MUTABLE,
-  NOT_EXPECTED_TYPE,
-  UNKNOWN_TYPE,
-  UNKNOWN_CLASS;
-
-  fun msgId(): String = "exception_${name.lowercase()}"
+enum class ExceptionType(val msgId: String) {
+  SYNTAX_ERROR("syntax_error"),
+  ASSIGN_ERROR("assign_error"),
+  INFER_ERROR("infer_error"),
+  ALREADY_DEFINED("already_defined"),
+  NOT_DEFINED("not_defined"),
+  NOT_SET("not_set"),
+  NOT_MUTABLE("not_mutable"),
+  NOT_TYPE("not_type"),
+  UNKNOWN_TYPE("unknown_type"),
+  UNKNOWN_CLASS("unknown_class"),
+  UNKNOWN_TOKEN("unknown_token")
 }
 

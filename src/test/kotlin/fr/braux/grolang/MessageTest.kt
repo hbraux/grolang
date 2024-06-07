@@ -7,7 +7,6 @@ class MessageTest {
 
   @Test
   fun test() {
-    assertEquals(if (Message.lang == "FR") "Erreur de syntaxe" else "Cannot parse expression",
-      Message.format("exception_syntax_error"))
+    assertEquals( "Unknown class :Foo", Message.format("unknown_class", "Foo"))
   }
 }

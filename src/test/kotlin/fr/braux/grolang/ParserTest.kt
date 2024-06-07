@@ -31,6 +31,7 @@ class ParserTest {
     assertEquals(null,  eval("nil"))
     // strings
     assertEquals("some string",  eval(""""some string""""))
+    // symbols
     assertEquals("Hello",  eval("'Hello"))
   }
 
@@ -47,7 +48,7 @@ class ParserTest {
     assertEquals(3L,  eval("val inferInt = 3"))
     assertEquals(3.0,  eval("val inferFloat = 3.0"))
     assertEquals(true,  eval("val inferBool = true"))
-    assertEquals(ExceptionType.ASSIGN_ERROR, assertFailsWith(LangException::class) { read("val badInt :Int = true") }.type)
+    assertEquals("Declared type is :Int whereas value is :Bool", assertFailsWith(LangException::class) { read("val badInt :Int = true") }.message)
   }
 
 

@@ -1,11 +1,9 @@
 package fr.braux.grolang
 
-import java.util.*
-
 
 object Message {
 
-  val lang = Locale.getDefault().language.uppercase()
+  var lang = "EN"
 
   fun format(id: String, vararg args: Any) : String = messages[id]?.let { String.format(it, *args) } ?: "NO MESSAGE FOR $id"
 
@@ -16,7 +14,6 @@ object Message {
       .map { it.substringBefore('=').trim() to it.substringAfter('=').trim() }
       .toMap()
   }
-
   private fun getResource(lang: String) = javaClass.getResource("/messages_$lang.properties")
 
 }

@@ -61,9 +61,9 @@ data class AssignmentExpression(private val id: String, private val right: Expre
 }
 
 
-data class CallExpression(private val target: String, private val method: String, val expressions: List<Expression>): Expression {
+data class CallExpression(private val method: String, private val target: String?, val expressions: List<Expression>): Expression {
   override val evalType = null
-  override fun eval(ctx: Context): AnyObject = ctx.getObject(target).callMethod(method, expressions.map { eval(ctx) })
-  override fun asString(): String = "$target.$method()"
+  override fun eval(ctx: Context): AnyObject = ctx.getObject(target ?: method).callMethod(method, expressions.map { eval(ctx) })
+  override fun asString(): String = expressions.joinToString(",","${target?:""}.$method(", ")") { it.asString() }
 }
 

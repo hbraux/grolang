@@ -30,7 +30,7 @@ class Context {
     if (symbol in objects) {
       if (!symbol.isMutable) throw LangException(ExceptionType.NOT_MUTABLE, symbol)
       if (obj.getType() != symbol.getType())
-        throw LangException(ExceptionType.NOT_EXPECTED_TYPE, symbol.getType(), symbol.getType())
+        throw LangException(ExceptionType.NOT_TYPE, symbol.getType(), symbol.getType())
     }
     objects[symbol] = obj
   }
