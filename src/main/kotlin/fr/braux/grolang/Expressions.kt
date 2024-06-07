@@ -19,9 +19,9 @@ sealed interface Expression: AnyObject {
 
 data class BlockExpression(private val block: List<Expression>) : Expression {
   constructor(vararg args: Expression) : this(args.toList())
-  override val evalType: String = block.lastOrNull()?.evalType ?: TYPE_NULL
+  override val evalType: String = block.lastOrNull()?.evalType ?: TYPE_NIL
   override fun eval(ctx: Context): AnyObject {
-    var result: AnyObject = NullObject
+    var result: AnyObject = NilObject
     block.forEach { result = it.eval(ctx) }
     return result
   }
@@ -31,7 +31,7 @@ data class BlockExpression(private val block: List<Expression>) : Expression {
 
 data class LiteralExpression<T>(private val value: T?, override val evalType: String): Expression {
   override fun eval(ctx: Context): AnyObject = when {
-    value == null  -> NullObject
+    value == null  -> NilObject
     value is Long -> IntObject(value)
     value is Double -> FloatObject(value)
     value is String -> StrObject(value)

@@ -49,7 +49,7 @@ identifier
 literal
     : INTEGER_LITERAL
     | DECIMAL_LITERAL
-    | NULL_LITERAL
+    | NIL_LITERAL
     | BOOLEAN_LITERAL
     | STRING_LITERAL
     | SYMBOL_LITERAL;

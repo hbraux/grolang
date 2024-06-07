@@ -21,7 +21,7 @@ abstract class LiteralObject<T>(val value: T?, private val clazz: ClassObject): 
   override fun getClass(): AnyObject = clazz
 }
 
-data object NullObject: LiteralObject<Any>(null, classNull)
+data object NilObject: LiteralObject<Any>(null, classNull)
 class IntObject(value: Long): LiteralObject<Long>(value, classInt)
 class FloatObject(value: Double): LiteralObject<Double>(value, classFloat)
 class BoolObject(value: Boolean): LiteralObject<Boolean>(value, classBool)
@@ -32,7 +32,7 @@ val classClass = ClassObject(TYPE_CLASS)
 val classInt = ClassObject(TYPE_INT)
 val classFloat = ClassObject(TYPE_FLOAT)
 val classBool = ClassObject(TYPE_BOOL)
-val classNull = ClassObject(TYPE_NULL)
+val classNull = ClassObject(TYPE_NIL)
 val classStr = ClassObject(TYPE_STR)
 val classSymbol = ClassObject(TYPE_SYMBOL)
 val builtInClasses = listOf(classClass, classInt, classFloat, classBool, classNull, classStr, classSymbol)

@@ -9,18 +9,18 @@ import org.antlr.v4.runtime.*
 import org.antlr.v4.runtime.misc.ParseCancellationException
 
 object Parser {
-  
+
   fun parse(str: String): Expression {
     val lexer = GroLexer(CharStreams.fromString(str))
     val parser = GroParser(CommonTokenStream(lexer))
     val visitor = object : GroParserBaseVisitor<Expression>() {
 
       override fun visitLiteral(ctx: LiteralContext) = when (ctx.start.type) {
-        INTEGER_LITERAL -> LiteralExpression(ctx.text.toLong(), TYPE_INT)
+        INTEGER_LITERAL -> LiteralExpression(ctx.text.replace("_","").toLong(), TYPE_INT)
         DECIMAL_LITERAL -> LiteralExpression(ctx.text.toDouble(), TYPE_FLOAT)
         STRING_LITERAL -> LiteralExpression(ctx.text.unquote(), TYPE_STR)
         BOOLEAN_LITERAL -> LiteralExpression(ctx.text.lowercase().toBoolean(), TYPE_BOOL)
-        NULL_LITERAL -> LiteralExpression(null, TYPE_NULL)
+        NIL_LITERAL -> LiteralExpression(null, TYPE_NIL)
         SYMBOL_LITERAL -> LiteralExpression(ctx.text.substring(1), TYPE_SYMBOL)
         else -> throw LangException(LangExceptionType.UNKNOWN_TOKEN, ctx.start.text)
       }
@@ -31,10 +31,12 @@ object Parser {
       override fun visitDeclarationAssignment(ctx: DeclarationAssignmentContext): Expression {
           val name = ctx.id.text
           val right = this.visit(ctx.expression())
-          val inferredType = ctx.type?.text ?: right.evalType ?: throw LangException(LangExceptionType.TYPE_NOT_INFERRED, name)     
-          if (inferredType != right.evalType) throw LangException(LangExceptionType.TYPE_ERROR, name)
+          val declaredType = ctx.type?.text ?: right.evalType ?: throw LangException(LangExceptionType.TYPE_NOT_INFERRED, name)
+          right.evalType?.let {
+            if (it != declaredType) throw LangException(LangExceptionType.TYPE_ERROR, it, declaredType)
+          }
         return BlockExpression(
-          DeclarationExpression(ctx.id.text, inferredType, ctx.prefix.isVar()),
+          DeclarationExpression(ctx.id.text, declaredType, ctx.prefix.isVar()),
           AssignmentExpression(ctx.id.text, right))
       }
 

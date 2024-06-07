@@ -17,11 +17,11 @@ VAR          : 'var';
 VAL          : 'val';
 
 // Literals
-INTEGER_LITERAL : ('0' | [1-9] Digits?);
-DECIMAL_LITERAL : (Digits '.' Digits? | '.' Digits) ExponentPart? ;
+INTEGER_LITERAL : SUB ? (Digit | [1-9] DigitOrSeparator* Digit);
+DECIMAL_LITERAL : SUB ? (Digit* '.' Digit* | '.' Digit+) ExponentPart? ;
 BOOLEAN_LITERAL : 'true' | 'false';
 STRING_LITERAL  : '"' (~["\\\r\n] | EscapeSequence)* '"';
-NULL_LITERAL    : 'null';
+NIL_LITERAL     : 'nil';
 SYMBOL_LITERAL  : '\'' Letter LetterOrDigit*;
 
 // Separators
@@ -71,8 +71,9 @@ NL       : '\n' | '\r' '\n'?;
 IDENTIFIER: Letter LetterOrDigit*;
 
 // Fragment rules
-fragment ExponentPart: [eE] [+-]? Digits;
+fragment ExponentPart: [eE] [+-]? Digit+;
 fragment EscapeSequence:'\\' 'u005c'? [btnfr"'\\];
-fragment Digits: [0-9]+;
-fragment LetterOrDigit: Letter | [0-9];
+fragment DigitOrSeparator: Digit | '_';
+fragment LetterOrDigit: Letter | Digit;
+fragment Digit: [0-9];
 fragment Letter: [a-zA-Z_];
