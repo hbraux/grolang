@@ -47,7 +47,7 @@ class ParserTest {
     assertEquals(3L,  eval("val inferInt = 3"))
     assertEquals(3.0,  eval("val inferFloat = 3.0"))
     assertEquals(true,  eval("val inferBool = true"))
-    assertEquals("Declared type Bool not matching Int",
+    assertEquals("value type 'Bool is not matching declared type 'Int",
       assertFailsWith(LangException::class) { read("val badInt :Int = true") }.localizedMessage)
   }
 
