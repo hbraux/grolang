@@ -1,2 +1,2 @@
 #!/bin/bash
-java -jar target/grolang-*-full.jar $*
+java -jar target/grolang-*.jar $*

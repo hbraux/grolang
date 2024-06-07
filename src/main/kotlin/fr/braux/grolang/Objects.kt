@@ -4,21 +4,23 @@ package fr.braux.grolang
 sealed interface AnyObject {
   fun eval(ctx: Context): AnyObject
   fun asString(): String
-  fun getClass(): AnyObject
-  fun getType(): String = getClass().asString()
+  fun getClass(): ClassObject
+  fun getType(): String = getClass().name
+  fun print(): String = asString()
   fun callMethod(name: String, args: List<AnyObject>): AnyObject = TODO()
 }
 
-data class ClassObject(private val name: String): AnyObject {
+data class ClassObject(val name: String): AnyObject {
   override fun eval(ctx: Context) = this
-  override fun asString(): String = name
-  override fun getClass(): AnyObject = classClass
+  override fun asString() = name
+  override fun print() = "Class(name=$name)"
+  override fun getClass() = classClass
 }
 
 abstract class LiteralObject<T>(val value: T?, private val clazz: ClassObject): AnyObject {
-  override fun eval(ctx: Context): AnyObject = this
-  override fun asString(): String = value?.toString() ?: STRING_NULL
-  override fun getClass(): AnyObject = clazz
+  override fun eval(ctx: Context) = this
+  override fun asString() = value?.toString() ?: STRING_NIL
+  override fun getClass() = clazz
 }
 
 data object NilObject: LiteralObject<Any>(null, classNull)

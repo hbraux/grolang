@@ -3,14 +3,14 @@ package fr.braux.grolang
 import fr.braux.grolang.Expression.Companion.formatToString
 
 sealed interface Expression: AnyObject {
-  override fun getClass(): AnyObject = clazz
+  override fun getClass() = clazz
   val evalType: String?
 
   companion object {
     private val clazz = ClassObject("Expr")
 
     fun formatToString(value: Any?) : String = when {
-      value == null -> STRING_NULL
+      value == null -> STRING_NIL
       value is String -> "\"" + value + "\""
       else -> value.toString()
     }

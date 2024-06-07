@@ -1,1 +1,1 @@
-java -jar "target\grolang-0.0.1-SNAPSHOT-full.jar"
+java -jar "target\grolang-0.0.1-SNAPSHOT.jar"

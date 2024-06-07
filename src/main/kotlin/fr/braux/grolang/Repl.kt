@@ -33,7 +33,7 @@ object Repl {
         continue
       }
       if (debug) {
-        println("READ OUTPUT: ${expression.asString()}")
+        println("READ: ${expression.asString()}")
       }
       val result: AnyObject
       try {
@@ -44,7 +44,7 @@ object Repl {
       }
       val output: String
       try {
-        output = result.asString()
+        output = result.print()
       } catch (e: LangException) {
         println("PRINT ERROR: ${e.message}")
         continue
