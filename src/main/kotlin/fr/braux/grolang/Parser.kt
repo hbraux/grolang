@@ -22,7 +22,7 @@ object Parser {
         BOOLEAN_LITERAL -> LiteralExpression(ctx.text.lowercase().toBoolean(), TYPE_BOOL)
         NIL_LITERAL -> LiteralExpression(null, TYPE_NIL)
         SYMBOL_LITERAL -> LiteralExpression(ctx.text.substring(1), TYPE_SYMBOL)
-        else -> throw LangException(LangExceptionType.UNKNOWN_TOKEN, ctx.start.text)
+        else -> throw LangException(ExceptionType.UNKNOWN_TOKEN, ctx.start.text)
       }
       override fun visitIdentifier(ctx: IdentifierContext) = IdentifierExpression(ctx.text)
       override fun visitDeclaration(ctx: DeclarationContext) = DeclarationExpression(ctx.id.text, ctx.type.text, ctx.prefix.isVar())
@@ -31,9 +31,9 @@ object Parser {
       override fun visitDeclarationAssignment(ctx: DeclarationAssignmentContext): Expression {
           val name = ctx.id.text
           val right = this.visit(ctx.expression())
-          val declaredType = ctx.type?.text ?: right.evalType ?: throw LangException(LangExceptionType.CANNOT_INFER, name)
+          val declaredType = ctx.type?.text ?: right.evalType ?: throw LangException(ExceptionType.CANNOT_INFER, name)
           right.evalType?.let {
-            if (it != declaredType) throw LangException(LangExceptionType.ASSIGN_ERROR, it, declaredType)
+            if (it != declaredType) throw LangException(ExceptionType.ASSIGN_ERROR, it, declaredType)
           }
         return BlockExpression(
           DeclarationExpression(ctx.id.text, declaredType, ctx.prefix.isVar()),
@@ -49,7 +49,7 @@ object Parser {
     try {
       return visitor.visit(parser.statement())
     } catch (e: ParseCancellationException) {
-      throw LangException(LangExceptionType.SYNTAX_ERROR, e.localizedMessage)
+      throw LangException(ExceptionType.SYNTAX_ERROR, e.localizedMessage)
     }
   }
 

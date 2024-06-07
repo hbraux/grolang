@@ -2,12 +2,12 @@ package fr.braux.grolang
 
 import java.io.IOException
 
-class LangException(message: String, val type: LangExceptionType): IOException(message) {
+class LangException(message: String, val type: ExceptionType): IOException(message) {
 
-  constructor(type: LangExceptionType, vararg args: Any) : this(Messages.get(type.msgId(), args), type)
+  constructor(type: ExceptionType, vararg args: Any) : this(Message.format(type.msgId(), *args), type)
 }
 
-enum class LangExceptionType() {
+enum class ExceptionType() {
   SYNTAX_ERROR,
   ASSIGN_ERROR,
   CANNOT_INFER,

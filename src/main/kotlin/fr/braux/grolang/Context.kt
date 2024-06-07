@@ -10,10 +10,10 @@ class Context {
 
   fun defSymbol(name: String, type: String, isMutable: Boolean): SymbolObject {
     if (name in symbols)
-      throw LangException(LangExceptionType.ALREADY_DEFINED, name)
-    val obj = symbols[type]?.let { objects[it] } ?: throw LangException(LangExceptionType.UNKNOWN_TYPE, type)
+      throw LangException(ExceptionType.ALREADY_DEFINED, name)
+    val obj = symbols[type]?.let { objects[it] } ?: throw LangException(ExceptionType.UNKNOWN_TYPE, type)
     if (obj !is ClassObject)
-      throw LangException(LangExceptionType.UNKNOWN_CLASS, type)
+      throw LangException(ExceptionType.UNKNOWN_CLASS, type)
     symbols[name] = Symbol(name, obj, isMutable)
     return SymbolObject(name)
   }
@@ -28,9 +28,9 @@ class Context {
   fun assign(name: String, obj: AnyObject) {
     val symbol = getSymbol(name)
     if (symbol in objects) {
-      if (!symbol.isMutable) throw LangException(LangExceptionType.NOT_MUTABLE, symbol)
+      if (!symbol.isMutable) throw LangException(ExceptionType.NOT_MUTABLE, symbol)
       if (obj.getType() != symbol.getType())
-        throw LangException(LangExceptionType.NOT_EXPECTED_TYPE, symbol.getType(), symbol.getType())
+        throw LangException(ExceptionType.NOT_EXPECTED_TYPE, symbol.getType(), symbol.getType())
     }
     objects[symbol] = obj
   }
@@ -41,9 +41,9 @@ class Context {
 
   fun isDefined(name: String): Boolean = name in symbols
 
-  fun getSymbol(name: String): Symbol = symbols[name] ?: throw LangException(LangExceptionType.NOT_DEFINED, name)
+  fun getSymbol(name: String): Symbol = symbols[name] ?: throw LangException(ExceptionType.NOT_DEFINED, name)
 
-  fun getObject(name: String): AnyObject = objects[getSymbol(name)] ?: throw LangException(LangExceptionType.NOT_SET, name)
+  fun getObject(name: String): AnyObject = objects[getSymbol(name)] ?: throw LangException(ExceptionType.NOT_SET, name)
 
 }
 
