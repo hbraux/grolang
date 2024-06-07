@@ -7,6 +7,7 @@ class MessageTest {
 
   @Test
   fun test() {
+    Message.load("EN")
     assertEquals( "Unknown class :Foo", Message.format("unknown_class", "Foo"))
   }
 }

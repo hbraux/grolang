@@ -4,7 +4,7 @@ import java.util.*
 
 
 fun main(args: Array<String>) {
-  Message.lang = Locale.getDefault().language.uppercase()
+  Message.load(Locale.getDefault().language.uppercase())
   when {
     args.isEmpty() -> Repl.loop(true)
     args[0] == "-v" -> println("$LANG_NAME $LANG_VERSION")

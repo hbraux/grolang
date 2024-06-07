@@ -1,19 +1,29 @@
 package fr.braux.grolang
 
+import java.io.BufferedReader
+import java.io.File
+import java.io.FileInputStream
+import java.io.InputStream
+
 
 object Message {
 
-  var lang = "EN"
+  private val messages = mutableMapOf<String, String>()
+
+  fun load(lang: String) {
+    if (messages.isEmpty()) {
+      val stream = (getResource(lang) ?: getResource("EN") ?: throw RuntimeException("no resource file for $lang"))
+      BufferedReader(stream.reader()).readLines().forEach {
+        if (it.contains("="))
+          messages[it.substringBefore('=').trim()] = it.substringAfter('=').trim()
+      }
+    }}
 
   fun format(id: String, vararg args: Any) : String = messages[id]?.let { String.format(it, *args) } ?: "NO MESSAGE FOR $id"
 
-  private val messages: Map<String, String> by lazy {
-    (getResource(lang) ?: getResource("EN") ?: throw RuntimeException("no resource file messages_$lang.properties"))
-      .readText().split("\n")
-      .filter { it.contains("=") }
-      .map { it.substringBefore('=').trim() to it.substringAfter('=').trim() }
-      .toMap()
+  private fun getResource(lang: String): InputStream? {
+    val file = File("/messages_$lang.properties")
+    return if (file.exists()) FileInputStream(file) else this::class.java.classLoader.getResourceAsStream(file.name)
   }
-  private fun getResource(lang: String) = javaClass.getResource("/messages_$lang.properties")
 
 }

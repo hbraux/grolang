@@ -1,12 +1,12 @@
 package fr.braux.grolang.fr.braux.ezlang
 
 import fr.braux.grolang.*
+import org.junit.BeforeClass
 import org.junit.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class ParserTest {
-
 
   @Test
   fun testLiteralExpressions() {
@@ -63,4 +63,12 @@ class ParserTest {
 
   private fun eval(s: String) = (Parser.parse(s).eval(context) as LiteralObject<*>).value
   private fun read(s: String) = Parser.parse(s).asString()
+
+  companion object {
+    @JvmStatic
+    @BeforeClass
+    fun before(): Unit {
+      Message.load("EN")
+    }
+  }
 }
