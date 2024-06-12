@@ -3,6 +3,7 @@ package fr.braux.grolang.fr.braux.ezlang
 import fr.braux.grolang.*
 import org.junit.BeforeClass
 import org.junit.Test
+import java.io.IOException
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
@@ -52,7 +53,7 @@ class ParserTest {
     assertEquals(3L,  eval("val inferInt = 3"))
     assertEquals(3.0,  eval("val inferFloat = 3.0"))
     assertEquals(true,  eval("val inferBool = true"))
-    assertEquals("Declared type is :Int whereas value is :Bool", assertFailsWith(LangException::class) { read("val badInt :Int = true") }.message)
+    assertEquals("Declared type is :Int whereas value is :Bool", assertFailsWith(IOException::class) { read("val badInt :Int = true") }.message)
   }
 
 
@@ -61,11 +62,9 @@ class ParserTest {
     assertEquals(1L,  eval("someInt"))
   }
 
-  private val context = Context().also {
-    it.declare("someInt",  IntObject(1L))
-  }
+  private val context = Context()
 
-  private fun eval(s: String) = (Parser.parse(s).eval(context) as Literal<*>).value
+  private fun eval(s: String) = (Parser.parse(s).eval(context) as LiteralExpr<*>).value
   private fun read(s: String) = Parser.parse(s).asString()
 
   companion object {

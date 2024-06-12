@@ -17,13 +17,18 @@ statement
     : declaration
     | assignment
     | declarationAssignment
+    | methodCall
     | expression
+    ;
+
+methodCall
+    : expression DOT LPAREN(expression? (COMMA expression)*) RPAREN
     ;
 
 expression
      : functionCall
      | identifier
-      | literal
+     | literal
      ;
 
 functionCall

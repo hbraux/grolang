@@ -1,5 +1,7 @@
 package fr.braux.grolang
 
+import fr.braux.grolang.ClassExpr.Companion.builtInClasses
+
 
 class Context {
   private val symbols = mutableMapOf<String, Symbol>()
@@ -10,46 +12,43 @@ class Context {
     builtInFunctions.forEach { register(it) }
   }
 
-  fun defSymbol(name: String, type: String, isMutable: Boolean): SymbolObject {
-    if (name in symbols)
-      throw LangException(ExceptionType.ALREADY_DEFINED, name)
-    val clazz = symbols[type]?.let { objects[it] } ?: throw LangException(ExceptionType.UNKNOWN_TYPE, type)
-    if (clazz !is ClassExpr)
-      throw LangException(ExceptionType.UNKNOWN_CLASS, type)
-    symbols[name] = Symbol(name, clazz.name, isMutable)
-    return SymbolObject(name)
+  private fun register(expr: Expr) {
+    val name = expr.asString()
+    val symbol = Symbol(name, expr.getType())
+    symbols[name] = symbol
+    objects[symbol] = expr
   }
 
-  private fun register(any: Expr) {
-    val name = any.asString()
-    val symbol = Symbol(name, any.getType())
-    symbols[name] = symbol
-    objects[symbol] = any
+  fun defSymbol(name: String, type: String, isMutable: Boolean): SymbolExpr {
+    if (name in symbols)
+      throw LangException("$name is already defined")
+    val clazz = symbols[type]?.let { objects[it] } ?: throw LangException("Unknown type :$type")
+    if (clazz !is ClassExpr)
+      throw LangException("Unknown class :$type")
+    symbols[name] = Symbol(name, clazz.name, isMutable)
+    return SymbolExpr(name)
   }
 
 
   fun assign(name: String, obj: Expr) {
     val symbol = getSymbol(name)
     if (symbol in objects) {
-      if (!symbol.isMutable) throw LangException(ExceptionType.NOT_MUTABLE, symbol)
+      if (!symbol.isMutable) throw LangException("$symbol is not mutable")
       if (obj.getType() != symbol.type)
-        throw LangException(ExceptionType.NOT_TYPE, symbol.type, symbol.type)
+        throw LangException("not expected type + " + symbol.type)
     }
     objects[symbol] = obj
   }
-  fun declare(name: String, obj: Expr) {
-    defSymbol(name, obj.getType(), false)
-    assign(name, obj)
-  }
+
 
   fun isDefined(name: String): Boolean = name in symbols
 
-  fun getSymbol(name: String): Symbol = symbols[name] ?: throw LangException(ExceptionType.NOT_DEFINED, name)
+  fun getSymbol(name: String): Symbol = symbols[name] ?: throw LangException("$name is not defined")
 
-  fun getObject(name: String): Expr = objects[getSymbol(name)] ?: throw LangException(ExceptionType.NOT_SET, name)
+  fun getObject(name: String): Expr = objects[getSymbol(name)] ?: throw LangException("$name is not set")
 
   fun getFunction(name: String): Function = getObject(name).let{
-    if (it is Function) it else throw LangException(ExceptionType.NOT_FUNCTION, name)
+    if (it is Function) it else throw LangException("$name is not a function")
   }
 
 }
