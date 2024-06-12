@@ -67,11 +67,4 @@ class ParserTest {
   private fun eval(s: String) = (Parser.parse(s).eval(context) as LiteralExpr<*>).value
   private fun read(s: String) = Parser.parse(s).asString()
 
-  companion object {
-    @JvmStatic
-    @BeforeClass
-    fun before() {
-      Lang.init()
-    }
-  }
 }

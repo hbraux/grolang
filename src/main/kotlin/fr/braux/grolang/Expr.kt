@@ -1,78 +1,53 @@
 package fr.braux.grolang
 
-import fr.braux.grolang.ClassExpr.Companion.classAny
-import fr.braux.grolang.ClassExpr.Companion.classBool
-import fr.braux.grolang.ClassExpr.Companion.classClass
-import fr.braux.grolang.ClassExpr.Companion.classFloat
-import fr.braux.grolang.ClassExpr.Companion.classFunction
-import fr.braux.grolang.ClassExpr.Companion.classInt
-import fr.braux.grolang.ClassExpr.Companion.classStr
-import fr.braux.grolang.ClassExpr.Companion.classSymbol
-import java.io.IOException
 
+import fr.braux.grolang.Lang.builtin
 
 sealed interface Expr {
-  fun eval(ctx: Context): Expr
+  fun getType(): String = TYPE_EXPR
+  fun eval(ctx: Context): Expr = this
   fun asString(): String
-  fun getClass(): ClassExpr
-  fun getType(): String = getClass().name
   fun print(): String = asString()
   fun getMethod(name: String) : Function? = null
 }
 
-// Class
 data class ClassExpr(val name: String): Expr {
+  override fun getType() = TYPE_CLASS
   override fun eval(ctx: Context) = this
   override fun asString() = name
-  override fun print() = "Class(name=$name)"
-  override fun getClass() = classClass
-
-  companion object {
-    val classAny = ClassExpr(TYPE_ANY)
-    val classClass = ClassExpr(TYPE_CLASS)
-    val classFunction = ClassExpr(TYPE_FUNCTION)
-    val classSymbol = ClassExpr(TYPE_SYMBOL)
-    val classInt = ClassExpr(TYPE_INT)
-    val classFloat = ClassExpr(TYPE_FLOAT)
-    val classBool = ClassExpr(TYPE_BOOL)
-    val classStr = ClassExpr(TYPE_STR)
-    val builtInClasses = listOf(classAny, classClass, classFunction, classSymbol, classInt, classFloat, classBool, classStr)
-  }
+  override fun print() = "Class($name)"
+  init { builtin(name, this) }
 }
 
 // Literals
-abstract class LiteralExpr<T>(val value: T?, private val clazz: ClassExpr): Expr {
-  override fun eval(ctx: Context) = this
+abstract class LiteralExpr<T>(val value: T?, private val type: String): Expr {
+  override fun getType() = type
   override fun asString() = value?.toString() ?: STRING_NULL
-  override fun getClass() = clazz
 }
 
-
-data object NullExpr: LiteralExpr<Any>(null, classAny)
-class IntExpr(value: Long): LiteralExpr<Long>(value, classInt)
-class FloatExpr(value: Double): LiteralExpr<Double>(value, classFloat)
-class BoolExpr(value: Boolean): LiteralExpr<Boolean>(value, classBool)
-class StrExpr(value: String): LiteralExpr<String>(value, classStr)
-class SymbolExpr(value: String): LiteralExpr<String>(value, classSymbol)
+data object NullExpr: LiteralExpr<Any>(null, TYPE_ANY)
+class IntExpr(value: Long): LiteralExpr<Long>(value, TYPE_INT)
+class FloatExpr(value: Double): LiteralExpr<Double>(value, TYPE_FLOAT)
+class BoolExpr(value: Boolean): LiteralExpr<Boolean>(value, TYPE_BOOL)
+class StrExpr(value: String): LiteralExpr<String>(value, TYPE_STR)
+class SymbolExpr(value: String): LiteralExpr<String>(value, TYPE_SYMBOL)
+class ErrorExpr(message: String, vararg args: Any): LiteralExpr<String>(String.format(message, *args), TYPE_ERROR)
 
 // Identifier
-data class IdentifierExpr(private val id: String): Expr {
-  override fun eval(ctx: Context): Expr = ctx.getObject(id)
-  override fun asString(): String = "'$id"
-  override fun getClass() = classAny
+data class IdentifierExpr(private val name: String): Expr {
+  override fun eval(ctx: Context): Expr = ctx.get(name)
+  override fun asString(): String = "'$name"
 }
 
 data class DeclarationExpr(private val id: String, val declaredType: String, private val isMutable: Boolean): Expr {
-  override fun eval(ctx: Context): SymbolExpr = ctx.defSymbol(id, declaredType, isMutable)
+  override fun eval(ctx: Context) = ctx.declare(id, declaredType, isMutable)
   override fun asString(): String = "def${if (isMutable) "var" else "val"}('$id,'$declaredType)"
-  override fun getClass() = classClass
 }
 
 
 data class AssignmentExpr(private val id: String, private val right: Expr): Expr {
   override fun eval(ctx: Context): Expr = right.eval(ctx).also { ctx.assign(id, it) }
   override fun asString(): String = "assign('$id, ${right.asString()})"
-  override fun getClass() = classAny
 }
 
 data class BlockExpr(private val block: List<Expr>) : Expr {
@@ -83,14 +58,12 @@ data class BlockExpr(private val block: List<Expr>) : Expr {
     return result
   }
   override fun asString(): String = block.joinToString("; ", "{", "}") { it.asString() }
-  override fun getClass() = classAny
 }
 
 
 data class CallExpr(private val name: String, val expressions: List<Expr>): Expr {
   override fun eval(ctx: Context): Expr = ctx.getFunction(name).call(expressions.map { it.eval(ctx) })
   override fun asString(): String = expressions.joinToString(",", "$name(", ")") { it.asString() }
-  override fun getClass() = classAny
 }
 
 
@@ -101,7 +74,6 @@ data class Function(val name: String, val inputTypes: List<String>, val outputTy
   override fun eval(ctx: Context) = this
   override fun asString() = name
   override fun print() = "Function(name=$name)"
-  override fun getClass() = classFunction
   fun call(args: List<Expr>): Expr {
     if (args.size != inputTypes.size) throw LangException("WRONG_ARGUMENTS")
     (args zip inputTypes).forEach {
@@ -112,8 +84,6 @@ data class Function(val name: String, val inputTypes: List<String>, val outputTy
 }
 
 
-
-class LangException(message: String): IOException(message)
 
 val printFunction = Function("print", listOf("TYPE_ANY"), null) { println(it[0].asString()); NullExpr }
 
