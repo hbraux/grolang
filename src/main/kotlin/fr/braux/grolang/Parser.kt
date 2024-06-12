@@ -27,7 +27,7 @@ object Parser {
       override fun visitDeclaration(ctx: DeclarationContext) = DeclarationExpr(ctx.id.text, ctx.type.text, ctx.prefix.isVar())
       override fun visitAssignment(ctx: AssignmentContext) = AssignmentExpr(ctx.id.text, visit(ctx.expression()))
       override fun visitDeclarationAssignment(ctx: DeclarationAssignmentContext) = this.visit(ctx.expression()).let { right ->
-        BlockExpr(DeclarationExpr(ctx.id.text, ensureType(right.type, ctx.type?.text), ctx.prefix.isVar()), AssignmentExpr(ctx.id.text, right))
+        BlockExpr(DeclarationExpr(ctx.id.text, ensureType(right.getType(), ctx.type?.text), ctx.prefix.isVar()), AssignmentExpr(ctx.id.text, right))
       }
       override fun visitFunctionCall(ctx: FunctionCallContext) = CallExpr(ctx.name.text, ctx.expression().map { visit(it) })
     }

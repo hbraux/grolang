@@ -1,7 +1,6 @@
 package fr.braux.grolang.fr.braux.ezlang
 
 import fr.braux.grolang.*
-import org.junit.BeforeClass
 import org.junit.Test
 import java.io.IOException
 import kotlin.test.assertEquals
@@ -38,9 +37,9 @@ class ParserTest {
 
   @Test
   fun testDeclaration() {
-    assertEquals("defval('anInt,'Int)",  read("val anInt :Int"))
-    assertEquals("defvar('aFloat,'Float)",  read("var aFloat :Float"))
-    assertEquals("defval('myBool,'Bool); assign('myBool, true)",  read("val myBool = true"))
+    assertEquals("declare('anInt,'Int,false)",  read("val anInt :Int"))
+    assertEquals("declare('aFloat,'Float,true)",  read("var aFloat :Float"))
+    assertEquals("{declare('myBool,'Bool,false); assign('myBool, true)}",  read("val myBool = true"))
   }
 
   @Test
@@ -53,7 +52,7 @@ class ParserTest {
     assertEquals(3L,  eval("val inferInt = 3"))
     assertEquals(3.0,  eval("val inferFloat = 3.0"))
     assertEquals(true,  eval("val inferBool = true"))
-    assertEquals("Declared type is :Int whereas value is :Bool", assertFailsWith(IOException::class) { read("val badInt :Int = true") }.message)
+    assertEquals("inconsistent declared type :Int", assertFailsWith(IOException::class) { read("val badInt :Int = true") }.message)
   }
 
 
@@ -62,7 +61,10 @@ class ParserTest {
     assertEquals(1L,  eval("someInt"))
   }
 
-  private val context = Context()
+  private val context = Context().also {
+    it.declare("someInt", "Int" , false)
+    it.assign("someInt", IntExpr(1))
+  }
 
   private fun eval(s: String) = (Parser.parse(s).eval(context) as LiteralExpr<*>).value
   private fun read(s: String) = Parser.parse(s).asString()

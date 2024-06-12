@@ -4,7 +4,7 @@ package fr.braux.grolang
 import fr.braux.grolang.Lang.builtin
 
 sealed interface Expr {
-  fun getType(): String = TYPE_EXPR
+  fun getType(): String = EXPR
   fun eval(ctx: Context): Expr = this
   fun asString(): String
   fun print(): String = asString()
@@ -12,7 +12,7 @@ sealed interface Expr {
 }
 
 data class ClassExpr(val name: String): Expr {
-  override fun getType() = TYPE_CLASS
+  override fun getType() = CLASS
   override fun eval(ctx: Context) = this
   override fun asString() = name
   override fun print() = "Class($name)"
@@ -25,13 +25,13 @@ abstract class LiteralExpr<T>(val value: T?, private val type: String): Expr {
   override fun asString() = value?.toString() ?: STRING_NULL
 }
 
-data object NullExpr: LiteralExpr<Any>(null, TYPE_ANY)
-class IntExpr(value: Long): LiteralExpr<Long>(value, TYPE_INT)
-class FloatExpr(value: Double): LiteralExpr<Double>(value, TYPE_FLOAT)
-class BoolExpr(value: Boolean): LiteralExpr<Boolean>(value, TYPE_BOOL)
-class StrExpr(value: String): LiteralExpr<String>(value, TYPE_STR)
-class SymbolExpr(value: String): LiteralExpr<String>(value, TYPE_SYMBOL)
-class ErrorExpr(message: String, vararg args: Any): LiteralExpr<String>(String.format(message, *args), TYPE_ERROR)
+data object NullExpr: LiteralExpr<Any>(null, ANY)
+class IntExpr(value: Long): LiteralExpr<Long>(value, INT)
+class FloatExpr(value: Double): LiteralExpr<Double>(value, FLOAT)
+class BoolExpr(value: Boolean): LiteralExpr<Boolean>(value, BOOL)
+class StrExpr(value: String): LiteralExpr<String>(value, STR)
+class SymbolExpr(value: String): LiteralExpr<String>(value, SYMBOL)
+class ErrorExpr(message: String, vararg args: Any): LiteralExpr<String>(String.format(message, *args), ERROR)
 
 // Identifier
 data class IdentifierExpr(private val name: String): Expr {
@@ -41,7 +41,7 @@ data class IdentifierExpr(private val name: String): Expr {
 
 data class DeclarationExpr(private val id: String, val declaredType: String, private val isMutable: Boolean): Expr {
   override fun eval(ctx: Context) = ctx.declare(id, declaredType, isMutable)
-  override fun asString(): String = "def${if (isMutable) "var" else "val"}('$id,'$declaredType)"
+  override fun asString(): String = "declare('$id,'$declaredType,$isMutable)"
 }
 
 
@@ -62,7 +62,7 @@ data class BlockExpr(private val block: List<Expr>) : Expr {
 
 
 data class CallExpr(private val name: String, val expressions: List<Expr>): Expr {
-  override fun eval(ctx: Context): Expr = ctx.getFunction(name).call(expressions.map { it.eval(ctx) })
+  override fun eval(ctx: Context): Expr = ctx.getFunction(name)?.call(ctx, expressions.map { it.eval(ctx) }) ?: ErrorExpr("no function $name")
   override fun asString(): String = expressions.joinToString(",", "$name(", ")") { it.asString() }
 }
 
@@ -70,24 +70,19 @@ data class CallExpr(private val name: String, val expressions: List<Expr>): Expr
 
 
 data class Function(val name: String, val inputTypes: List<String>, val outputType: String?,
-                    val impl: (List<Expr>) -> (Expr)): Expr {
+                    val impl: (ctx: Context, List<Expr>) -> (Expr)): Expr {
   override fun eval(ctx: Context) = this
   override fun asString() = name
   override fun print() = "Function(name=$name)"
-  fun call(args: List<Expr>): Expr {
+  fun call(ctx: Context, args: List<Expr>): Expr {
     if (args.size != inputTypes.size) throw LangException("WRONG_ARGUMENTS")
     (args zip inputTypes).forEach {
       if (it.first.getType() != it.second) throw LangException("WRONG_ARGUMENTS")
     }
-    return impl.invoke(args)
+    return impl.invoke(ctx, args)
   }
+  init { builtin(name, this) }
 }
 
 
 
-val printFunction = Function("print", listOf("TYPE_ANY"), null) { println(it[0].asString()); NullExpr }
-
-val builtInFunctions = listOf(
-  Function("print", listOf("TYPE_ANY"), null) { println(it[0].asString()); NullExpr },
-  Function("read", listOf("TYPE_ANY"), TYPE_STR) { StrExpr(readln()) }
-)

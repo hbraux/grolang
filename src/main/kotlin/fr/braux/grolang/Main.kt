@@ -1,8 +1,5 @@
 package fr.braux.grolang
 
-import java.util.*
-
-
 fun main(args: Array<String>) {
   when {
     args.isEmpty() -> Repl.loop(false)
