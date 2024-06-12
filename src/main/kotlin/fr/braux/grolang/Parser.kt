@@ -1,46 +1,35 @@
 package fr.braux.grolang
 
-
 import fr.braux.grolang.parser.GroLexer
 import fr.braux.grolang.parser.GroParser
 import fr.braux.grolang.parser.GroParser.*
 import fr.braux.grolang.parser.GroParserBaseVisitor
 import org.antlr.v4.runtime.*
 import org.antlr.v4.runtime.misc.ParseCancellationException
+import java.io.IOException
 
 object Parser {
 
-  fun parse(str: String): Expression {
+  fun parse(str: String): Expr {
     val lexer = GroLexer(CharStreams.fromString(str))
     val parser = GroParser(CommonTokenStream(lexer))
-    val visitor = object : GroParserBaseVisitor<Expression>() {
-
+    val visitor = object : GroParserBaseVisitor<Expr>() {
       override fun visitLiteral(ctx: LiteralContext) = when (ctx.start.type) {
-        INTEGER_LITERAL -> LiteralExpression(ctx.text.replace("_","").toLong(), TYPE_INT)
-        DECIMAL_LITERAL -> LiteralExpression(ctx.text.toDouble(), TYPE_FLOAT)
-        STRING_LITERAL -> LiteralExpression(ctx.text.unquote(), TYPE_STR)
-        BOOLEAN_LITERAL -> LiteralExpression(ctx.text.lowercase().toBoolean(), TYPE_BOOL)
-        NIL_LITERAL -> LiteralExpression(null, TYPE_NIL)
-        SYMBOL_LITERAL -> LiteralExpression(ctx.text.substring(1), TYPE_SYMBOL)
-        else -> throw LangException(ExceptionType.UNKNOWN_TOKEN, ctx.start.text)
+        INTEGER_LITERAL -> IntExpr(ctx.text.replace("_","").toLong())
+        DECIMAL_LITERAL -> FloatExpr(ctx.text.toDouble())
+        STRING_LITERAL -> StrExpr(ctx.text.unquote())
+        BOOLEAN_LITERAL -> BoolExpr(ctx.text.lowercase().toBoolean())
+        NULL_LITERAL   -> NullExpr
+        SYMBOL_LITERAL -> SymbolExpr(ctx.text.substring(1))
+        else -> throw IOException("Unknown token >> ${ctx.start} <<")
       }
-      override fun visitIdentifier(ctx: IdentifierContext) = IdentifierExpression(ctx.text)
-      override fun visitDeclaration(ctx: DeclarationContext) = DeclarationExpression(ctx.id.text, ctx.type.text, ctx.prefix.isVar())
-      override fun visitAssignment(ctx: AssignmentContext) = AssignmentExpression(ctx.id.text, visit(ctx.expression()))
-
-      override fun visitDeclarationAssignment(ctx: DeclarationAssignmentContext): Expression {
-          val name = ctx.id.text
-          val right = this.visit(ctx.expression())
-          val declaredType = ctx.type?.text ?: right.evalType ?: throw LangException(ExceptionType.INFER_ERROR, name)
-          right.evalType?.let {
-            if (it != declaredType) throw LangException(ExceptionType.ASSIGN_ERROR, declaredType, it)
-          }
-        return BlockExpression(
-          DeclarationExpression(ctx.id.text, declaredType, ctx.prefix.isVar()),
-          AssignmentExpression(ctx.id.text, right))
+      override fun visitIdentifier(ctx: IdentifierContext) = IdentifierExpr(ctx.text)
+      override fun visitDeclaration(ctx: DeclarationContext) = DeclarationExpr(ctx.id.text, ctx.type.text, ctx.prefix.isVar())
+      override fun visitAssignment(ctx: AssignmentContext) = AssignmentExpr(ctx.id.text, visit(ctx.expression()))
+      override fun visitDeclarationAssignment(ctx: DeclarationAssignmentContext) = this.visit(ctx.expression()).let { right ->
+        BlockExpr(DeclarationExpr(ctx.id.text, ensureType(right.getType(), ctx.type?.text), ctx.prefix.isVar()), AssignmentExpr(ctx.id.text, right))
       }
-
-      override fun visitMethodCall(ctx: MethodCallContext) = CallExpression(ctx.method.text, ctx.target?.text, ctx.expression().map { visit(it) })
+      override fun visitFunctionCall(ctx: FunctionCallContext) = CallExpr(ctx.name.text, ctx.expression().map { visit(it) })
     }
     lexer.removeErrorListeners()
     parser.removeErrorListeners()
@@ -49,9 +38,15 @@ object Parser {
     try {
       return visitor.visit(parser.statement())
     } catch (e: ParseCancellationException) {
-      throw LangException(ExceptionType.SYNTAX_ERROR, e.localizedMessage)
+      throw IOException("Syntax error:" + e.localizedMessage)
     }
   }
+
+  private fun ensureType(expected: String, declared: String?): String {
+    if (declared != null && declared != expected) throw IOException("inconsistent declared type :$declared")
+    return expected
+  }
+
 
   private val errorListener = object: BaseErrorListener() {
     override fun syntaxError(recognizer: Recognizer<*, *>?, offendingSymbol: Any?, line: Int, charPositionInLine: Int, msg: String, e: RecognitionException?) {

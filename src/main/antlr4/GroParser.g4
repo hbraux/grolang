@@ -17,17 +17,22 @@ statement
     : declaration
     | assignment
     | declarationAssignment
+    | methodCall
     | expression
     ;
 
+methodCall
+    : expression DOT LPAREN(expression? (COMMA expression)*) RPAREN
+    ;
+
 expression
-     : literal
+     : functionCall
      | identifier
-     | methodCall
+     | literal
      ;
 
-methodCall
-    : (target=(IDENTIFIER|THIS) DOT)? method=IDENTIFIER LPAREN (expression? (COMMA expression)*) RPAREN
+functionCall
+    : name=IDENTIFIER LPAREN (expression? (COMMA expression)*) RPAREN
     ;
 
 declaration
@@ -49,7 +54,7 @@ identifier
 literal
     : INTEGER_LITERAL
     | DECIMAL_LITERAL
-    | NIL_LITERAL
+    | NULL_LITERAL
     | BOOLEAN_LITERAL
     | STRING_LITERAL
     | SYMBOL_LITERAL;

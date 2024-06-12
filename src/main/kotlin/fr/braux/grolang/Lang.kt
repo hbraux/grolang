@@ -1,35 +1,61 @@
 package fr.braux.grolang
 
+import java.io.IOException
 
-import java.io.BufferedReader
-import java.io.File
 
-const val LANG_NAME = "ezLang"
+const val LANG_NAME = "groLang"
 const val LANG_VERSION = "0.1"
-const val STRING_NIL = "nil"
-const val STRING_THIS = "this"
+const val STRING_NULL = "null"
 
 // primary types (which are also classes)
-const val TYPE_INT = "Int"
-const val TYPE_FLOAT = "Float"
-const val TYPE_STR = "Str"
-const val TYPE_BOOL = "Bool"
-const val TYPE_NIL = "Nil"
-const val TYPE_SYMBOL = "Symbol"
-const val TYPE_CLASS = "Class"
-
+const val ANY = "Any"
+const val CLASS = "Class"
+const val INT = "Int"
+const val FLOAT = "Float"
+const val STR = "Str"
+const val BOOL = "Bool"
+const val SYMBOL = "Symbol"
+const val ERROR = "Error"
+const val FUNCTION = "Function"
+const val EXPR = "Expr"
 
 object Lang {
+  private val types = listOf(ANY, CLASS, INT, FLOAT, STR, BOOL, SYMBOL, ERROR, FUNCTION, EXPR).toMutableList()
+  private val data = mutableMapOf<Symbol, Expr>()
+  private val globals = mutableMapOf<String, Symbol>()
 
-  fun init(language: String = "EN") {
-    val stream = javaClass.classLoader.getResourceAsStream(File("messages_$language.properties").name)
-      ?: throw RuntimeException("no resource file for $language")
-    BufferedReader(stream.reader()).readLines().forEach {
-      if (it.contains("=")) messages[it.substringBefore('=').trim()] = it.substringAfter('=').trim()
+  fun String.isDefined(): Boolean = this in globals
+  fun String.toSymbol(): Symbol? = globals[this]
+  fun builtin(name: String, expr: Expr) = Symbol(name, expr.getType(), false).set(expr)
+
+
+  init {
+    // load classes
+    types.forEach { ClassExpr(it) }
+    // builtInFunctions
+    Function("print", listOf(ANY), null) { _, args -> println(args[0].asString()); NullExpr }
+    Function("read", listOf(ANY), STR) { _, _ -> StrExpr(readln()) }
+    Function("declare", listOf(SYMBOL, ANY, BOOL), STR) { ctx, args -> ctx.declare(args[0].asString(), args[1].asString(), args[2].asString().toBoolean()) }
+    Function("assign", listOf(SYMBOL, ANY), SYMBOL) { ctx, args -> ctx.assign(args[0].asString(), args[1]) }
+  }
+
+  data class Symbol(val name: String, val type: String, val isMutable: Boolean = false) {
+    fun get(): Expr = data[this] ?: ErrorExpr("symbol '%s is not set", name)
+    fun set(value: Expr): Expr? = if (isMutable) value.also { data[this] = it } else null
+    init {
+      globals[name] = this
     }
   }
 
-  fun message(id: String, vararg args: Any): String = messages[id]?.let { String.format(it, *args) } ?: "NO MESSAGE $id"
 
-  private val messages = mutableMapOf<String, String>()
+  fun assign(name: String, expr: Expr): Expr {
+    val symbol = name.toSymbol() ?: return ErrorExpr("$name is not defined")
+    if (expr.getType() != symbol.type) return ErrorExpr("not expected type + " + symbol.type)
+    symbol.set(expr) ?: return ErrorExpr("$symbol is not mutable")
+    return expr
+  }
+
 }
+
+class LangException(message: String): IOException(message)
+
