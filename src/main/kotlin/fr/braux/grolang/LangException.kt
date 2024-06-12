@@ -15,8 +15,11 @@ enum class ExceptionType(val msgId: String) {
   NOT_SET("not_set"),
   NOT_MUTABLE("not_mutable"),
   NOT_TYPE("not_type"),
+  NOT_FUNCTION("not_function"),
   UNKNOWN_TYPE("unknown_type"),
   UNKNOWN_CLASS("unknown_class"),
-  UNKNOWN_TOKEN("unknown_token")
+  UNKNOWN_TOKEN("unknown_token"),
+  WRONG_ARGUMENTS("wrong_arguments")
+
 }
 

@@ -9,7 +9,7 @@ object Repl {
     while (true) {
       print(PROMPT)
       var input: String
-      val expression: Expression
+      val expression: Expr
       try {
         input = readln()
       } catch (e: Exception) {
@@ -35,7 +35,7 @@ object Repl {
       if (debug) {
         println("READ: ${expression.asString()}")
       }
-      val result: AnyObject
+      val result: Expr
       try {
          result = expression.eval(context)
       } catch (e: LangException) {

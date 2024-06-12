@@ -21,7 +21,7 @@ INTEGER_LITERAL : SUB ? (Digit | [1-9] DigitOrSeparator* Digit);
 DECIMAL_LITERAL : SUB ? (Digit* '.' Digit* | '.' Digit+) ExponentPart? ;
 BOOLEAN_LITERAL : 'true' | 'false';
 STRING_LITERAL  : '"' (~["\\\r\n] | EscapeSequence)* '"';
-NIL_LITERAL     : 'nil';
+NULL_LITERAL    : 'null';
 SYMBOL_LITERAL  : '\'' Letter LetterOrDigit*;
 
 // Separators

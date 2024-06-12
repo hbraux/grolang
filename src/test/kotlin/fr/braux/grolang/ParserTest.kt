@@ -27,20 +27,24 @@ class ParserTest {
     // bools
     assertEquals(true,  eval("true"))
     assertEquals(false,  eval("false"))
-    // nil
-    assertEquals(null,  eval("nil"))
+    // null
+    assertEquals(null,  eval("null"))
     // strings
     assertEquals("some string",  eval(""""some string""""))
     // symbols
     assertEquals("Hello",  eval("'Hello"))
   }
 
-
   @Test
   fun testDeclaration() {
     assertEquals("defval('anInt,'Int)",  read("val anInt :Int"))
     assertEquals("defvar('aFloat,'Float)",  read("var aFloat :Float"))
     assertEquals("defval('myBool,'Bool); assign('myBool, true)",  read("val myBool = true"))
+  }
+
+  @Test
+  fun testFunctionCall() {
+    assertEquals("print('a,1,true)",  read("print(a, 1, true)"))
   }
 
   @Test
@@ -61,7 +65,7 @@ class ParserTest {
     it.declare("someInt",  IntObject(1L))
   }
 
-  private fun eval(s: String) = (Parser.parse(s).eval(context) as LiteralObject<*>).value
+  private fun eval(s: String) = (Parser.parse(s).eval(context) as Literal<*>).value
   private fun read(s: String) = Parser.parse(s).asString()
 
   companion object {
