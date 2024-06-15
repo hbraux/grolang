@@ -1,4 +1,4 @@
-mod ast;
+pub mod ast;
 
 #[macro_use]
 extern crate lalrpop_util;
@@ -12,7 +12,7 @@ use crate::ast::{Expr, Opcode};
 pub fn read_expr(str: &str) -> Expr {
     match grammar::ExprParser::new().parse(str)  {
         Ok(expr) => *expr,
-        Err(_e) =>  Expr::Error("Cannot parse: {e}"),
+        Err(e) =>  Expr::Exception(e.to_string()),
     }
 }
 
