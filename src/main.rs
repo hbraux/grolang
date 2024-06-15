@@ -1,49 +1,35 @@
-mod ast;
-
-#[macro_use]
-extern crate lalrpop_util;
-lalrpop_mod!(pub grammar);
-
+use std::{env, io};
 use std::collections::HashMap;
-use assert_approx_eq::assert_approx_eq;
-use crate::ast::{Expr, Opcode};
 
+use parser::{eval_expr, read_expr};
+
+static VERSION: &str = "0.1";
 
 fn main() {
-
-}
-
-fn calc(str: &str) -> f64 {
-    let values = HashMap::from([("A", 1.0), ("B", 0.5)]);
-    match grammar::ExprParser::new().parse(str)  {
-        Ok(expr) => eval(*expr, &values),
-        Err(e) => panic!("Cannot parse: {e}"),
+    let args: Vec<String> = env::args().collect();
+    if args.is_empty() {
+        repl()
+    } else {
+        match args[1].as_ref() {
+            "-v" => println!("groLang v{}", VERSION),
+            _ => println!("paramètre non reconnu: {}", args[1]),
+        }
     }
 }
 
-fn eval(expr: Expr, values: &HashMap<&str, f64>) -> f64 {
-    match expr {
-        Expr::Number(f) => f,
-        Expr::Identifier(s) => *values.get(&*s).unwrap(),
-        Expr::Op(left, code, right) => operation(code, eval(*left, values), eval(*right, values))
+fn repl() {
+    println!("Bienvenue sur groLang version {}", VERSION);
+    println!("Taper :q pour quiier, :h pour de l'aide");
+    let values: HashMap<&str, i64> = HashMap::new();
+    loop {
+        let mut input = String::new();
+        match io::stdin().read_line(&mut input) {
+            Err(_) => break,
+            _ => {},
+        }
+        let expr = read_expr(&input);
+        let result = eval_expr(expr, &values);
+        println!("{}", result)
     }
 }
 
-fn operation(code: Opcode, a: f64, b: f64) -> f64 {
-    match code {
-        Opcode::Add => a + b,
-        Opcode::Sub => a - b,
-        Opcode::Mul => a * b,
-        Opcode::Div => a / b
-    }
-}
-
-#[test]
-fn test() {
-    assert_eq!(14.0, calc("2 + 3 * 4"));
-    assert_eq!(20.0, calc("(2 + 3) * 4"));
-    assert_eq!(4.0, calc("4 / 1.0"));
-    assert_approx_eq!(3.3, calc("-2.2 * -1.5"), 0.0001);
-    assert_eq!(5.0, calc("4 + A"));
-    assert_eq!(2.0, calc("A / B"));
-}

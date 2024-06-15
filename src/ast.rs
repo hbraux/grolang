@@ -2,9 +2,10 @@ use std::fmt::Debug;
 
 #[derive(Debug)]
 pub enum Expr {
-    Number(f64),
+    Integer(i64),
     Identifier(String),
     Op(Box<Expr>, Opcode, Box<Expr>),
+    Error(&'static str),
 }
 
 #[derive(Debug)]
