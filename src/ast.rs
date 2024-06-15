@@ -1,14 +1,14 @@
 use std::fmt::Debug;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expr {
     Integer(i64),
     Identifier(String),
     Op(Box<Expr>, Opcode, Box<Expr>),
-    Exception(String),
+    Error(String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Opcode {
     Mul,
     Div,

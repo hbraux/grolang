@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::io::Write;
 use grolang::{eval_expr, read_expr};
 
-use grolang::ast::Expr::Exception;
+use grolang::ast::Expr::Error;
 
 const LANG: &str = "GroLang";
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -46,9 +46,9 @@ fn repl() {
             continue;
         }
         let expr = read_expr(input);
-        match expr {
-            Exception(msg) => { println!("{RED}Erreur de syntaxe ({msg}){STD}"); continue },
-            _ => {}
+        if let Error(msg) = expr {
+            println!("{RED}Erreur de syntaxe ({msg}){STD}");
+            continue;
         }
         println!("DEBUG: {:?}", expr);
         let result = eval_expr(expr, &values);
