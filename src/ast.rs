@@ -2,8 +2,8 @@ use std::fmt::Debug;
 
 #[derive(Debug, Clone)]
 pub enum Expr {
-    Integer(i64),
-    Identifier(String),
+    Int(i64),
+    Id(String),
     Op(Box<Expr>, Opcode, Box<Expr>),
     Error(String),
 }

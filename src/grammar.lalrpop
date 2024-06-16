@@ -26,8 +26,8 @@ FactorOp: Opcode = {
 };
 
 Term: Box<Expr> = {
-    <i:Int> => Box::new(Expr::Integer(i)),
-    <s:Id> => Box::new(Expr::Identifier(s)),
+    <i:Int> => Box::new(Expr::Int(i)),
+    <s:Id> => Box::new(Expr::Id(s)),
     "(" <Expr> ")"
 };
 

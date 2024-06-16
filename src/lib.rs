@@ -10,7 +10,40 @@ use crate::ast::{Expr, Opcode};
 
 const EXCEPT_DIV0: &str = "Division par 0";
 
-//noinspection ALL
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub enum Type {
+    ANY,
+    INT
+}
+
+#[derive(Debug, PartialEq, Eq, Hash)]
+struct Symbol {
+    name: String,
+    of_type: Type
+}
+
+
+pub struct Context {
+    symbols: HashMap<String, Symbol>,
+    values: HashMap<Symbol, Expr>,
+}
+
+impl Context {
+    pub fn get(&self, name: &str) -> &Expr {
+        if let Some(symbol) = self.symbols.get(name) {
+            self.values.get(symbol).unwrap_or_else(Expr::Error(format!("Symbole {name} non défini")))
+        } else {
+            &Expr::Error(format!("Symbole {name} inconnu"))
+        }
+    }
+    pub fn set(&mut self, name: &str, of_type: Type, expr: Expr) {
+        let symbol = Symbol::new(name, of_type);
+        self.symbols.insert(name.to_string(), symbol);
+        self.values.insert(symbol, expr);
+    }
+}
+
+
 pub fn read_expr(str: &str) -> Expr {
     match grammar::ExprParser::new().parse(str)  {
         Ok(expr) => *expr,
@@ -18,38 +51,24 @@ pub fn read_expr(str: &str) -> Expr {
     }
 }
 
-pub fn eval_expr(expr: Expr, values: &HashMap<&str, Expr>) -> Expr {
+pub fn eval_expr(expr: Expr, ctx: &Context) -> Expr {
     match expr {
-        Expr::Identifier(s) => values.get(&*s).unwrap().clone(),
-        Expr::Op(left, code, right) => eval_op(eval_expr(*left, values), code, eval_expr(*right, values)),
+        Expr::Id(s) => ctx.get(&*s).unwrap().clone(),
+        Expr::Op(left, code, right) => eval_op(eval_expr(*left, ctx), code, eval_expr(*right, ctx)),
         _ => expr
     }
 }
 
 fn eval_op(left: Expr, code: Opcode, right: Expr) -> Expr {
-    if let (Expr::Integer(a), Expr::Integer(b)) = (left, right) {
+    if let (Expr::Int(a), Expr::Int(b)) = (left, right) {
         match code {
-            Opcode::Add => Expr::Integer(a + b),
-            Opcode::Sub => Expr::Integer(a - b),
-            Opcode::Mul => Expr::Integer(a * b),
-            Opcode::Div => if b !=0 { Expr::Integer(a / b) } else { Expr::Error(EXCEPT_DIV0.to_string()) },
+            Opcode::Add => Expr::Int(a + b),
+            Opcode::Sub => Expr::Int(a - b),
+            Opcode::Mul => Expr::Int(a * b),
+            Opcode::Div => if b !=0 { Expr::Int(a / b) } else { Expr::Error(EXCEPT_DIV0.to_string()) },
         }
     } else {
         Expr::Error(format!("cannot {:?}", code))
     }
 }
 
-
-#[test]
-fn test() {
-    fn calc(str: &str) -> i64 {
-        let values: HashMap<&str, Expr> = HashMap::from([("a", Expr::Integer(1)), ("b",  Expr::Integer(2))]);
-        if let Expr::Integer(i) = eval_expr(read_expr(str), &values) { i } else { -9999999 }
-    }
-    assert_eq!(14, calc("2 + 3 * 4"));
-    assert_eq!(20, calc("(2 + 3) * 4"));
-    assert_eq!(4, calc("4 / 1"));
-    assert_eq!(2, calc("-2 * -1"));
-    assert_eq!(5, calc("4 + a"));
-    assert_eq!(2, calc("b / a"));
-}

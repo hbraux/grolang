@@ -1,9 +1,10 @@
 use std::{env, io};
 use std::collections::HashMap;
 use std::io::Write;
-use grolang::{eval_expr, read_expr};
+use grolang::{Context, eval_expr, read_expr, Type};
+use grolang::ast::Expr;
 
-use grolang::ast::Expr::Error;
+use grolang::ast::Expr::{Error, Int};
 
 const LANG: &str = "GroLang";
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -61,3 +62,19 @@ fn help() {
     println!("Pas disponible pour le moment")
 }
 
+
+#[test]
+fn test() {
+    let context = Context::new();
+    context.set("a", Type::INT, Int::new(1));
+    context.set("b", Type::INT, Int::new(2));
+    let calc = |str: &str| -> i64 {
+        if let Expr::Int(i) = eval_expr(read_expr(str), context) { i } else { -9999999 }
+    };
+    assert_eq!(14, calc("2 + 3 * 4"));
+    assert_eq!(20, calc("(2 + 3) * 4"));
+    assert_eq!(4, calc("4 / 1"));
+    assert_eq!(2, calc("-2 * -1"));
+    assert_eq!(5, calc("4 + a"));
+    assert_eq!(2, calc("b / a"));
+}
