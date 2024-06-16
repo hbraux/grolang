@@ -52,7 +52,7 @@ impl Context {
 
 
 pub fn read_expr(str: &str) -> Expr {
-    match grammar::ExprParser::new().parse(str)  {
+    match grammar::StatementParser::new().parse(str)  {
         Ok(expr) => *expr,
         Err(e) =>  Failure(e.to_string()),
     }

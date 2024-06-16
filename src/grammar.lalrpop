@@ -5,7 +5,12 @@ use crate::ast::{Expr, Opcode};
 
 grammar;
 
-pub Expr: Box<Expr> = {
+pub Statement: Box<Expr>  = {
+    "var" <s:Identifier> "=" <e:Expr>  => Box::new(Expr::Declare(s,e)),
+    Expr
+};
+
+Expr: Box<Expr> = {
     Expr ExprOp Factor => Box::new(Expr::Op(<>)),
     Factor,
 };
@@ -26,14 +31,18 @@ FactorOp: Opcode = {
 };
 
 Term: Box<Expr> = {
-    <i:Integer> => Box::new(Expr::Int(i)),
+    <s:IntLiteral> => Box::new(Expr::Int(s)),
+    <s:FloatLiteral> => Box::new(Expr::Float(s)),
+    <s:StrLiteral> => Box::new(Expr::Str(s)),
     <s:Identifier> => Box::new(Expr::Id(s)),
     "(" <Expr> ")"
 };
 
-Integer: i64 = {
-    <s:r"-?\d+"> => i64::from_str(s).unwrap()
- };
+IntLiteral: i64 = <s:r"-?\d+"> => i64::from_str(s).unwrap();
+
+FloatLiteral: f64 = <s:r"-?\d+\.\d*"> => f64::from_str(s).unwrap();
+
+StrLiteral: String = <l:r#""[a-z ]*""#> => l[1..l.len()-1].into();
 
 Identifier: String = <s:r"[A-Za-z][A-Za-z0-9]*"> => s.to_string();
 
