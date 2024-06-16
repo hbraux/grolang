@@ -26,14 +26,14 @@ FactorOp: Opcode = {
 };
 
 Term: Box<Expr> = {
-    <i:Int> => Box::new(Expr::Integer(i)),
-    <s:Id> => Box::new(Expr::Identifier(s)),
+    <i:Integer> => Box::new(Expr::Int(i)),
+    <s:Identifier> => Box::new(Expr::Id(s)),
     "(" <Expr> ")"
 };
 
-Int: i64 = {
+Integer: i64 = {
     <s:r"-?\d+"> => i64::from_str(s).unwrap()
  };
 
-Id: String = <s:r"[A-Za-z][A-Za-z0-9]*"> => s.to_string();
+Identifier: String = <s:r"[A-Za-z][A-Za-z0-9]*"> => s.to_string();
 
