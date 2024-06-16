@@ -7,20 +7,22 @@ lalrpop_mod!(pub grammar);
 use std::collections::HashMap;
 use std::string::ToString;
 use crate::ast::{Expr, Opcode};
+use crate::ast::Expr::{Failure, Id, Int, Op};
 
 const EXCEPT_DIV0: &str = "Division par 0";
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum Type {
     ANY,
     INT
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
-struct Symbol {
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub struct Symbol {
     name: String,
     of_type: Type
 }
+
 
 
 pub struct Context {
@@ -29,16 +31,21 @@ pub struct Context {
 }
 
 impl Context {
-    pub fn get(&self, name: &str) -> &Expr {
+    pub fn new() -> Context { Context { symbols: HashMap::new(), values: HashMap::new() } }
+
+    pub fn get(&self, name: &str) -> Expr {
         if let Some(symbol) = self.symbols.get(name) {
-            self.values.get(symbol).unwrap_or_else(Expr::Error(format!("Symbole {name} non défini")))
+            match self.values.get(symbol)  {
+                Some(expr) => expr.clone(),
+                None => Failure(format!("Symbole {name} non défini")),
+            }
         } else {
-            &Expr::Error(format!("Symbole {name} inconnu"))
+            Failure(format!("Symbole {name} inconnu"))
         }
     }
     pub fn set(&mut self, name: &str, of_type: Type, expr: Expr) {
-        let symbol = Symbol::new(name, of_type);
-        self.symbols.insert(name.to_string(), symbol);
+        let symbol = Symbol { name: name.to_string(), of_type };
+        self.symbols.insert(name.to_string(), symbol.clone());
         self.values.insert(symbol, expr);
     }
 }
@@ -47,28 +54,28 @@ impl Context {
 pub fn read_expr(str: &str) -> Expr {
     match grammar::ExprParser::new().parse(str)  {
         Ok(expr) => *expr,
-        Err(e) =>  Expr::Error(e.to_string()),
+        Err(e) =>  Failure(e.to_string()),
     }
 }
 
 pub fn eval_expr(expr: Expr, ctx: &Context) -> Expr {
     match expr {
-        Expr::Id(s) => ctx.get(&*s).unwrap().clone(),
-        Expr::Op(left, code, right) => eval_op(eval_expr(*left, ctx), code, eval_expr(*right, ctx)),
+        Id(s) => ctx.get(&*s).clone(),
+        Op(left, code, right) => eval_op(eval_expr(*left, ctx), code, eval_expr(*right, ctx)),
         _ => expr
     }
 }
 
 fn eval_op(left: Expr, code: Opcode, right: Expr) -> Expr {
-    if let (Expr::Int(a), Expr::Int(b)) = (left, right) {
+    if let (Int(a), Int(b)) = (left, right) {
         match code {
-            Opcode::Add => Expr::Int(a + b),
-            Opcode::Sub => Expr::Int(a - b),
-            Opcode::Mul => Expr::Int(a * b),
-            Opcode::Div => if b !=0 { Expr::Int(a / b) } else { Expr::Error(EXCEPT_DIV0.to_string()) },
+            Opcode::Add => Int(a + b),
+            Opcode::Sub => Int(a - b),
+            Opcode::Mul => Int(a * b),
+            Opcode::Div => if b !=0 { Expr::Int(a / b) } else { Failure(EXCEPT_DIV0.to_string()) },
         }
     } else {
-        Expr::Error(format!("cannot {:?}", code))
+        Expr::Failure(format!("cannot {:?}", code))
     }
 }
 

@@ -5,7 +5,7 @@ pub enum Expr {
     Int(i64),
     Id(String),
     Op(Box<Expr>, Opcode, Box<Expr>),
-    Error(String),
+    Failure(String),
 }
 
 #[derive(Debug, Clone)]

@@ -1,10 +1,9 @@
 use std::{env, io};
-use std::collections::HashMap;
 use std::io::Write;
+
 use grolang::{Context, eval_expr, read_expr, Type};
 use grolang::ast::Expr;
-
-use grolang::ast::Expr::{Error, Int};
+use grolang::ast::Expr::{Failure, Int};
 
 const LANG: &str = "GroLang";
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -28,7 +27,7 @@ fn main() {
 fn repl() {
     println!("{BLUE}Bienvenue sur {LANG} version {VERSION}{STD}");
     println!("Taper :q pour quitter, :h pour de l'aide");
-    let values: HashMap<&str, i64> = HashMap::new();
+    let context = Context::new();
     loop {
         print!("{}", PROMPT);
         io::stdout().flush().unwrap();
@@ -47,13 +46,17 @@ fn repl() {
             continue;
         }
         let expr = read_expr(input);
-        if let Error(msg) = expr {
+        if let Failure(msg) = expr {
             println!("{RED}Erreur de syntaxe ({msg}){STD}");
             continue;
         }
         println!("DEBUG: {:?}", expr);
-        let result = eval_expr(expr, &values);
-        println!("{}", result)
+        let result = eval_expr(expr, &context);
+        if let Failure(msg) = result {
+            println!("{RED}Erreur d'évaluation ({msg}){STD}");
+        } else {
+            println!("{:?}", result)
+        }
     }
     println!(".")
 }
@@ -65,11 +68,11 @@ fn help() {
 
 #[test]
 fn test() {
-    let context = Context::new();
-    context.set("a", Type::INT, Int::new(1));
-    context.set("b", Type::INT, Int::new(2));
+    let mut context = Context::new();
+    context.set("a", Type::INT, Expr::Int::new(1));
+    context.set("b", Type::INT, Expr::Int::new(2));
     let calc = |str: &str| -> i64 {
-        if let Expr::Int(i) = eval_expr(read_expr(str), context) { i } else { -9999999 }
+        if let Int(i) = eval_expr(read_expr(str), &context) { i } else { -9999999 }
     };
     assert_eq!(14, calc("2 + 3 * 4"));
     assert_eq!(20, calc("(2 + 3) * 4"));
