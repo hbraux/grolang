@@ -2,7 +2,6 @@ use std::{env, io};
 use std::io::Write;
 
 use grolang::{Context, eval_expr, read_expr, Type};
-use grolang::ast::Expr;
 use grolang::ast::Expr::{Failure, Int};
 
 const LANG: &str = "GroLang";
@@ -69,8 +68,8 @@ fn help() {
 #[test]
 fn test() {
     let mut context = Context::new();
-    context.set("a", Type::INT, Expr::Int::new(1));
-    context.set("b", Type::INT, Expr::Int::new(2));
+    context.set("a", Type::INT, Int(1));
+    context.set("b", Type::INT, Int(2));
     let calc = |str: &str| -> i64 {
         if let Int(i) = eval_expr(read_expr(str), &context) { i } else { -9999999 }
     };
