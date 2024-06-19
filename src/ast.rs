@@ -1,5 +1,12 @@
 use std::fmt::Debug;
 
+#[derive(Debug, Clone)]
+pub enum ErrorType {
+    DivisionByZero,
+    UndefinedSymbol(String),
+    CannotParse(String),
+    NotANumber
+}
 
 #[derive(Debug, Clone)]
 pub enum Expr {
@@ -10,7 +17,7 @@ pub enum Expr {
     Id(String),
     Declare(String, Box<Expr>),
     Op(Box<Expr>, Opcode, Box<Expr>),
-    Failure(String),
+    Error(ErrorType),
     Null
 }
 

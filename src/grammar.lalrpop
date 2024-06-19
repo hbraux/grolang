@@ -42,7 +42,6 @@ Term: Box<Expr> = {
     <e:Int> => Box::new(Expr::Int(e)),
     <e:Float> => Box::new(Expr::Float(e)),
     <e:Str> => Box::new(Expr::Str(e)),
-    <e:Bool> => Box::new(Expr::Bool(e)),
     <e:Id> => Box::new(Expr::Id(e)),
     "(" <Expr> ")"
 };
@@ -50,8 +49,6 @@ Term: Box<Expr> = {
 Int: i64 = <s:r"-?\d+"> => i64::from_str(s).unwrap();
 
 Float: f64 = <s:r"-?\d+\.\d*"> => f64::from_str(s).unwrap();
-
-Bool: bool = <s:r"true|false"> => bool::from_str(s).unwrap();
 
 Str: String = <l:r#""[a-z ]*""#> => l[1..l.len()-1].into();
 

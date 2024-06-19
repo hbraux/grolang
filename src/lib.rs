@@ -7,10 +7,8 @@ lalrpop_mod!(pub grammar);
 use std::collections::HashMap;
 use std::string::ToString;
 use crate::ast::{Expr, NULL, Opcode};
-use crate::ast::Expr::{Declare, Failure, Id, Int, Op};
-
-const EXCEPT_DIV0: &str = "Division par 0";
-
+use crate::ast::ErrorType::{DivisionByZero, NotANumber, UndefinedSymbol, CannotParse};
+use crate::ast::Expr::{Bool, Declare, Error, Float, Id, Int, Null, Op, Str};
 
 
 pub struct Context {
@@ -23,7 +21,7 @@ impl Context {
     pub fn get(&self, name: &str) -> Expr {
         match self.values.get(name)  {
                 Some(expr) => expr.clone(),
-                None => Failure(format!("Symbole {name} non défini")),
+                None => Error(UndefinedSymbol(name.to_string())),
             }
     }
     pub fn set(&mut self, name: &str, expr: Expr) -> Expr {
@@ -38,16 +36,32 @@ impl Expr {
     pub fn new(str: &str) -> Expr {
         match grammar::StatementParser::new().parse(str)  {
             Ok(expr) => *expr,
-            Err(e) =>  Failure(e.to_string()),
+            Err(e) =>  Error(CannotParse(e.to_string())),
+        }
+    }
+
+    pub fn eval(self, ctx: &mut Context) -> Expr {
+        eval_expr(self, ctx)
+    }
+
+    pub fn print(self) -> String {
+        match self {
+            Bool(x) => x.to_string(),
+            Int(x) => x.to_string(),
+            Float(x) => x.to_string(),
+            Str(x) => format!("\"{}\"", x),
+            Null => "null".to_string(),
+            _ => format!("{:?}", self)
         }
     }
 }
 
-pub fn eval(expr: Expr, ctx: &mut Context) -> Expr {
+// TODO: move to impl
+fn eval_expr(expr: Expr, ctx: &mut Context) -> Expr {
     match expr {
         Id(s) => ctx.get(&*s).clone(),
-        Declare(s, right) => { let value = eval(*right, ctx); ctx.set(s.as_str(), value) },
-        Op(left, code, right) => eval_op(eval(*left, ctx), code, eval(*right, ctx)),
+        Declare(s, right) => { let value = eval_expr(*right, ctx); ctx.set(s.as_str(), value) },
+        Op(left, code, right) => eval_op(eval_expr(*left, ctx), code, eval_expr(*right, ctx)),
         _ => expr.clone()
     }
 }
@@ -59,10 +73,10 @@ fn eval_op(left: Expr, code: Opcode, right: Expr) -> Expr {
             Opcode::Add => Int(a + b),
             Opcode::Sub => Int(a - b),
             Opcode::Mul => Int(a * b),
-            Opcode::Div => if b !=0 { Expr::Int(a / b) } else { Failure(EXCEPT_DIV0.to_string()) },
+            Opcode::Div => if b !=0 { Int(a / b) } else { Error(DivisionByZero) },
         }
     } else {
-        Expr::Failure(format!("cannot {:?}", code))
+        Error(NotANumber)
     }
 }
 
