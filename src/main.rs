@@ -1,7 +1,8 @@
 use std::{env, io};
 use std::io::Write;
 
-use grolang::{Context, eval_expr, read_expr};
+use grolang::{Context, eval};
+use grolang::ast::Expr;
 use grolang::ast::Expr::Failure;
 
 const LANG: &str = "GroLang";
@@ -26,7 +27,7 @@ fn main() {
 fn repl() {
     println!("{BLUE}Bienvenue sur {LANG} version {VERSION}{STD}");
     println!("Taper :q pour quitter, :h pour de l'aide");
-    let context = Context::new();
+    let mut context = Context::new();
     loop {
         print!("{}", PROMPT);
         io::stdout().flush().unwrap();
@@ -44,13 +45,13 @@ fn repl() {
             }
             continue;
         }
-        let expr = read_expr(input);
+        let expr = Expr::new(input);
         if let Failure(msg) = expr {
             println!("{RED}Erreur de syntaxe ({msg}){STD}");
             continue;
         }
         println!("DEBUG: {:?}", expr);
-        let result = eval_expr(expr, &context);
+        let result = eval(expr, &mut context);
         if let Failure(msg) = result {
             println!("{RED}Erreur d'évaluation ({msg}){STD}");
         } else {
@@ -67,12 +68,22 @@ fn help() {
 
 #[test]
 fn test() {
-    let  ctx = Context::new();
-    let rep = |str: &str| -> String {
-        format!("{:?}", eval_expr(read_expr(str), &ctx))
+    let mut ctx = Context::new();
+    let mut rep = |str: &str| -> String {
+        format!("{:?}", eval(Expr::new(str), &mut ctx))
     };
-    assert_eq!("", rep("var a = 1"));
-    assert_eq!("", rep("var b = 2"));
+    // literals
+    assert_eq!("1", rep("1"));
+    assert_eq!("1.0", rep("1.0"));
+    assert_eq!("false", rep("false"));
+    assert_eq!("true", rep("true"));
+    assert_eq!("null", rep("null"));
+
+    // variables
+    assert_eq!("null", rep("var a = 1"));
+    assert_eq!("null", rep("var b = 2"));
+
+    // arithmetic
     assert_eq!("14", rep("2 + 3 * 4"));
     assert_eq!("20", rep("(2 + 3) * 4"));
     assert_eq!("4", rep("4 / 1"));

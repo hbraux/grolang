@@ -11,11 +11,6 @@ use crate::ast::Expr::{Declare, Failure, Id, Int, Op};
 
 const EXCEPT_DIV0: &str = "Division par 0";
 
-impl Expr {
-    fn get_type(&self) -> String {
-        "ANY".to_string()
-    }
-}
 
 
 pub struct Context {
@@ -38,23 +33,25 @@ impl Context {
 
 }
 
-//noinspection ALL
-pub fn read_expr(str: &str) -> Expr {
-    match grammar::StatementParser::new().parse(str)  {
-        Ok(expr) => *expr,
-        Err(e) =>  Failure(e.to_string()),
+impl Expr {
+    //noinspection ALL
+    pub fn new(str: &str) -> Expr {
+        match grammar::StatementParser::new().parse(str)  {
+            Ok(expr) => *expr,
+            Err(e) =>  Failure(e.to_string()),
+        }
     }
 }
 
-pub fn eval_expr(expr: Expr, ctx: &mut Context) -> Expr {
+pub fn eval(expr: Expr, ctx: &mut Context) -> Expr {
     match expr {
         Id(s) => ctx.get(&*s).clone(),
-        Declare(s, right) => ctx.set(s.as_str(), eval_expr(*right, ctx)),
-        Op(left, code, right) => eval_op(eval_expr(*left, ctx), code, eval_expr(*right, ctx)),
-        Failure(s) => Failure(s),
-        _ => panic!("expression {:?} not supported", expr)
+        Declare(s, right) => { let value = eval(*right, ctx); ctx.set(s.as_str(), value) },
+        Op(left, code, right) => eval_op(eval(*left, ctx), code, eval(*right, ctx)),
+        _ => expr.clone()
     }
 }
+
 
 fn eval_op(left: Expr, code: Opcode, right: Expr) -> Expr {
     if let (Int(a), Int(b)) = (left, right) {

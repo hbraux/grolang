@@ -39,11 +39,11 @@ Literal: Box<Expr> = {
 }
 
 Term: Box<Expr> = {
-    <s:Int> => Box::new(Expr::Int(s)),
-    <s:Float> => Box::new(Expr::Float(s)),
-    <s:Str> => Box::new(Expr::Str(s)),
-    <s:Bool> => Box::new(Expr::Bool(s)),
-    <s:Id> => Box::new(Expr::Id(s)),
+    <e:Int> => Box::new(Expr::Int(e)),
+    <e:Float> => Box::new(Expr::Float(e)),
+    <e:Str> => Box::new(Expr::Str(e)),
+    <e:Bool> => Box::new(Expr::Bool(e)),
+    <e:Id> => Box::new(Expr::Id(e)),
     "(" <Expr> ")"
 };
 
