@@ -6,51 +6,39 @@ lalrpop_mod!(pub grammar);
 
 use std::collections::HashMap;
 use std::string::ToString;
-use crate::ast::{Expr, Opcode};
-use crate::ast::Expr::{Failure, Id, Int, Op};
+use crate::ast::{Expr, NULL, Opcode};
+use crate::ast::Expr::{Declare, Failure, Id, Int, Op};
 
 const EXCEPT_DIV0: &str = "Division par 0";
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
-pub enum Type {
-    ANY,
-    INT
+impl Expr {
+    fn get_type(&self) -> String {
+        "ANY".to_string()
+    }
 }
-
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
-pub struct Symbol {
-    name: String,
-    of_type: Type
-}
-
 
 
 pub struct Context {
-    symbols: HashMap<String, Symbol>,
-    values: HashMap<Symbol, Expr>,
+    values: HashMap<String, Expr>,
 }
 
 impl Context {
-    pub fn new() -> Context { Context { symbols: HashMap::new(), values: HashMap::new() } }
+    pub fn new() -> Context { Context { values: HashMap::new() } }
 
     pub fn get(&self, name: &str) -> Expr {
-        if let Some(symbol) = self.symbols.get(name) {
-            match self.values.get(symbol)  {
+        match self.values.get(name)  {
                 Some(expr) => expr.clone(),
                 None => Failure(format!("Symbole {name} non défini")),
             }
-        } else {
-            Failure(format!("Symbole {name} inconnu"))
-        }
     }
-    pub fn set(&mut self, name: &str, of_type: Type, expr: Expr) {
-        let symbol = Symbol { name: name.to_string(), of_type };
-        self.symbols.insert(name.to_string(), symbol.clone());
-        self.values.insert(symbol, expr);
+    pub fn set(&mut self, name: &str, expr: Expr) -> Expr {
+        self.values.insert(name.to_string(), expr);
+        NULL
     }
+
 }
 
-
+//noinspection ALL
 pub fn read_expr(str: &str) -> Expr {
     match grammar::StatementParser::new().parse(str)  {
         Ok(expr) => *expr,
@@ -58,11 +46,13 @@ pub fn read_expr(str: &str) -> Expr {
     }
 }
 
-pub fn eval_expr(expr: Expr, ctx: &Context) -> Expr {
+pub fn eval_expr(expr: Expr, ctx: &mut Context) -> Expr {
     match expr {
         Id(s) => ctx.get(&*s).clone(),
+        Declare(s, right) => ctx.set(s.as_str(), eval_expr(*right, ctx)),
         Op(left, code, right) => eval_op(eval_expr(*left, ctx), code, eval_expr(*right, ctx)),
-        _ => expr
+        Failure(s) => Failure(s),
+        _ => panic!("expression {:?} not supported", expr)
     }
 }
 

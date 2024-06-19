@@ -1,8 +1,8 @@
 use std::{env, io};
 use std::io::Write;
 
-use grolang::{Context, eval_expr, read_expr, Type};
-use grolang::ast::Expr::{Failure, Int};
+use grolang::{Context, eval_expr, read_expr};
+use grolang::ast::Expr::Failure;
 
 const LANG: &str = "GroLang";
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -67,16 +67,16 @@ fn help() {
 
 #[test]
 fn test() {
-    let mut context = Context::new();
-    context.set("a", Type::INT, Int(1));
-    context.set("b", Type::INT, Int(2));
-    let calc = |str: &str| -> i64 {
-        if let Int(i) = eval_expr(read_expr(str), &context) { i } else { -9999999 }
+    let  ctx = Context::new();
+    let rep = |str: &str| -> String {
+        format!("{:?}", eval_expr(read_expr(str), &ctx))
     };
-    assert_eq!(14, calc("2 + 3 * 4"));
-    assert_eq!(20, calc("(2 + 3) * 4"));
-    assert_eq!(4, calc("4 / 1"));
-    assert_eq!(2, calc("-2 * -1"));
-    assert_eq!(5, calc("4 + a"));
-    assert_eq!(2, calc("b / a"));
+    assert_eq!("", rep("var a = 1"));
+    assert_eq!("", rep("var b = 2"));
+    assert_eq!("14", rep("2 + 3 * 4"));
+    assert_eq!("20", rep("(2 + 3) * 4"));
+    assert_eq!("4", rep("4 / 1"));
+    assert_eq!("2", rep("-2 * -1"));
+    assert_eq!("5", rep("4 + a"));
+    assert_eq!("2", rep("b / a"));
 }
