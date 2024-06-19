@@ -6,76 +6,73 @@ lalrpop_mod!(pub grammar);
 
 use std::collections::HashMap;
 use std::string::ToString;
-use crate::ast::{Expr, Opcode};
-use crate::ast::Expr::{Failure, Id, Int, Op};
-
-const EXCEPT_DIV0: &str = "Division par 0";
-
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
-pub enum Type {
-    ANY,
-    INT
-}
-
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
-pub struct Symbol {
-    name: String,
-    of_type: Type
-}
-
+use crate::ast::{Expr, NULL, Opcode};
+use crate::ast::ErrorType::{DivisionByZero, NotANumber, UndefinedSymbol, CannotParse};
+use crate::ast::Expr::{Bool, Declare, Error, Float, Id, Int, Null, BinaryOp, Str};
 
 
 pub struct Context {
-    symbols: HashMap<String, Symbol>,
-    values: HashMap<Symbol, Expr>,
+    values: HashMap<String, Expr>,
 }
 
 impl Context {
-    pub fn new() -> Context { Context { symbols: HashMap::new(), values: HashMap::new() } }
+    pub fn new() -> Context { Context { values: HashMap::new() } }
 
     pub fn get(&self, name: &str) -> Expr {
-        if let Some(symbol) = self.symbols.get(name) {
-            match self.values.get(symbol)  {
+        match self.values.get(name)  {
                 Some(expr) => expr.clone(),
-                None => Failure(format!("Symbole {name} non défini")),
+                None => Error(UndefinedSymbol(name.to_string())),
             }
-        } else {
-            Failure(format!("Symbole {name} inconnu"))
+    }
+    pub fn set(&mut self, name: &str, expr: Expr) -> Expr {
+        self.values.insert(name.to_string(), expr);
+        NULL
+    }
+
+}
+
+impl Expr {
+    //noinspection ALL
+    pub fn new(str: &str) -> Expr {
+        match grammar::StatementParser::new().parse(str)  {
+            Ok(expr) => *expr,
+            Err(e) =>  Error(CannotParse(e.to_string())),
         }
     }
-    pub fn set(&mut self, name: &str, of_type: Type, expr: Expr) {
-        let symbol = Symbol { name: name.to_string(), of_type };
-        self.symbols.insert(name.to_string(), symbol.clone());
-        self.values.insert(symbol, expr);
+
+    pub fn eval(self, ctx: &mut Context) -> Expr {
+        match self {
+            Id(s) => ctx.get(&*s).clone(),
+            Declare(s, right) => { let value = right.eval(ctx); ctx.set(s.as_str(), value) },
+            BinaryOp(left, code, right) => eval_op(code, left.eval(ctx), right.eval(ctx)),
+            _ => self.clone()
+        }
+    }
+
+    pub fn print(self) -> String {
+        match self {
+            Bool(x) => x.to_string(),
+            Int(x) => x.to_string(),
+            Float(x) => x.to_string(),
+            Str(x) => format!("\"{}\"", x),
+            Null => "null".to_string(),
+            _ => format!("{:?}", self)
+        }
     }
 }
 
 
-pub fn read_expr(str: &str) -> Expr {
-    match grammar::ExprParser::new().parse(str)  {
-        Ok(expr) => *expr,
-        Err(e) =>  Failure(e.to_string()),
-    }
-}
 
-pub fn eval_expr(expr: Expr, ctx: &Context) -> Expr {
-    match expr {
-        Id(s) => ctx.get(&*s).clone(),
-        Op(left, code, right) => eval_op(eval_expr(*left, ctx), code, eval_expr(*right, ctx)),
-        _ => expr
-    }
-}
-
-fn eval_op(left: Expr, code: Opcode, right: Expr) -> Expr {
+fn eval_op(code: Opcode, left: Expr, right: Expr) -> Expr {
     if let (Int(a), Int(b)) = (left, right) {
         match code {
             Opcode::Add => Int(a + b),
             Opcode::Sub => Int(a - b),
             Opcode::Mul => Int(a * b),
-            Opcode::Div => if b !=0 { Expr::Int(a / b) } else { Failure(EXCEPT_DIV0.to_string()) },
+            Opcode::Div => if b !=0 { Int(a / b) } else { Error(DivisionByZero) },
         }
     } else {
-        Expr::Failure(format!("cannot {:?}", code))
+        Error(NotANumber)
     }
 }
 

@@ -1,13 +1,19 @@
 use std::str::FromStr;
-use crate::ast::{Expr, Opcode};
+use crate::ast::{Expr, Opcode, TRUE, FALSE, NULL};
 
 // see https://lalrpop.github.io/lalrpop/tutorial/index.html
 
 grammar;
 
-pub Expr: Box<Expr> = {
-    Expr ExprOp Factor => Box::new(Expr::Op(<>)),
+pub Statement: Box<Expr>  = {
+    "var" <s:Id> "=" <e:Expr>  => Box::new(Expr::Declare(s,e)),
+    Expr
+};
+
+Expr: Box<Expr> = {
+    <l:Expr> <o:ExprOp> <r:Factor> => Box::new(Expr::BinaryOp(l,o,r)),
     Factor,
+    Literal
 };
 
 ExprOp: Opcode = {
@@ -16,7 +22,7 @@ ExprOp: Opcode = {
 };
 
 Factor: Box<Expr> = {
-    Factor FactorOp Term => Box::new(Expr::Op(<>)),
+    <l:Factor> <o:FactorOp> <r:Term> => Box::new(Expr::BinaryOp(l,o,r)),
     Term,
 };
 
@@ -25,15 +31,26 @@ FactorOp: Opcode = {
     "/" => Opcode::Div,
 };
 
+Literal: Box<Expr> = {
+    "true" => Box::new(TRUE),
+    "false" => Box::new(FALSE),
+    "null" => Box::new(NULL),
+
+}
+
 Term: Box<Expr> = {
-    <i:Integer> => Box::new(Expr::Int(i)),
-    <s:Identifier> => Box::new(Expr::Id(s)),
+    <e:Int> => Box::new(Expr::Int(e)),
+    <e:Float> => Box::new(Expr::Float(e)),
+    <e:Str> => Box::new(Expr::Str(e)),
+    <e:Id> => Box::new(Expr::Id(e)),
     "(" <Expr> ")"
 };
 
-Integer: i64 = {
-    <s:r"-?\d+"> => i64::from_str(s).unwrap()
- };
+Int: i64 = <s:r"-?\d+"> => i64::from_str(s).unwrap();
 
-Identifier: String = <s:r"[A-Za-z][A-Za-z0-9]*"> => s.to_string();
+Float: f64 = <s:r"-?\d+\.\d*"> => f64::from_str(s).unwrap();
+
+Str: String = <l:r#""[a-z ]*""#> => l[1..l.len()-1].into();
+
+Id: String = <s:r"[A-Za-z][A-Za-z0-9]*"> => s.to_string();
 
