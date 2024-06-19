@@ -11,7 +11,7 @@ pub Statement: Box<Expr>  = {
 };
 
 Expr: Box<Expr> = {
-    <l:Expr> <o:ExprOp> <r:Factor> => Box::new(Expr::Op(l,o,r)),
+    <l:Expr> <o:ExprOp> <r:Factor> => Box::new(Expr::BinaryOp(l,o,r)),
     Factor,
     Literal
 };
@@ -22,7 +22,7 @@ ExprOp: Opcode = {
 };
 
 Factor: Box<Expr> = {
-    <l:Factor> <o:FactorOp> <r:Term> => Box::new(Expr::Op(l,o,r)),
+    <l:Factor> <o:FactorOp> <r:Term> => Box::new(Expr::BinaryOp(l,o,r)),
     Term,
 };
 

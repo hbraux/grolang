@@ -16,7 +16,7 @@ pub enum Expr {
     Bool(bool),
     Id(String),
     Declare(String, Box<Expr>),
-    Op(Box<Expr>, Opcode, Box<Expr>),
+    BinaryOp(Box<Expr>, Opcode, Box<Expr>),
     Error(ErrorType),
     Null
 }

@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::string::ToString;
 use crate::ast::{Expr, NULL, Opcode};
 use crate::ast::ErrorType::{DivisionByZero, NotANumber, UndefinedSymbol, CannotParse};
-use crate::ast::Expr::{Bool, Declare, Error, Float, Id, Int, Null, Op, Str};
+use crate::ast::Expr::{Bool, Declare, Error, Float, Id, Int, Null, BinaryOp, Str};
 
 
 pub struct Context {
@@ -41,7 +41,12 @@ impl Expr {
     }
 
     pub fn eval(self, ctx: &mut Context) -> Expr {
-        eval_expr(self, ctx)
+        match self {
+            Id(s) => ctx.get(&*s).clone(),
+            Declare(s, right) => { let value = right.eval(ctx); ctx.set(s.as_str(), value) },
+            BinaryOp(left, code, right) => eval_op(code, left.eval(ctx), right.eval(ctx)),
+            _ => self.clone()
+        }
     }
 
     pub fn print(self) -> String {
@@ -56,18 +61,9 @@ impl Expr {
     }
 }
 
-// TODO: move to impl
-fn eval_expr(expr: Expr, ctx: &mut Context) -> Expr {
-    match expr {
-        Id(s) => ctx.get(&*s).clone(),
-        Declare(s, right) => { let value = eval_expr(*right, ctx); ctx.set(s.as_str(), value) },
-        Op(left, code, right) => eval_op(eval_expr(*left, ctx), code, eval_expr(*right, ctx)),
-        _ => expr.clone()
-    }
-}
 
 
-fn eval_op(left: Expr, code: Opcode, right: Expr) -> Expr {
+fn eval_op(code: Opcode, left: Expr, right: Expr) -> Expr {
     if let (Int(a), Int(b)) = (left, right) {
         match code {
             Opcode::Add => Int(a + b),
