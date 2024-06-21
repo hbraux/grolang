@@ -1,9 +1,8 @@
 use std::{env, io};
 use std::io::Write;
 
-use grolang::{Context};
-use grolang::ast::Expr;
-use grolang::ast::Expr::Error;
+use grolang::{Context, Expr};
+use grolang::Expr::Error;
 
 const LANG: &str = "GroLang";
 const VERSION: &str = env!("CARGO_PKG_VERSION");

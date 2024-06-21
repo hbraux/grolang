@@ -1,17 +1,31 @@
 use std::str::FromStr;
-use crate::ast::{Expr, Opcode, TRUE, FALSE, NULL};
+use crate::{Expr, Opcode, TRUE, FALSE, NULL};
 
 // see https://lalrpop.github.io/lalrpop/tutorial/index.html
 
 grammar;
 
 pub Statement: Box<Expr>  = {
-    "var" <s:Id> "=" <e:Expr>  => Box::new(Expr::Declare(s,e)),
+    Declaration,
+    MethodCall,
     Expr
 };
 
+Declaration: Box<Expr> = {
+    "var" <id:Id> "=" (TypeSpec?) <e:Expr>  => Box::new(Expr::Declare(<>))
+}
+
+TypeSpec: Box<Expr> = {
+    ":" <i:Id> "<" <l:Comma<Id>> ">" => Box::new(Expr::ComplexType(<>)),
+    ":" <i:Id> => Box::new(Expr::SimpleType(<>)),
+}
+
+MethodCall : Box<Expr> = {
+  <e:Expr> "." <id:Id> "(" <l:Comma<Expr>> ")" => Box::new(Expr::Call(<>))
+}
+
 Expr: Box<Expr> = {
-    <l:Expr> <o:ExprOp> <r:Factor> => Box::new(Expr::BinaryOp(l,o,r)),
+    Expr ExprOp Factor => Box::new(Expr::BinaryOp(<>)),
     Factor,
     Literal
 };
@@ -22,7 +36,7 @@ ExprOp: Opcode = {
 };
 
 Factor: Box<Expr> = {
-    <l:Factor> <o:FactorOp> <r:Term> => Box::new(Expr::BinaryOp(l,o,r)),
+    Factor FactorOp Term => Box::new(Expr::BinaryOp(<>)),
     Term,
 };
 
@@ -35,14 +49,13 @@ Literal: Box<Expr> = {
     "true" => Box::new(TRUE),
     "false" => Box::new(FALSE),
     "null" => Box::new(NULL),
-
 }
 
 Term: Box<Expr> = {
-    <e:Int> => Box::new(Expr::Int(e)),
-    <e:Float> => Box::new(Expr::Float(e)),
-    <e:Str> => Box::new(Expr::Str(e)),
-    <e:Id> => Box::new(Expr::Id(e)),
+    Int => Box::new(Expr::Int(<>)),
+    Float => Box::new(Expr::Float(<>)),
+    Str => Box::new(Expr::Str(<>)),
+    Id => Box::new(Expr::Id(<>)),
     "(" <Expr> ")"
 };
 
@@ -54,3 +67,10 @@ Str: String = <l:r#""[a-z ]*""#> => l[1..l.len()-1].into();
 
 Id: String = <s:r"[A-Za-z][A-Za-z0-9]*"> => s.to_string();
 
+
+Comma<T>: Vec<T> = {
+    <mut v:(<T> ",")*> <e:T?> => match e {
+        None => v,
+        Some(e) => { v.push(e); v }
+    }
+};
