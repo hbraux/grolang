@@ -1,7 +1,8 @@
 use std::str::FromStr;
-use crate::{Expr, Opcode, TRUE, FALSE, NULL};
+use crate::{Expr, Opcode, Type, TRUE, FALSE, NULL};
 
 // see https://lalrpop.github.io/lalrpop/tutorial/index.html
+// Ignore plugin warnings on <> !
 
 grammar;
 
@@ -11,8 +12,9 @@ pub Statement: Box<Expr>  = {
     Expr
 };
 
+
 Declaration: Box<Expr> = {
-    "var" <id:Id> "=" <t:(TypeSpec?)> <e:Expr>  => Box::new(Expr::Declare(<>))
+    "var " <id:Id> <t:(TypeSpec?)> "=" <e:Expr>  => Box::new(Expr::Declare(<>))
 }
 
 
@@ -62,13 +64,13 @@ Term: Box<Expr> = {
     "(" <Expr> ")"
 };
 
-Int: i64 = <s:r"-?\d+"> => i64::from_str(s).unwrap();
+Int: i64 = <s:r"-?\d+(_\d+)*"> => i64::from_str(&*s.replace("_","")).unwrap();
 
-Float: f64 = <s:r"-?\d+\.\d*"> => f64::from_str(s).unwrap();
+Float: f64 = <s:r"-?\d+\.\d*(e-?\d+)?"> => f64::from_str(s).unwrap();
 
-Str: String = <l:r#""[a-z ]*""#> => l[1..l.len()-1].into();
+Str: String = <l:r#""[a-zA-Z0-9 ]*""#> => l[1..l.len()-1].into();
 
-TypeSpec: String = <s:r":[A-Z][A-Za-z]*(<[A-Z][A-Za-z]*>)?"> => s.to_string();
+TypeSpec: Type = <s:r": *[A-Z][A-Za-z]*(<[A-Z][A-Za-z]*>)?"> => Type::new(s.replace(":","").trim());
 
 Id: String = <s:r"[A-Za-z][A-Za-z0-9]*"> => s.to_string();
 

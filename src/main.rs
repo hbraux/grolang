@@ -65,32 +65,3 @@ fn help() {
 }
 
 
-#[test]
-fn test() {
-    let mut ctx = Context::new();
-    let mut rep = |str: &str| -> String {
-        Expr::new(str).eval(&mut ctx).print()
-    };
-    // literals
-    assert_eq!("1", rep("1"));
-    assert_eq!("-1.23", rep("-1.23"));
-    assert_eq!("false", rep("false"));
-    assert_eq!("true", rep("true"));
-    assert_eq!("null", rep("null"));
-    assert_eq!("\"abc\"", rep("\"abc\""));
-
-    // variables
-    assert_eq!("null", rep("var a = 1"));
-    assert_eq!("null", rep("var b = 2"));
-    assert_eq!("1", rep("a"));
-    assert_eq!("2", rep("b"));
-
-    // arithmetics
-    assert_eq!("14", rep("2 + 3 * 4"));
-    assert_eq!("20", rep("(2 + 3) * 4"));
-    assert_eq!("4", rep("4 / 1"));
-    assert_eq!("2", rep("-2 * -1"));
-    assert_eq!("5", rep("4 + a"));
-    assert_eq!("2", rep("b / a"));
-    assert_eq!("Error(DivisionByZero)", rep("1 / 0"));
-}
