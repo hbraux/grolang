@@ -12,13 +12,9 @@ pub Statement: Box<Expr>  = {
 };
 
 Declaration: Box<Expr> = {
-    "var" <id:Id> "=" (TypeSpec?) <e:Expr>  => Box::new(Expr::Declare(<>))
+    "var" <id:Id> "=" <t:(TypeSpec?)> <e:Expr>  => Box::new(Expr::Declare(<>))
 }
 
-TypeSpec: Box<Expr> = {
-    ":" <i:Id> "<" <l:Comma<Id>> ">" => Box::new(Expr::ComplexType(<>)),
-    ":" <i:Id> => Box::new(Expr::SimpleType(<>)),
-}
 
 MethodCall : Box<Expr> = {
   <e:Expr> "." <id:Id> "(" <l:Comma<Expr>> ")" => Box::new(Expr::Call(<>))
@@ -33,6 +29,12 @@ Expr: Box<Expr> = {
 ExprOp: Opcode = {
     "+" => Opcode::Add,
     "-" => Opcode::Sub,
+    "==" => Opcode::Eq,
+    "!=" => Opcode::Neq,
+    ">=" => Opcode::Ge,
+    ">" => Opcode::Gt,
+    "<=" => Opcode::Le,
+    "<" => Opcode::Lt,
 };
 
 Factor: Box<Expr> = {
@@ -43,19 +45,20 @@ Factor: Box<Expr> = {
 FactorOp: Opcode = {
     "*" => Opcode::Mul,
     "/" => Opcode::Div,
+    "%" => Opcode::Mod,
 };
 
 Literal: Box<Expr> = {
-    "true" => Box::new(TRUE),
+    "true"  => Box::new(TRUE),
     "false" => Box::new(FALSE),
-    "null" => Box::new(NULL),
+    "null"  => Box::new(NULL),
 }
 
 Term: Box<Expr> = {
-    Int => Box::new(Expr::Int(<>)),
-    Float => Box::new(Expr::Float(<>)),
-    Str => Box::new(Expr::Str(<>)),
-    Id => Box::new(Expr::Id(<>)),
+    Int     => Box::new(Expr::Int(<>)),
+    Float   => Box::new(Expr::Float(<>)),
+    Str     => Box::new(Expr::Str(<>)),
+    Id      => Box::new(Expr::Id(<>)),
     "(" <Expr> ")"
 };
 
@@ -64,6 +67,8 @@ Int: i64 = <s:r"-?\d+"> => i64::from_str(s).unwrap();
 Float: f64 = <s:r"-?\d+\.\d*"> => f64::from_str(s).unwrap();
 
 Str: String = <l:r#""[a-z ]*""#> => l[1..l.len()-1].into();
+
+TypeSpec: String = <s:r":[A-Z][A-Za-z]*(<[A-Z][A-Za-z]*>)?"> => s.to_string();
 
 Id: String = <s:r"[A-Za-z][A-Za-z0-9]*"> => s.to_string();
 
