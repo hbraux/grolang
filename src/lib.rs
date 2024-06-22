@@ -98,6 +98,32 @@ pub enum Opcode {
     Le,
     In
 }
+impl Opcode {
+    fn is_arithmetic(&self) -> bool {
+        match self {
+            Opcode::Add | Opcode::Sub | Opcode::Mul | Opcode::Div | Opcode::Mod => true,
+            _ => false
+        }
+    }
+    fn calc_int(&self, a: &i64, b: &i64) -> Expr {
+        match self {
+            Opcode::Add => Int(a + b),
+            Opcode::Sub => Int(a - b),
+            Opcode::Mul => Int(a * b),
+            Opcode::Div => if *b != 0 { Int(a / b) } else { Error(DivisionByZero) },
+            _ =>  panic!()
+        }
+    }
+    fn calc_float(&self, a: &f64, b: &f64) -> Expr {
+        match self {
+            Opcode::Add => Float(a + b),
+            Opcode::Sub => Float(a - b),
+            Opcode::Mul => Float(a * b),
+            Opcode::Div => if *b != 0.0 { Float(a / b) } else { Error(DivisionByZero) },
+            _ =>  panic!()
+        }
+    }
+}
 
 
 impl Expr {
@@ -140,7 +166,7 @@ impl Expr {
         match self {
             Id(name) => ctx.get(&*name).clone(),
             Declare(name, spec, value) => value.eval(ctx).ensure(spec).store(name, ctx, true),
-            BinaryOp(left, code, right) => eval_op(code, left.eval(ctx), right.eval(ctx)),
+            BinaryOp(left, code, right) => left.eval(ctx).binary_op(code, right.eval(ctx)),
             _ => self.clone()
         }
     }
@@ -154,6 +180,40 @@ impl Expr {
             _ => format!("{:?}", self)
         }
     }
+    fn unitary_op(self) -> Expr {
+        self.clone()
+    }
+    fn binary_op(&self, code: Opcode, right: Expr) -> Expr {
+        if code.is_arithmetic() {
+            self.arithmetic_op(code, &right)
+        } else {
+            self.comparison_op(code, &right)
+        }
+    }
+
+    fn arithmetic_op(&self, code: Opcode, right: &Expr) -> Expr {
+        if let (Int(a), Int(b)) = (self, right) {
+            code.calc_int(a, b)
+        } else if let (Float(a), Float(b)) = (self, right) {
+            code.calc_float(a, b)
+        } else if let (Int(a), Float(b)) = (self, right) {
+            code.calc_float(&(*a as f64), b)
+        } else if let (Float(a), Int(b)) = (self, right) {
+            code.calc_float(a, &(*b as f64))
+        } else {
+            Error(NotANumber)
+        }
+    }
+
+    fn comparison_op(&self, code: Opcode, right: &Expr) -> Expr {
+       let result = match code {
+           Opcode::Eq => self.eq(right),
+           Opcode::Neq => !self.eq(right),
+           _ => panic!("no yet implemented"),
+       };
+       Bool(result)
+    }
+
 }
 
 fn format_float(f: f64) -> String {
@@ -188,19 +248,6 @@ impl Context {
 
 }
 
-fn eval_op(code: Opcode, left: Expr, right: Expr) -> Expr {
-    if let (Int(a), Int(b)) = (left, right) {
-        match code {
-            Opcode::Add => Int(a + b),
-            Opcode::Sub => Int(a - b),
-            Opcode::Mul => Int(a * b),
-            Opcode::Div => if b !=0 { Int(a / b) } else { Error(DivisionByZero) },
-            _ => panic!()
-        }
-    } else {
-        Error(NotANumber)
-    }
-}
 
 #[test]
 fn test_type() {
