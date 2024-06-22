@@ -8,7 +8,7 @@ grammar;
 
 pub Statement: Box<Expr>  = {
     Declaration,
-    MethodCall,
+    Assignment,
     Expr
 };
 
@@ -17,16 +17,22 @@ Declaration: Box<Expr> = {
     "var " <id:Id> <t:(TypeSpec?)> "=" <e:Expr>  => Box::new(Expr::Declare(<>))
 }
 
+Assignment: Box<Expr> = {
+     <id:Id> "=" <e:Expr>  => Box::new(Expr::Assign(<>))
+}
+
+
+Expr: Box<Expr> = {
+    Expr ExprOp Factor => Box::new(Expr::BinaryOp(<>)),
+    MethodCall,
+    Factor,
+    Literal,
+};
+
 
 MethodCall : Box<Expr> = {
   <e:Expr> "." <id:Id> "(" <l:Comma<Expr>> ")" => Box::new(Expr::Call(<>))
 }
-
-Expr: Box<Expr> = {
-    Expr ExprOp Factor => Box::new(Expr::BinaryOp(<>)),
-    Factor,
-    Literal
-};
 
 ExprOp: Opcode = {
     "+" => Opcode::Add,
