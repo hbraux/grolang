@@ -249,48 +249,53 @@ impl Context {
 }
 
 
-#[test]
-fn test_type() {
-    assert_eq!(Type::Any, Type::new("Any"));
-    assert_eq!(Type::Int, Type::new("Int"));
-    assert_eq!(Type::List(Box::new(Type::Int)), Type::new("List<Int>"));
-    assert_eq!(Type::Map(Box::new(Type::Int), Box::new(Type::Bool)), Type::new("Map<Int,Bool>"));
-    assert_eq!(Type::Option(Box::new(Type::Int)), Type::new("Int?"));
-    assert_eq!(Type::Fail(Box::new(Type::Int)), Type::new("Int!"));
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-#[test]
-fn test_eval() {
-    let mut ctx = Context::new();
-    let mut rep = |str: &str| -> String {
-        Expr::new(str).eval(&mut ctx).print()
-    };
-    // literals
-    assert_eq!("1", rep("1"));
-    assert_eq!("9123456", rep("9_123_456"));
-    assert_eq!("2.0", rep("2."));
-    assert_eq!("-1.23", rep("-1.23"));
-    assert_eq!("23000.0", rep("2.3e4"));
-    assert_eq!("false", rep("false"));
-    assert_eq!("true", rep("true"));
-    assert_eq!("null", rep("null"));
-    assert_eq!("\"abc\"", rep("\"abc\""));
+    #[test]
+    fn test_type_new() {
+        assert_eq!(Type::Any, Type::new("Any"));
+        assert_eq!(Type::Int, Type::new("Int"));
+        assert_eq!(Type::List(Box::new(Type::Int)), Type::new("List<Int>"));
+        assert_eq!(Type::Map(Box::new(Type::Int), Box::new(Type::Bool)), Type::new("Map<Int,Bool>"));
+        assert_eq!(Type::Option(Box::new(Type::Int)), Type::new("Int?"));
+        assert_eq!(Type::Fail(Box::new(Type::Int)), Type::new("Int!"));
+    }
 
-    // variables
-    assert_eq!("1", rep("var a = 1"));
-    assert_eq!("Error(AlreadyDefined(\"a\"))", rep("var a = 3"));
-    assert_eq!("2", rep("var b: Int = 2"));
-    assert_eq!("3.2", rep("var c=3.2"));
-    assert_eq!("Error(InconsistentType(\"Int\"))", rep("var d: Int =3.2"));
-    assert_eq!("1", rep("a"));
-    assert_eq!("2", rep("b"));
+    #[test]
+    fn test_read_eval_print() {
+        let mut ctx = Context::new();
+        let mut rep = |str: &str| -> String {
+            Expr::new(str).eval(&mut ctx).print()
+        };
+        // literals
+        assert_eq!("1", rep("1"));
+        assert_eq!("9123456", rep("9_123_456"));
+        assert_eq!("2.0", rep("2."));
+        assert_eq!("-1.23", rep("-1.23"));
+        assert_eq!("23000.0", rep("2.3e4"));
+        assert_eq!("false", rep("false"));
+        assert_eq!("true", rep("true"));
+        assert_eq!("null", rep("null"));
+        assert_eq!("\"abc\"", rep("\"abc\""));
 
-    // arithmetics
-    assert_eq!("14", rep("2 + 3 * 4"));
-    assert_eq!("20", rep("(2 + 3) * 4"));
-    assert_eq!("4", rep("4 / 1"));
-    assert_eq!("2", rep("-2 * -1"));
-    assert_eq!("5", rep("4 + a"));
-    assert_eq!("2", rep("b / a"));
-    assert_eq!("Error(DivisionByZero)", rep("1 / 0"));
+        // variables
+        assert_eq!("1", rep("var a = 1"));
+        assert_eq!("Error(AlreadyDefined(\"a\"))", rep("var a = 3"));
+        assert_eq!("2", rep("var b: Int = 2"));
+        assert_eq!("3.2", rep("var c=3.2"));
+        assert_eq!("Error(InconsistentType(\"Int\"))", rep("var d: Int =3.2"));
+        assert_eq!("1", rep("a"));
+        assert_eq!("2", rep("b"));
+
+        // arithmetics
+        assert_eq!("14", rep("2 + 3 * 4"));
+        assert_eq!("20", rep("(2 + 3) * 4"));
+        assert_eq!("4", rep("4 / 1"));
+        assert_eq!("2", rep("-2 * -1"));
+        assert_eq!("5", rep("4 + a"));
+        assert_eq!("2", rep("b / a"));
+        assert_eq!("Error(DivisionByZero)", rep("1 / 0"));
+    }
 }
