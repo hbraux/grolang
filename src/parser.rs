@@ -1,17 +1,20 @@
 use lazy_static::lazy_static;
 use pest::iterators::Pair;
 use pest::Parser;
-use pest::pratt_parser::PrattParser;
+use pest::pratt_parser::{Op, PrattParser};
+use pest::pratt_parser::Assoc::Left;
 use pest_derive::Parser;
 
-use crate::{ErrorType, Expr, FALSE, NULL, TRUE};
+use crate::{Code, ErrorType, Expr, FALSE, NULL, TRUE};
 
 #[derive(Parser)]
 #[grammar = "grammar.pest"]
 struct GroParser;
 
 lazy_static! {
-    static ref PARSER: PrattParser<Rule> = PrattParser::new();
+    static ref PARSER: PrattParser<Rule> = {
+        PrattParser::new().op(Op::infix(Rule::BinaryOp, Left))
+    };
 }
 
 pub fn parse(str: &str) -> Expr {
@@ -21,22 +24,31 @@ pub fn parse(str: &str) -> Expr {
     }
 }
 
+
 fn to_expr(pair: Pair<Rule>) -> Expr {
+    println!("DEBUG {}", pair);
     match pair.as_rule() {
         Rule::Int => Expr::Int(pair.as_str().replace("_", "").parse::<i64>().unwrap()),
         Rule::Float => Expr::Float(pair.as_str().parse::<f64>().unwrap()),
-        Rule::Special => special(pair.as_str()),
+        Rule::Special => literal(pair.as_str()),
         Rule::String => Expr::Str(unquote(pair.as_str())),
-        Rule::BinaryExpr => Expr::Str(pair.to_string()), //Expr::BinaryOp(pair.as_rule()),
-        _ => panic!("found {}", pair)
+        Rule::BinaryExpr => {
+            let mut args = pair.into_inner();
+            let left =  to_expr(args.next().unwrap());
+            let op = Code::new(args.next().unwrap().as_str());
+            let right = to_expr(args.next().unwrap());
+            Expr::BinaryOp(Box::new(left),op, Box::new(right))
+        }
+        _ => unreachable!()
     }
 }
+
 
 fn unquote(str: &str) -> String {
     (&str[1..str.len() - 1]).to_string()
 }
 
-fn special(str: &str) -> Expr {
+fn literal(str: &str) -> Expr {
     match str {
         "true" => TRUE,
         "false" => FALSE,
@@ -48,11 +60,12 @@ fn special(str: &str) -> Expr {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::Expr;
 
+    use super::*;
+
     #[test]
-    fn test_parse() {
+    fn test_literals() {
         assert_eq!(Expr::Int(1), parse("1"));
         assert_eq!(Expr::Int(2), parse("+2"));
         assert_eq!(Expr::Int(1234567), parse("1_234_567"));
@@ -64,6 +77,10 @@ mod tests {
         assert_eq!(NULL, parse("null"));
         assert_eq!(Expr::Str("abc".to_string()), parse("\"abc\""));
         assert_eq!(Expr::Str("true".to_string()), parse("\"true\""));
+    }
+
+    #[test]
+    fn test_others() {
         assert_eq!(Expr::Int(1), parse("1 + 2"));
     }
 }

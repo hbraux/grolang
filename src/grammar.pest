@@ -1,8 +1,8 @@
-WHITESPACE = _{ " " }
+// see https://pest.rs/book/examples/calculator.html
 
 Special = { "true" | "false" | "null" }
 
-Int = { ("+" | "-")? ~ ASCII_DIGIT+  ~ ( "_" ~ ASCII_DIGIT+)* }
+Int = {   ("+" | "-")? ~ ASCII_DIGIT+  ~ ( "_" ~ ASCII_DIGIT+)* }
 Float = { ("+" | "-")? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT* ~ (^"e" ~ ("+" | "-")? ~ ASCII_DIGIT+)? }
 
 String = { "\"" ~ stringChar*  ~  "\"" }
@@ -14,10 +14,10 @@ Literal = _{ Special | Float | Int | Symbol | Id | String }
 
 TypeSpec = { ":" ~ Id ~ ( "<" ~ Id ~( "," ~ Id )? ~ ">")? }
 
-Operator = { "+" | "-" | "*" | "/" | "^" | "%" }
+BinaryOp = { "+" | "-" | "*" | "/" | "^" | "%" }
 
 Expr = _{ BinaryExpr | CallExpr | Term }
-BinaryExpr = { Term ~ Operator ~ Term }
+BinaryExpr = { Term ~ BinaryOp ~ Term }
 CallExpr = { Term ~ "." ~ "(" ~ Expr? ~ ( "," ~ Expr )* ~ ")" }
 
 Term = _{ Literal | "(" ~ Expr ~ ")" }
@@ -27,4 +27,5 @@ Assignment = { Id ~ "=" ~ Expr }
 
 Statement = _{ Declaration | Assignment | Expr }
 
+WHITESPACE = _{ " " }
 
