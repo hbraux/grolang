@@ -1,0 +1,27 @@
+WHITESPACE = _{ " " }
+
+bool = { "true" | "false" }
+null = { "null" }
+
+int = { ("+" | "-")? ~ ASCII_DIGIT+ }
+float = @{ int ~ ("." ~ ASCII_DIGIT*)? ~ (^"e" ~ int)? }
+
+string = { "\"" ~ string_char*  ~  "\"" }
+string_char = { !"\""  ~ ANY }
+
+id = { ASCII_ALPHA ~ ASCII_ALPHANUMERIC* }
+symbol = { "'" ~ id }
+literal = { null | bool | int | float | id | symbol }
+
+type_spec = { ":" ~ id ~ ( "<" ~ id ~( "," ~ id )? ~ ">")? }
+
+op = { "+" | "-" | "*" | "/" | "^" | "%" }
+
+expr = { term ~ op ~ term | term }
+term = _{ literal | "(" ~ expr ~ ")" }
+
+declaration = { "var" ~ id ~ type_spec? ~ "=" ~ expr }
+assignment = { id ~ "=" ~ expr }
+
+statement = _{ declaration | assignment | expr }
+
