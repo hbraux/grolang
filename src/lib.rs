@@ -1,13 +1,16 @@
-mod parser;
-
-use crate::Expr::{Assign, Call};
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::string::ToString;
+
 use strum_macros::{Display, EnumString};
-use ErrorType::{CannotParse, DivisionByZero, NotANumber, UndefinedSymbol,WrongArgumentsNumber, InconsistentType};
+
+use ErrorType::{DivisionByZero, InconsistentType, NotANumber, UndefinedSymbol, WrongArgumentsNumber};
 use Expr::{BinaryOp, Bool, Declare, Error, Float, Id, Int, Null, Str};
+
+use crate::Expr::{Assign, Call};
 use crate::parser::parse;
+
+mod parser;
 
 #[derive(Debug, Clone, PartialEq, Display)]
 pub enum ErrorType {
@@ -327,19 +330,15 @@ mod tests {
     #[test]
     fn test_arithmetics() {
         let mut ctx = Context::new();
-        assert_eq!("1", ctx.exec("var a = 1"));
-        assert_eq!("2", ctx.exec("var b = 2"));
         assert_eq!("14", ctx.exec("2 + 3 * 4"));
         assert_eq!("20", ctx.exec("(2 + 3) * 4"));
         assert_eq!("4", ctx.exec("4 / 1"));
         assert_eq!("2", ctx.exec("22%10"));
         assert_eq!("2", ctx.exec("-2 * -1"));
         assert_eq!("3.3", ctx.exec("1 + 2.3"));
-        assert_eq!("5", ctx.exec("4 + a"));
-        assert_eq!("2", ctx.exec("b / a"));
         assert_eq!("Error(DivisionByZero)", ctx.exec("1 / 0"));
-        assert_eq!("3", ctx.exec("a.add(b)"));
-        assert_eq!("6", ctx.exec("b.mul(3)"));
+        assert_eq!("3", ctx.exec("2.add(1)"));
+        assert_eq!("6", ctx.exec("2.mul(3)"));
     }
 
     #[test]

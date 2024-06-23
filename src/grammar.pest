@@ -14,15 +14,15 @@ Literal = _{ Special | Float | Int | Symbol | Id | String }
 
 TypeSpec = { ":" ~ Id ~ ( "<" ~ Id ~( "," ~ Id )? ~ ">")? }
 
-BinaryOp = _{ Add | Sub | Mul | Mul | Mod }
+BinaryOp = _{ Add | Sub | Mul | Div | Mod }
     Add = { "+" }
     Sub = { "-" }
-    Mul= { "*" }
+    Mul = { "*" }
     Div = { "/" }
     Mod = { "/" }
 
 Expr = _{ BinaryExpr | CallExpr | Term }
-BinaryExpr = { Term ~ BinaryOp ~ Term }
+BinaryExpr = _{ Term ~ ( BinaryOp ~ Term ) + }
 CallExpr = { Term ~ "." ~ "(" ~ Expr? ~ ( "," ~ Expr )* ~ ")" }
 
 Term = _{ Literal | "(" ~ Expr ~ ")" }
