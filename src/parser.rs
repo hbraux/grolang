@@ -21,13 +21,14 @@ pub fn parse(str: &str) -> Expr {
     }
 }
 
-fn to_expr(primary: Pair<Rule>) -> Expr {
-    match primary.as_rule() {
-        Rule::Int => Expr::Int(primary.as_str().replace("_", "").parse::<i64>().unwrap()),
-        Rule::Float => Expr::Float(primary.as_str().parse::<f64>().unwrap()),
-        Rule::Special => special(primary.as_str()),
-        Rule::String => Expr::Str(unquote(primary.as_str())),
-        _ => panic!("found {}", primary)
+fn to_expr(pair: Pair<Rule>) -> Expr {
+    match pair.as_rule() {
+        Rule::Int => Expr::Int(pair.as_str().replace("_", "").parse::<i64>().unwrap()),
+        Rule::Float => Expr::Float(pair.as_str().parse::<f64>().unwrap()),
+        Rule::Special => special(pair.as_str()),
+        Rule::String => Expr::Str(unquote(pair.as_str())),
+        Rule::BinaryExpr => Expr::Str(pair.to_string()), //Expr::BinaryOp(pair.as_rule()),
+        _ => panic!("found {}", pair)
     }
 }
 

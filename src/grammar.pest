@@ -16,9 +16,8 @@ TypeSpec = { ":" ~ Id ~ ( "<" ~ Id ~( "," ~ Id )? ~ ">")? }
 
 Operator = { "+" | "-" | "*" | "/" | "^" | "%" }
 
-Expr = _{ BinaryExpr | UnaryExpr | CallExpr }
-UnaryExpr = { Operator ~ Term }
-BinaryExpr = { Term ~ (Operator ~ Term)* }
+Expr = _{ BinaryExpr | CallExpr | Term }
+BinaryExpr = { Term ~ Operator ~ Term }
 CallExpr = { Term ~ "." ~ "(" ~ Expr? ~ ( "," ~ Expr )* ~ ")" }
 
 Term = _{ Literal | "(" ~ Expr ~ ")" }
