@@ -161,7 +161,7 @@ pub const NULL: Expr = Null;
 
 impl Expr {
     //noinspection ALL
-    pub fn new(str: &str) -> Expr {
+    pub fn from_str(str: &str) -> Expr {
         match grammar::StatementParser::new().parse(str) {
             Ok(expr) => *expr,
             Err(e) => Error(CannotParse(e.to_string())),
@@ -293,6 +293,9 @@ impl Context {
     pub fn set(&mut self, name: &str, expr: Expr) {
         self.values.insert(name.to_string(), expr);
     }
+    pub fn eval(&mut self, str: &str) -> String {
+        Expr::from_str(str).eval(self).print()
+    }
 }
 
 // *********************************** TESTS ******************************************
@@ -302,68 +305,75 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_type() {
+    fn test_types() {
         assert_eq!(Type::Any, Type::new("Any"));
         assert_eq!(Type::Int, Type::new("Int"));
         assert_eq!(Type::List(Box::new(Type::Int)), Type::new("List<Int>"));
-        assert_eq!(
-            Type::Map(Box::new(Type::Int), Box::new(Type::Bool)),
-            Type::new("Map<Int,Bool>")
-        );
+        assert_eq!(Type::Map(Box::new(Type::Int), Box::new(Type::Bool)), Type::new("Map<Int,Bool>"));
         assert_eq!(Type::Option(Box::new(Type::Int)), Type::new("Int?"));
         assert_eq!(Type::Fail(Box::new(Type::Int)), Type::new("Int!"));
     }
 
     #[test]
-    fn test_code() {
+    fn test_codes() {
         assert_eq!(Code::Eq, Code::new("eq"));
         assert_eq!(Code::Defined("other".to_string()), Code::new("other"));
     }
 
     #[test]
-    fn test_read_eval_print() {
+    fn test_literals() {
         let mut ctx = Context::new();
-        let mut rep = |str: &str| -> String { Expr::new(str).eval(&mut ctx).print() };
-        // literals
-        assert_eq!("1", rep("1"));
-        assert_eq!("9123456", rep("9_123_456"));
-        assert_eq!("2.0", rep("2."));
-        assert_eq!("-1.23", rep("-1.23"));
-        assert_eq!("23000.0", rep("2.3e4"));
-        assert_eq!("false", rep("false"));
-        assert_eq!("true", rep("true"));
-        assert_eq!("null", rep("null"));
-        assert_eq!("\"abc\"", rep("\"abc\""));
+        assert_eq!("1", ctx.eval("1"));
+        assert_eq!("9123456", ctx.eval("9_123_456"));
+        assert_eq!("2.0", ctx.eval("2."));
+        assert_eq!("-1.23", ctx.eval("-1.23"));
+        assert_eq!("23000.0", ctx.eval("2.3e4"));
+        assert_eq!("false", ctx.eval("false"));
+        assert_eq!("true", ctx.eval("true"));
+        assert_eq!("null", ctx.eval("null"));
+        assert_eq!("\"abc\"", ctx.eval("\"abc\""));
+    }
 
-        // variables
-        assert_eq!("1", rep("var a = 1"));
-        assert_eq!("Error(AlreadyDefined(\"a\"))", rep("var a = 3"));
-        assert_eq!("3", rep("a = 3"));
-        assert_eq!("Error(InconsistentType(\"Float\"))", rep("a = 3.0"));
-        assert_eq!("2", rep("var b: Int = 2"));
-        assert_eq!("3.2", rep("var c=3.2"));
-        assert_eq!("Error(InconsistentType(\"Int\"))", rep("var d: Int =3.2"));
-        assert_eq!("1", rep("a = 1"));
-        assert_eq!("1", rep("a"));
-        assert_eq!("2", rep("b"));
+    #[test]
+    fn test_variables() {
+        let mut ctx = Context::new();
+        assert_eq!("1", ctx.eval("var a = 1"));
+        assert_eq!("Error(AlreadyDefined(\"a\"))", ctx.eval("var a = 3"));
+        assert_eq!("3", ctx.eval("a = 3"));
+        assert_eq!("Error(InconsistentType(\"Float\"))", ctx.eval("a = 3.0"));
+        assert_eq!("2", ctx.eval("var b: Int = 2"));
+        assert_eq!("3.2", ctx.eval("var c=3.2"));
+        assert_eq!("Error(InconsistentType(\"Int\"))", ctx.eval("var d: Int =3.2"));
+        assert_eq!("3", ctx.eval("a"));
+        assert_eq!("2", ctx.eval("b"));
+    }
 
-        // arithmetics
-        assert_eq!("14", rep("2 + 3 * 4"));
-        assert_eq!("20", rep("(2 + 3) * 4"));
-        assert_eq!("4", rep("4 / 1"));
-        assert_eq!("2", rep("22%10"));
-        assert_eq!("2", rep("-2 * -1"));
-        assert_eq!("3.3", rep("1 + 2.3"));
-        assert_eq!("5", rep("4 + a"));
-        assert_eq!("2", rep("b / a"));
-        assert_eq!("Error(DivisionByZero)", rep("1 / 0"));
-        assert_eq!("3", rep("a.add(b)"));
-        assert_eq!("6", rep("b.mul(3)"));
+    #[test]
+    fn test_arithmetics() {
+        let mut ctx = Context::new();
+        assert_eq!("1", ctx.eval("var a = 1"));
+        assert_eq!("2", ctx.eval("var b = 2"));
+        assert_eq!("14", ctx.eval("2 + 3 * 4"));
+        assert_eq!("20", ctx.eval("(2 + 3) * 4"));
+        assert_eq!("4", ctx.eval("4 / 1"));
+        assert_eq!("2", ctx.eval("22%10"));
+        assert_eq!("2", ctx.eval("-2 * -1"));
+        assert_eq!("3.3", ctx.eval("1 + 2.3"));
+        assert_eq!("5", ctx.eval("4 + a"));
+        assert_eq!("2", ctx.eval("b / a"));
+        assert_eq!("Error(DivisionByZero)", ctx.eval("1 / 0"));
+        assert_eq!("3", ctx.eval("a.add(b)"));
+        assert_eq!("6", ctx.eval("b.mul(3)"));
+    }
 
-        // comparisons
-        assert_eq!("true", rep("a == a"));
-        assert_eq!("true", rep("a == 1"));
-        assert_eq!("true", rep("1 == a"));
-        assert_eq!("false", rep("a == b"));
+    #[test]
+    fn test_comparisons() {
+        let mut ctx = Context::new();
+        assert_eq!("1", ctx.eval("var a = 1"));
+        assert_eq!("2", ctx.eval("var b = 2"));
+        assert_eq!("true", ctx.eval("a == a"));
+        assert_eq!("true", ctx.eval("a == 1"));
+        assert_eq!("true", ctx.eval("1 == a"));
+        assert_eq!("false", ctx.eval("a == b"));
     }
 }
