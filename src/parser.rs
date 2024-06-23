@@ -13,9 +13,8 @@ struct GroParser;
 
 lazy_static! {
     static ref PARSER: PrattParser<Rule> = {
-        PrattParser::new()
-        .op(Op::infix(Rule::Add, Left) | Op::infix(Rule::Sub, Left))
-        .op(Op::infix(Rule::Mul, Left) | Op::infix(Rule::Div, Left))
+        PrattParser::new().op(Op::infix(Rule::Add, Left) | Op::infix(Rule::Sub, Left))
+        .op(Op::infix(Rule::Mul, Left) | Op::infix(Rule::Div, Left) | Op::infix(Rule::Mod, Left))
     };
 }
 
