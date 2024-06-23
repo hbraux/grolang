@@ -17,11 +17,13 @@ type_spec = { ":" ~ id ~ ( "<" ~ id ~( "," ~ id )? ~ ">")? }
 
 op = { "+" | "-" | "*" | "/" | "^" | "%" }
 
-expr = { term ~ op ~ term | term }
+expr = { term ~ op ~ term | call | term }
+call = { term ~ "." ~ "(" ~ expr? ~ ( "," ~ expr )* ~ ")" }
 term = _{ literal | "(" ~ expr ~ ")" }
 
 declaration = { "var" ~ id ~ type_spec? ~ "=" ~ expr }
 assignment = { id ~ "=" ~ expr }
 
 statement = _{ declaration | assignment | expr }
+
 
