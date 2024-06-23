@@ -1,3 +1,5 @@
+mod parser;
+
 #[macro_use]
 extern crate lalrpop_util;
 lalrpop_mod!(pub grammar);
@@ -57,13 +59,7 @@ impl Type {
                 "Bool" => Type::Bool,
                 "Str" => Type::Str,
                 "Float" => Type::Float,
-                _ => {
-                    if str.chars().all(|x| x.is_alphabetic()) {
-                        Type::Defined(str.to_string())
-                    } else {
-                        panic!("{} is not a valid type name", str)
-                    }
-                }
+                _ => Type::Defined(str.to_string()),
             }
         }
     }
@@ -110,13 +106,7 @@ impl Code {
             Code::Sub => Int(a - b),
             Code::Mul => Int(a * b),
             Code::Mod => Int(a % b),
-            Code::Div => {
-                if *b != 0 {
-                    Int(a / b)
-                } else {
-                    Error(DivisionByZero)
-                }
-            }
+            Code::Div => if *b != 0 { Int(a / b) } else { Error(DivisionByZero) }
             _ => panic!(),
         }
     }
@@ -126,13 +116,7 @@ impl Code {
             Code::Sub => Float(a - b),
             Code::Mul => Float(a * b),
             Code::Mod => Float(a % b),
-            Code::Div => {
-                if *b != 0.0 {
-                    Float(a / b)
-                } else {
-                    Error(DivisionByZero)
-                }
-            }
+            Code::Div => if *b != 0.0 { Float(a / b) } else { Error(DivisionByZero) }
             _ => panic!(),
         }
     }
@@ -272,12 +256,7 @@ pub struct Context {
 }
 
 impl Context {
-    pub fn new() -> Context {
-        Context {
-            values: HashMap::new(),
-        }
-    }
-
+    pub fn new() -> Context { Context { values: HashMap::new() } }
     pub fn get(&self, name: &str) -> Expr {
         match self.values.get(name) {
             Some(expr) => expr.clone(),
@@ -296,7 +275,7 @@ impl Context {
     pub fn read(&mut self, str: &str) -> Expr {
         Expr::read(str, self)
     }
-    pub fn eval(&mut self, str: &str) -> String {
+    pub fn exec(&mut self, str: &str) -> String {
         self.read(str).eval(self).print()
     }
 }
@@ -326,57 +305,57 @@ mod tests {
     #[test]
     fn test_literals() {
         let mut ctx = Context::new();
-        assert_eq!("1", ctx.eval("1"));
-        assert_eq!("9123456", ctx.eval("9_123_456"));
-        assert_eq!("2.0", ctx.eval("2."));
-        assert_eq!("-1.23", ctx.eval("-1.23"));
-        assert_eq!("23000.0", ctx.eval("2.3e4"));
-        assert_eq!("false", ctx.eval("false"));
-        assert_eq!("true", ctx.eval("true"));
-        assert_eq!("null", ctx.eval("null"));
-        assert_eq!("\"abc\"", ctx.eval("\"abc\""));
+        assert_eq!("1", ctx.exec("1"));
+        assert_eq!("9123456", ctx.exec("9_123_456"));
+        assert_eq!("2.0", ctx.exec("2."));
+        assert_eq!("-1.23", ctx.exec("-1.23"));
+        assert_eq!("23000.0", ctx.exec("2.3e4"));
+        assert_eq!("false", ctx.exec("false"));
+        assert_eq!("true", ctx.exec("true"));
+        assert_eq!("null", ctx.exec("null"));
+        assert_eq!("\"abc\"", ctx.exec("\"abc\""));
     }
 
     #[test]
     fn test_variables() {
         let mut ctx = Context::new();
-        assert_eq!("1", ctx.eval("var a = 1"));
-        assert_eq!("Error(AlreadyDefined(\"a\"))", ctx.eval("var a = 3"));
-        assert_eq!("3", ctx.eval("a = 3"));
-        assert_eq!("Error(InconsistentType(\"Float\"))", ctx.eval("a = 3.0"));
-        assert_eq!("2", ctx.eval("var b: Int = 2"));
-        assert_eq!("3.2", ctx.eval("var c=3.2"));
-        assert_eq!("Error(InconsistentType(\"Int\"))", ctx.eval("var d: Int =3.2"));
-        assert_eq!("3", ctx.eval("a"));
-        assert_eq!("2", ctx.eval("b"));
+        assert_eq!("1", ctx.exec("var a = 1"));
+        assert_eq!("Error(AlreadyDefined(\"a\"))", ctx.exec("var a = 3"));
+        assert_eq!("3", ctx.exec("a = 3"));
+        assert_eq!("Error(InconsistentType(\"Float\"))", ctx.exec("a = 3.0"));
+        assert_eq!("2", ctx.exec("var b: Int = 2"));
+        assert_eq!("3.2", ctx.exec("var c=3.2"));
+        assert_eq!("Error(InconsistentType(\"Int\"))", ctx.exec("var d: Int =3.2"));
+        assert_eq!("3", ctx.exec("a"));
+        assert_eq!("2", ctx.exec("b"));
     }
 
     #[test]
     fn test_arithmetics() {
         let mut ctx = Context::new();
-        assert_eq!("1", ctx.eval("var a = 1"));
-        assert_eq!("2", ctx.eval("var b = 2"));
-        assert_eq!("14", ctx.eval("2 + 3 * 4"));
-        assert_eq!("20", ctx.eval("(2 + 3) * 4"));
-        assert_eq!("4", ctx.eval("4 / 1"));
-        assert_eq!("2", ctx.eval("22%10"));
-        assert_eq!("2", ctx.eval("-2 * -1"));
-        assert_eq!("3.3", ctx.eval("1 + 2.3"));
-        assert_eq!("5", ctx.eval("4 + a"));
-        assert_eq!("2", ctx.eval("b / a"));
-        assert_eq!("Error(DivisionByZero)", ctx.eval("1 / 0"));
-        assert_eq!("3", ctx.eval("a.add(b)"));
-        assert_eq!("6", ctx.eval("b.mul(3)"));
+        assert_eq!("1", ctx.exec("var a = 1"));
+        assert_eq!("2", ctx.exec("var b = 2"));
+        assert_eq!("14", ctx.exec("2 + 3 * 4"));
+        assert_eq!("20", ctx.exec("(2 + 3) * 4"));
+        assert_eq!("4", ctx.exec("4 / 1"));
+        assert_eq!("2", ctx.exec("22%10"));
+        assert_eq!("2", ctx.exec("-2 * -1"));
+        assert_eq!("3.3", ctx.exec("1 + 2.3"));
+        assert_eq!("5", ctx.exec("4 + a"));
+        assert_eq!("2", ctx.exec("b / a"));
+        assert_eq!("Error(DivisionByZero)", ctx.exec("1 / 0"));
+        assert_eq!("3", ctx.exec("a.add(b)"));
+        assert_eq!("6", ctx.exec("b.mul(3)"));
     }
 
     #[test]
     fn test_comparisons() {
         let mut ctx = Context::new();
-        assert_eq!("1", ctx.eval("var a = 1"));
-        assert_eq!("2", ctx.eval("var b = 2"));
-        assert_eq!("true", ctx.eval("a == a"));
-        assert_eq!("true", ctx.eval("a == 1"));
-        assert_eq!("true", ctx.eval("1 == a"));
-        assert_eq!("false", ctx.eval("a == b"));
+        assert_eq!("1", ctx.exec("var a = 1"));
+        assert_eq!("2", ctx.exec("var b = 2"));
+        assert_eq!("true", ctx.exec("a == a"));
+        assert_eq!("true", ctx.exec("a == 1"));
+        assert_eq!("true", ctx.exec("1 == a"));
+        assert_eq!("false", ctx.exec("a == b"));
     }
 }

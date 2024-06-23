@@ -1,29 +1,31 @@
 WHITESPACE = _{ " " }
 
-bool = { "true" | "false" }
-null = { "null" }
+Special = { "true" | "false" | "null" }
 
-int = { ("+" | "-")? ~ ASCII_DIGIT+ }
-float = @{ int ~ ("." ~ ASCII_DIGIT*)? ~ (^"e" ~ int)? }
+Int = { ("+" | "-")? ~ ASCII_DIGIT+  ~ ( "_" ~ ASCII_DIGIT+)* }
+Float = { ("+" | "-")? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT* ~ (^"e" ~ ("+" | "-")? ~ ASCII_DIGIT+)? }
 
-string = { "\"" ~ string_char*  ~  "\"" }
-string_char = { !"\""  ~ ANY }
+String = { "\"" ~ stringChar*  ~  "\"" }
+stringChar = _{ !"\""  ~ ANY }
 
-id = { ASCII_ALPHA ~ ASCII_ALPHANUMERIC* }
-symbol = { "'" ~ id }
-literal = { null | bool | int | float | id | symbol }
+Id = { ASCII_ALPHA ~ ASCII_ALPHANUMERIC* }
+Symbol = { "'" ~ Id }
+Literal = _{ Special | Float | Int | Symbol | Id | String }
 
-type_spec = { ":" ~ id ~ ( "<" ~ id ~( "," ~ id )? ~ ">")? }
+TypeSpec = { ":" ~ Id ~ ( "<" ~ Id ~( "," ~ Id )? ~ ">")? }
 
-op = { "+" | "-" | "*" | "/" | "^" | "%" }
+Operator = { "+" | "-" | "*" | "/" | "^" | "%" }
 
-expr = { term ~ op ~ term | call | term }
-call = { term ~ "." ~ "(" ~ expr? ~ ( "," ~ expr )* ~ ")" }
-term = _{ literal | "(" ~ expr ~ ")" }
+Expr = _{ BinaryExpr | UnaryExpr | CallExpr }
+UnaryExpr = { Operator ~ Term }
+BinaryExpr = { Term ~ (Operator ~ Term)* }
+CallExpr = { Term ~ "." ~ "(" ~ Expr? ~ ( "," ~ Expr )* ~ ")" }
 
-declaration = { "var" ~ id ~ type_spec? ~ "=" ~ expr }
-assignment = { id ~ "=" ~ expr }
+Term = _{ Literal | "(" ~ Expr ~ ")" }
 
-statement = _{ declaration | assignment | expr }
+Declaration = { "var" ~ Id ~ TypeSpec? ~ "=" ~ Expr }
+Assignment = { Id ~ "=" ~ Expr }
+
+Statement = _{ Declaration | Assignment | Expr }
 
 
