@@ -19,30 +19,30 @@ lazy_static! {
 
 pub fn parse(str: &str) -> Expr {
     match GroParser::parse(Rule::Statement, str) {
-        Ok(pairs) => PARSER.map_primary(|p| to_expr(p)).parse(pairs),
+        Ok(pairs) => PARSER.map_primary(|p| expr(p)).parse(pairs),
         Err(e)    => Expr::Error(ErrorType::CannotParse(e.to_string()))
     }
 }
 
 
-fn to_expr(pair: Pair<Rule>) -> Expr {
-    println!("DEBUG {}", pair);
+fn expr(pair: Pair<Rule>) -> Expr {
     match pair.as_rule() {
-        Rule::Int => Expr::Int(pair.as_str().replace("_", "").parse::<i64>().unwrap()),
+        Rule::Int => Expr::Int(pair.as_str().trim().replace("_", "").parse::<i64>().unwrap()),
         Rule::Float => Expr::Float(pair.as_str().parse::<f64>().unwrap()),
         Rule::Special => literal(pair.as_str()),
         Rule::String => Expr::Str(unquote(pair.as_str())),
         Rule::BinaryExpr => {
-            let mut args = pair.into_inner();
-            let left =  to_expr(args.next().unwrap());
-            let op = Code::new(args.next().unwrap().as_str());
-            let right = to_expr(args.next().unwrap());
-            Expr::BinaryOp(Box::new(left),op, Box::new(right))
+            let mut inner = pair.into_inner();
+            Expr::BinaryOp(Box::new(expr(inner.next().unwrap())), code(inner.next().unwrap()), Box::new(expr(inner.next().unwrap())))
         }
         _ => unreachable!()
     }
 }
 
+fn code(pair: Pair<Rule>) -> Code {
+    // TODO: there should be a better way to get rule Name
+    Code::new(format!("{:?}", pair.as_rule()).as_str())
+}
 
 fn unquote(str: &str) -> String {
     (&str[1..str.len() - 1]).to_string()
@@ -65,7 +65,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_literals() {
+    fn test_parse() {
         assert_eq!(Expr::Int(1), parse("1"));
         assert_eq!(Expr::Int(2), parse("+2"));
         assert_eq!(Expr::Int(1234567), parse("1_234_567"));
@@ -77,11 +77,7 @@ mod tests {
         assert_eq!(NULL, parse("null"));
         assert_eq!(Expr::Str("abc".to_string()), parse("\"abc\""));
         assert_eq!(Expr::Str("true".to_string()), parse("\"true\""));
-    }
-
-    #[test]
-    fn test_others() {
-        assert_eq!(Expr::Int(1), parse("1 + 2"));
+        assert_eq!(Expr::BinaryOp(Box::new(Expr::Int(1)),Code::Mul, Box::new(Expr::Int(2))), parse("1 * 2"));
     }
 }
 

@@ -1,9 +1,5 @@
 mod parser;
 
-#[macro_use]
-extern crate lalrpop_util;
-lalrpop_mod!(pub grammar);
-
 use crate::Expr::{Assign, Call};
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -11,6 +7,7 @@ use std::string::ToString;
 use strum_macros::{Display, EnumString};
 use ErrorType::{CannotParse, DivisionByZero, NotANumber, UndefinedSymbol,WrongArgumentsNumber, InconsistentType};
 use Expr::{BinaryOp, Bool, Declare, Error, Float, Id, Int, Null, Str};
+use crate::parser::parse;
 
 #[derive(Debug, Clone, PartialEq, Display)]
 pub enum ErrorType {
@@ -85,6 +82,7 @@ pub enum Code {
     Defined(String)
 }
 
+
 impl Code {
     fn new(str: &str) -> Code {
         let camel = format!("{}{}", (&str[..1].to_string()).to_uppercase(), &str[1..]);
@@ -144,12 +142,8 @@ pub const FALSE: Expr = Bool(false);
 pub const NULL: Expr = Null;
 
 impl Expr {
-    //noinspection ALL
     pub fn read(str: &str, _ctx: &Context) -> Expr {
-        match grammar::StatementParser::new().parse(str) {
-            Ok(expr) => *expr,
-            Err(e) => Error(CannotParse(e.to_string())),
-        }
+        parse(str)
     }
     pub fn get_type(&self) -> Type {
         match self {
