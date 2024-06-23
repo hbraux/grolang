@@ -161,7 +161,7 @@ pub const NULL: Expr = Null;
 
 impl Expr {
     //noinspection ALL
-    pub fn from_str(str: &str) -> Expr {
+    pub fn read(str: &str, _ctx: &Context) -> Expr {
         match grammar::StatementParser::new().parse(str) {
             Ok(expr) => *expr,
             Err(e) => Error(CannotParse(e.to_string())),
@@ -293,8 +293,11 @@ impl Context {
     pub fn set(&mut self, name: &str, expr: Expr) {
         self.values.insert(name.to_string(), expr);
     }
+    pub fn read(&mut self, str: &str) -> Expr {
+        Expr::read(str, self)
+    }
     pub fn eval(&mut self, str: &str) -> String {
-        Expr::from_str(str).eval(self).print()
+        self.read(str).eval(self).print()
     }
 }
 
