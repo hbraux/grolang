@@ -2,35 +2,36 @@
 
 Special = { "true" | "false" | "null" }
 
-Int = {   ("+" | "-")? ~ ASCII_DIGIT+  ~ ( "_" ~ ASCII_DIGIT+)* }
-Float = { ("+" | "-")? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT* ~ (^"e" ~ ("+" | "-")? ~ ASCII_DIGIT+)? }
+Int = @{  "-"? ~ ASCII_DIGIT+  ~ ( "_" ~ ASCII_DIGIT+)* }
+Float = @{ "-"? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT* ~ (^"e" ~ "-"? ~ ASCII_DIGIT+)? }
 
 String = { "\"" ~ stringChar*  ~  "\"" }
 stringChar = _{ !"\""  ~ ANY }
 
-Id = { ASCII_ALPHA ~ ASCII_ALPHANUMERIC* }
-Symbol = { "'" ~ Id }
+Id = @{ ASCII_ALPHA ~ ASCII_ALPHANUMERIC* }
+Symbol = @{ "'" ~ Id }
 Literal = _{ Special | Float | Int | Symbol | Id | String }
 
-TypeSpec = { ":" ~ Id ~ ( "<" ~ Id ~( "," ~ Id )? ~ ">")? }
+TypeSpec = @{ ":" ~ WHITESPACE* ~ Id ~ ( "<" ~ Id ~( "," ~ Id )? ~ ">")? }
 
 BinaryOp = _{ Add | Sub | Mul | Div | Mod }
-Add = { "+" }
-Sub = { "-" }
-Mul = { "*" }
-Div = { "/" }
-Mod = { "/" }
+    Add = { "+" }
+    Sub = { "-" }
+    Mul = { "*" }
+    Div = { "/" }
+    Mod = { "%" }
 
-Expr = _{ BinaryExpr | CallExpr | Term }
+Expr = { BinaryExpr | CallExpr | Term }
 BinaryExpr = _{ Term ~ ( BinaryOp ~ Term ) + }
-CallExpr = { Term ~ "." ~ "(" ~ Expr? ~ ( "," ~ Expr )* ~ ")" }
-
-Term = _{ Literal | "(" ~ Expr ~ ")" }
+CallExpr = { ".(" ~ Expr? ~ ( "," ~ Expr )* ~ ")" }
+Term = _{ Literal |  "(" ~ Expr ~ ")" }
 
 Declaration = { "var" ~ Id ~ TypeSpec? ~ "=" ~ Expr }
 Assignment = { Id ~ "=" ~ Expr }
 
 Statement = _{ Declaration | Assignment | Expr }
 
+
+equation = _{ SOI ~ Expr ~ EOI }
 WHITESPACE = _{ " " }
 
