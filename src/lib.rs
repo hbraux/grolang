@@ -350,5 +350,6 @@ mod tests {
         assert_eq!("true", ctx.exec("a == 1"));
         assert_eq!("true", ctx.exec("1 == a"));
         assert_eq!("false", ctx.exec("a == b"));
+        assert_eq!("true", ctx.exec("a != b"));
     }
 }

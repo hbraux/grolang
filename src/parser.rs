@@ -20,13 +20,13 @@ lazy_static! {
 
 pub fn parse(str: &str) -> Expr {
     match GroParser::parse(Rule::Statement, str) {
-        Ok(pairs) => parse_rules(pairs),
+        Ok(pairs) => parse_expr(pairs),
         Err(e)    => Expr::Error(ErrorType::CannotParse(e.to_string()))
     }
 }
 
-fn parse_rules(pairs: Pairs<Rule>) -> Expr {
-    PARSER.map_primary(|p| parse_primary(p)).map_infix(|l, o, r| parse_infix(l, o.as_rule(), r)).parse(pairs)
+fn parse_expr(pairs: Pairs<Rule>) -> Expr {
+    PARSER.map_primary(|p| parse_primary(p)).map_infix(|l, o, r| infix(l, o.as_rule(), r)).parse(pairs)
 }
 
 fn parse_primary(pair: Pair<Rule>) -> Expr {
@@ -35,14 +35,21 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
         Rule::Float => Expr::Float(pair.as_str().parse::<f64>().unwrap()),
         Rule::Special => to_literal(pair.as_str()),
         Rule::String => Expr::Str(unquote(pair.as_str())),
-        Rule::Expr =>  parse_rules(pair.into_inner()),
+        Rule::Expr =>  parse_expr(pair.into_inner()),
+        Rule::Declaration => declare(pair.into_inner()),
         _ => unreachable!()
     }
 }
 
-fn parse_infix(left: Expr, rule: Rule, right: Expr)  -> Expr {
+fn infix(left: Expr, rule: Rule, right: Expr)  -> Expr {
     // TODO: there should be a better way to get rule Name
     Expr::BinaryOp(Box::new(left), Code::new(format!("{:?}", rule).as_str()), Box::new(right))
+}
+
+fn declare(mut pairs: Pairs<Rule>) -> Expr {
+    let id = pairs.next().unwrap().as_str();
+    let expr = parse_expr(pairs.next().unwrap().into_inner());
+    Expr::Declare(id.to_string(), None, Box::new(expr))
 }
 
 fn unquote(str: &str) -> String {
@@ -59,10 +66,15 @@ fn to_literal(str: &str) -> Expr {
 }
 
 
+
+
 #[cfg(test)]
 mod tests {
     use crate::Expr;
     use super::*;
+    fn parse_fmt(str: &str) -> String {
+        format!("{:?}", parse(str)).replace("\"","'")
+    }
 
     #[test]
     fn test_parse() {
@@ -80,10 +92,16 @@ mod tests {
     }
 
     #[test]
+    fn test_declarations() {
+        assert_eq!("Declare('a', None, Int(1))", parse_fmt("var a = 1"));
+
+    }
+
+    #[test]
     fn test_arithmetic_order() {
-        assert_eq!("BinaryOp(Int(1), Mul, Int(2))", format!("{:?}", parse("1 * 2")));
-        assert_eq!("BinaryOp(Int(1), Add, BinaryOp(Int(2), Mul, Int(3)))", format!("{:?}", parse("1 + 2 * 3")));
-        assert_eq!("BinaryOp(Int(1), Mul, BinaryOp(Int(-2), Add, Int(3)))", format!("{:?}", parse("1 * (-2 + 3)")));
+        assert_eq!("BinaryOp(Int(1), Mul, Int(2))", parse_fmt("1 * 2"));
+        assert_eq!("BinaryOp(Int(1), Add, BinaryOp(Int(2), Mul, Int(3)))", parse_fmt("1 + 2 * 3"));
+        assert_eq!("BinaryOp(Int(1), Mul, BinaryOp(Int(-2), Add, Int(3)))", parse_fmt("1 * (-2 + 3)"));
     }
 }
 

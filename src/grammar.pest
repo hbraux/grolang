@@ -14,12 +14,14 @@ Literal = _{ Special | Float | Int | Symbol | Id | String }
 
 TypeSpec = @{ ":" ~ WHITESPACE* ~ Id ~ ( "<" ~ Id ~( "," ~ Id )? ~ ">")? }
 
-BinaryOp = _{ Add | Sub | Mul | Div | Mod }
+BinaryOp = _{ Add | Sub | Mul | Div | Mod | Eq | Neq }
     Add = { "+" }
     Sub = { "-" }
     Mul = { "*" }
     Div = { "/" }
     Mod = { "%" }
+    Eq = { "==" }
+    Neq = { "!=" }
 
 Expr = { BinaryExpr | CallExpr | Term }
 BinaryExpr = _{ Term ~ ( BinaryOp ~ Term ) + }
