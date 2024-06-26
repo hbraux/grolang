@@ -48,8 +48,9 @@ fn infix(left: Expr, rule: Rule, right: Expr)  -> Expr {
 
 fn declare(mut pairs: Pairs<Rule>) -> Expr {
     let id = pairs.next().unwrap().as_str();
-    let expr = parse_expr(pairs.next().unwrap().into_inner());
-    Expr::Declare(id.to_string(), None, Box::new(expr))
+    // TODO: typespec
+    let right = pairs.next().unwrap().into_inner();
+    Expr::Declare(id.to_string(), None, Box::new(parse_expr(right)))
 }
 
 fn unquote(str: &str) -> String {
