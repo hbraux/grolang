@@ -23,12 +23,14 @@ Operator = _{ Add | Sub | Mul | Div | Mod | Eq | Neq }
     Eq = { "==" }
     Neq = { "!=" }
 
+
 Expr = { BinaryExpr | CallExpr | Term }
 BinaryExpr = _{ Term ~ ( Operator ~ Term ) + }
 CallExpr = { Id ~ "(" ~ Expr? ~ ( "," ~ Expr )* ~ ")" }
 Term = _{ Literal |  "(" ~ Expr ~ ")" }
 
-Declaration = { ("var" | "val" | "const" ) ~ Id ~ TypeSpec? ~ "=" ~ Expr }
+Header = _{ "var" | "val" | "const" | "fun" }
+Declaration = { Header ~ Id ~ TypeSpec? ~ "=" ~ Expr }
 Assignment = { Id ~ "=" ~ Expr }
 
 Statement = _{ Declaration | Assignment | Expr }

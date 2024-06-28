@@ -5,7 +5,7 @@ use pest::pratt_parser::{Op, PrattParser};
 use pest::pratt_parser::Assoc::Left;
 use pest_derive::Parser;
 
-use crate::{Fun, ErrorType, Expr, FALSE, NULL, TRUE, Type};
+use crate::{Fun, ErrorType, Expr, FALSE, NULL, TRUE, ValueType, DefType};
 use crate::ErrorType::SemanticError;
 
 #[derive(Parser)]
@@ -29,7 +29,7 @@ pub fn parse(str: &str) -> Expr {
 fn parse_expr(pairs: Pairs<Rule>) -> Expr {
     PARSER
         .map_primary(|p| parse_primary(p))
-        .map_infix(|left, op, right| Expr::Call(Box::new(left), Fun::new(rule_name(op.as_rule()).as_str()), vec!(right)))
+        .map_infix(|left, op, right| Expr::Call(Box::new(left), Fun::new(rule_name(op).as_str()), vec!(right)))
         .parse(pairs)
 }
 
@@ -41,11 +41,11 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
         Rule::Special => to_literal(pair.as_str()),
         Rule::String => Expr::Str(unquote(pair.as_str())),
         Rule::Id => Expr::Id(pair.as_str().to_string()),
-        Rule::TypeSpec => Expr::TypeSpec(Type::new(pair.as_str().replace(":", "").trim())),
+        Rule::TypeSpec => Expr::TypeSpec(ValueType::new(pair.as_str().replace(":", "").trim())),
         Rule::Operator => Expr::FunOperator(Fun::new(pair.as_str())),
         Rule::Expr =>  parse_expr(pair.into_inner()),
-        Rule::Declaration => call(Fun::Declare, pair),
-        Rule::Assignment => call(Fun::Assign, pair),
+        Rule::Declaration => call(Fun::Def(DefType::new(pair.as_str().split(" ").next().unwrap())), pair),
+        Rule::Assignment => call(Fun::Set, pair),
         _ => unreachable!("Rule not implemented {}", pair)
     }
 }
@@ -64,9 +64,12 @@ fn unquote(str: &str) -> String {
     (&str[1..str.len() - 1]).to_string()
 }
 
-fn rule_name(rule: Rule) -> String {
+fn rule_name(pair: Pair<Rule>) -> String {
     // TODO: there should be a better way to get rule Name
-    format!("{:?}", rule)
+    let s = format!("{:?}", pair.as_rule()).to_lowercase();
+    println!("DEBUG {}", pair);
+    s
+
 }
 
 fn to_literal(str: &str) -> Expr {
@@ -101,9 +104,9 @@ mod tests {
 
     #[test]
     fn test_expressions() {
-        assert_eq!("Call(Id(\"a\"), Declare, [Int(1)])", parse("var a = 1").format());
-        assert_eq!("Call(Id(\"f\"), Declare, [TypeSpec(Float), Float(1.0)])", parse("var f: Float = 1.0").format());
-        assert_eq!("Call(Id(\"a\"), Assign, [Int(2)])", parse("a = 2").format());
+        assert_eq!("Call(Id(\"a\"), Def(Var), [Int(1)])", parse("var a = 1").format());
+        assert_eq!("Call(Id(\"f\"), Def(Val), [TypeSpec(Float), Float(1.0)])", parse("val f: Float = 1.0").format());
+        assert_eq!("Call(Id(\"a\"), Set, [Int(2)])", parse("a = 2").format());
     }
 
     #[test]
