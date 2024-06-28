@@ -68,7 +68,7 @@ impl Type {
 // *********************************** OpCode ******************************************
 
 #[derive(Debug, Clone, PartialEq, EnumString)]
-pub enum Code {
+pub enum Operator {
     Mul,
     Div,
     Add,
@@ -82,42 +82,43 @@ pub enum Code {
     Le,
     In,
     ToStr,
+    Assign,
     Defined(String)
 }
 
 
-impl Code {
-    fn new(str: &str) -> Code {
+impl Operator {
+    fn new(str: &str) -> Operator {
         let camel = format!("{}{}", (&str[..1].to_string()).to_uppercase(), &str[1..]);
-        match Code::from_str(&camel) {
+        match Operator::from_str(&camel) {
             Ok(code) => code,
-            Err(_x) => Code::Defined(str.to_string())
+            Err(_x) => Operator::Defined(str.to_string())
         }
     }
     fn call_args(&self) -> usize {
         match self {
-            Code::ToStr => 0,
-            Code::Defined(_s) => 99,
+            Operator::ToStr => 0,
+            Operator::Defined(_s) => 99,
             _ => 1
         }
     }
     fn calc_int(&self, a: &i64, b: &i64) -> Expr {
         match self {
-            Code::Add => Int(a + b),
-            Code::Sub => Int(a - b),
-            Code::Mul => Int(a * b),
-            Code::Mod => Int(a % b),
-            Code::Div => if *b != 0 { Int(a / b) } else { Error(DivisionByZero) }
+            Operator::Add => Int(a + b),
+            Operator::Sub => Int(a - b),
+            Operator::Mul => Int(a * b),
+            Operator::Mod => Int(a % b),
+            Operator::Div => if *b != 0 { Int(a / b) } else { Error(DivisionByZero) }
             _ => panic!(),
         }
     }
     fn calc_float(&self, a: &f64, b: &f64) -> Expr {
         match self {
-            Code::Add => Float(a + b),
-            Code::Sub => Float(a - b),
-            Code::Mul => Float(a * b),
-            Code::Mod => Float(a % b),
-            Code::Div => if *b != 0.0 { Float(a / b) } else { Error(DivisionByZero) }
+            Operator::Add => Float(a + b),
+            Operator::Sub => Float(a - b),
+            Operator::Mul => Float(a * b),
+            Operator::Mod => Float(a % b),
+            Operator::Div => if *b != 0.0 { Float(a / b) } else { Error(DivisionByZero) }
             _ => panic!(),
         }
     }
@@ -132,10 +133,12 @@ pub enum Expr {
     Str(String),
     Bool(bool),
     Id(String),
+    OperatorWrapper(Operator),
+    TypeWrapper(Type),
     Declare(String, Option<Type>, Box<Expr>),
     Assign(String, Box<Expr>),
-    BinaryOp(Box<Expr>, Code, Box<Expr>),
-    Call(Box<Expr>, String, Vec<Box<Expr>>),
+    BinaryOp(Box<Expr>, Operator, Box<Expr>),
+    Call(Box<Expr>, Operator, Vec<Expr>),
     Error(ErrorType),
     Null,
 }
@@ -145,9 +148,9 @@ pub const FALSE: Expr = Bool(false);
 pub const NULL: Expr = Null;
 
 impl Expr {
-    pub fn read(str: &str, _ctx: &Context) -> Expr {
-        parse(str)
-    }
+    pub fn read(str: &str, _ctx: &Context) -> Expr { parse(str) }
+    pub fn format(&self) -> String { format!("{:?}", self) }
+
     pub fn get_type(&self) -> Type {
         match self {
             Bool(_) => Type::Bool,
@@ -157,9 +160,33 @@ impl Expr {
             _ => Type::Any,
         }
     }
-    fn is_error(&self) -> bool {
-        matches!(self, Error(_))
+
+
+    pub fn eval(self, ctx: &mut Context) -> Expr {
+        match self {
+            Id(name) => ctx.get(&*name),
+            Assign(name, value) => value.eval(ctx).store(&name, ctx, false),
+            Declare(name, spec, value) => value.eval(ctx).ensure(spec).store(&name, ctx, true),
+            BinaryOp(left, code, right) => left.eval(ctx).binary_op(code, right.eval(ctx)),
+            Call(left, name, args) => left.eval(ctx)
+                .method_call(name, args.into_iter().map(|e| e.eval(ctx)).collect()),
+            _ => self.clone(),
+        }
     }
+    pub fn print(self) -> String {
+        match self {
+            Bool(x) => x.to_string(),
+            Int(x) => x.to_string(),
+            Str(x) => format!("\"{}\"", x),
+            Null => "null".to_string(),
+            Float(x) => {
+                let str = x.to_string();
+                if str.contains('.') { str } else { format!("{}.0", str) }
+            }
+            _ => format!("{:?}", self),
+        }
+    }
+    // private part
     fn store(self, name: &str, ctx: &mut Context, is_new: bool) -> Expr {
         if is_new && ctx.is_defined(&name) {
             Error(ErrorType::AlreadyDefined(name.to_owned()))
@@ -178,44 +205,21 @@ impl Expr {
         }
         self
     }
-    pub fn eval(self, ctx: &mut Context) -> Expr {
-        match self {
-            Id(name) => ctx.get(&*name),
-            Assign(name, value) => value.eval(ctx).store(&name, ctx, false),
-            Declare(name, spec, value) => value.eval(ctx).ensure(spec).store(&name, ctx, true),
-            BinaryOp(left, code, right) => left.eval(ctx).binary_op(code, right.eval(ctx)),
-            Call(left, name, args) => left.eval(ctx)
-                .method_call(&name, args.into_iter().map(|e| e.eval(ctx)).collect()),
-            _ => self.clone(),
-        }
-    }
-    pub fn print(self) -> String {
-        match self {
-            Bool(x) => x.to_string(),
-            Int(x) => x.to_string(),
-            Str(x) => format!("\"{}\"", x),
-            Null => "null".to_string(),
-            Float(x) => {
-                let str = x.to_string();
-                if str.contains('.') { str } else { format!("{}.0", str) }
-            }
-            _ => format!("{:?}", self),
-        }
-    }
-    fn unitary_op(self, code: Code) -> Expr {
+    fn is_error(&self) -> bool { matches!(self, Error(_)) }
+    fn unitary_op(self, code: Operator) -> Expr {
         match code {
-            Code::ToStr => Str(self.print()),
+            Operator::ToStr => Str(self.print()),
             _ => panic!(),
         }
     }
-    fn binary_op(&self, code: Code, right: Expr) -> Expr {
+    fn binary_op(&self, code: Operator, right: Expr) -> Expr {
         match code {
-            Code::Add | Code::Sub | Code::Mul | Code::Div | Code::Mod => self.arithmetic_op(code, &right),
-            Code::Eq | Code::Neq | Code::Ge | Code::Gt | Code::Le | Code::Lt => self.comparison_op(code, &right),
+            Operator::Add | Operator::Sub | Operator::Mul | Operator::Div | Operator::Mod => self.arithmetic_op(code, &right),
+            Operator::Eq | Operator::Neq | Operator::Ge | Operator::Gt | Operator::Le | Operator::Lt => self.comparison_op(code, &right),
             _ => panic!(),
         }
     }
-    fn arithmetic_op(&self, code: Code, right: &Expr) -> Expr {
+    fn arithmetic_op(&self, code: Operator, right: &Expr) -> Expr {
         match (self, right) {
             (Int(a), Int(b))    =>  code.calc_int(a, b),
             (Float(a), Float(b)) => code.calc_float(a, b),
@@ -224,22 +228,21 @@ impl Expr {
             _ =>  Error(NotANumber),
         }
     }
-    fn comparison_op(&self, code: Code, right: &Expr) -> Expr {
+    fn comparison_op(&self, code: Operator, right: &Expr) -> Expr {
         let result = match code {
-            Code::Eq => self.eq(right),
-            Code::Neq => !self.eq(right),
+            Operator::Eq => self.eq(right),
+            Operator::Neq => !self.eq(right),
             _ => panic!("no yet implemented"),
         };
         Bool(result)
     }
-    fn method_call(self, name: &str, args: Vec<Expr>) -> Expr {
-        let code = Code::new(name);
+    fn method_call(self, code: Operator, args: Vec<Expr>) -> Expr {
         if code.call_args() != args.len() {
             Error(WrongArgumentsNumber)
         } else {
             match code {
-                Code::Defined(_x) => todo!(),
-                Code::ToStr => self.unitary_op(code),
+                Operator::Defined(_x) => todo!(),
+                Operator::ToStr => self.unitary_op(code),
                 _ => self.binary_op(code, args[0].clone())
             }
         }
@@ -295,8 +298,8 @@ mod tests {
 
     #[test]
     fn test_codes() {
-        assert_eq!(Code::Eq, Code::new("eq"));
-        assert_eq!(Code::Defined("other".to_string()), Code::new("other"));
+        assert_eq!(Operator::Eq, Operator::new("eq"));
+        assert_eq!(Operator::Defined("other".to_string()), Operator::new("other"));
     }
 
     #[test]

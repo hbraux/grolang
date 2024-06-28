@@ -25,7 +25,7 @@ BinaryOp = _{ Add | Sub | Mul | Div | Mod | Eq | Neq }
 
 Expr = { BinaryExpr | CallExpr | Term }
 BinaryExpr = _{ Term ~ ( BinaryOp ~ Term ) + }
-CallExpr = { ".(" ~ Expr? ~ ( "," ~ Expr )* ~ ")" }
+CallExpr = { Id ~ "(" ~ Expr? ~ ( "," ~ Expr )* ~ ")" }
 Term = _{ Literal |  "(" ~ Expr ~ ")" }
 
 Declaration = { "var" ~ Id ~ TypeSpec? ~ "=" ~ Expr }
