@@ -14,7 +14,7 @@ Literal = _{ Special | Float | Int | Symbol | Id | String }
 
 TypeSpec = @{ ":" ~ WHITESPACE* ~ Id ~ ( "<" ~ Id ~( "," ~ Id )? ~ ">")? }
 
-BinaryOp = _{ Add | Sub | Mul | Div | Mod | Eq | Neq }
+Operator = _{ Add | Sub | Mul | Div | Mod | Eq | Neq }
     Add = { "+" }
     Sub = { "-" }
     Mul = { "*" }
@@ -24,11 +24,11 @@ BinaryOp = _{ Add | Sub | Mul | Div | Mod | Eq | Neq }
     Neq = { "!=" }
 
 Expr = { BinaryExpr | CallExpr | Term }
-BinaryExpr = _{ Term ~ ( BinaryOp ~ Term ) + }
+BinaryExpr = _{ Term ~ ( Operator ~ Term ) + }
 CallExpr = { Id ~ "(" ~ Expr? ~ ( "," ~ Expr )* ~ ")" }
 Term = _{ Literal |  "(" ~ Expr ~ ")" }
 
-Declaration = { "var" ~ Id ~ TypeSpec? ~ "=" ~ Expr }
+Declaration = { ("var" | "val" | "const" ) ~ Id ~ TypeSpec? ~ "=" ~ Expr }
 Assignment = { Id ~ "=" ~ Expr }
 
 Statement = _{ Declaration | Assignment | Expr }

@@ -5,7 +5,8 @@ use pest::pratt_parser::{Op, PrattParser};
 use pest::pratt_parser::Assoc::Left;
 use pest_derive::Parser;
 
-use crate::{Operator, ErrorType, Expr, FALSE, NULL, TRUE, Type};
+use crate::{Fun, ErrorType, Expr, FALSE, NULL, TRUE, Type};
+use crate::ErrorType::SemanticError;
 
 #[derive(Parser)]
 #[grammar = "grammar.pest"]
@@ -21,12 +22,15 @@ lazy_static! {
 pub fn parse(str: &str) -> Expr {
     match GroParser::parse(Rule::Statement, str) {
         Ok(pairs) => parse_expr(pairs),
-        Err(e)    => Expr::Error(ErrorType::CannotParse(e.to_string()))
+        Err(e)    => Expr::Error(ErrorType::SyntaxError(e.to_string()))
     }
 }
 
 fn parse_expr(pairs: Pairs<Rule>) -> Expr {
-    PARSER.map_primary(|p| parse_primary(p)).map_infix(|l, o, r| infix(l, o.as_rule(), r)).parse(pairs)
+    PARSER
+        .map_primary(|p| parse_primary(p))
+        .map_infix(|left, op, right| Expr::Call(Box::new(left), Fun::new(rule_name(op.as_rule()).as_str()), vec!(right)))
+        .parse(pairs)
 }
 
 
@@ -36,29 +40,24 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
         Rule::Float => Expr::Float(pair.as_str().parse::<f64>().unwrap()),
         Rule::Special => to_literal(pair.as_str()),
         Rule::String => Expr::Str(unquote(pair.as_str())),
-        Rule::TypeSpec => Expr::TypeWrapper(Type::new(pair.as_str())),
-        Rule::BinaryOp => Expr::OperatorWrapper(Operator::new(pair.as_str())),
+        Rule::Id => Expr::Id(pair.as_str().to_string()),
+        Rule::TypeSpec => Expr::TypeSpec(Type::new(pair.as_str().replace(":", "").trim())),
+        Rule::Operator => Expr::FunOperator(Fun::new(pair.as_str())),
         Rule::Expr =>  parse_expr(pair.into_inner()),
-        Rule::Declaration => declare(pair.into_inner()),
-        Rule::Assignment => call(Operator::Assign, pair.into_inner()),
-        _ => unreachable!()
+        Rule::Declaration => call(Fun::Declare, pair),
+        Rule::Assignment => call(Fun::Assign, pair),
+        _ => unreachable!("Rule not implemented {}", pair)
     }
 }
 
-fn infix(left: Expr, rule: Rule, right: Expr)  -> Expr {
-    Expr::BinaryOp(Box::new(left), Operator::new(rule_name(rule).as_str()), Box::new(right))
-}
 
-fn declare(mut pairs: Pairs<Rule>) -> Expr {
-    let id = pairs.next().unwrap().as_str();
-    // TODO: typespec
-    let right = pairs.next().unwrap().into_inner();
-    Expr::Declare(id.to_string(), None, Box::new(parse_expr(right)))
-}
-
-fn call(op: Operator, pairs: Pairs<Rule>) -> Expr {
-    let mut args: Vec<Expr> = pairs.into_iter().map(|p| parse_primary(p)).collect();
-    Expr::Call(Box::new(args.remove(0)), op, args)
+fn call(op: Fun, pair: Pair<Rule>) -> Expr {
+    let mut args: Vec<Expr> = pair.into_inner().into_iter().map(|p| parse_primary(p)).collect();
+    if args.len() == 0 {
+        Expr::Error(SemanticError("missing arguments".to_string()))
+    } else {
+        Expr::Call(Box::new(args.remove(0)), op, args)
+    }
 }
 
 fn unquote(str: &str) -> String {
@@ -69,6 +68,7 @@ fn rule_name(rule: Rule) -> String {
     // TODO: there should be a better way to get rule Name
     format!("{:?}", rule)
 }
+
 fn to_literal(str: &str) -> Expr {
     match str {
         "true" => TRUE,
@@ -101,17 +101,16 @@ mod tests {
 
     #[test]
     fn test_expressions() {
-        assert_eq!("Declare(\"a\", None, Int(1))", parse("var a = 1").format());
-       // assert_eq!("Declare(\"f\", None, Float(1.0))", parse("var f: Float = 1.0").format());
-        assert_eq!("Assign(\"a\", Int(2))", parse("a = 2").format());
-
+        assert_eq!("Call(Id(\"a\"), Declare, [Int(1)])", parse("var a = 1").format());
+        assert_eq!("Call(Id(\"f\"), Declare, [TypeSpec(Float), Float(1.0)])", parse("var f: Float = 1.0").format());
+        assert_eq!("Call(Id(\"a\"), Assign, [Int(2)])", parse("a = 2").format());
     }
 
     #[test]
     fn test_arithmetic_order() {
-        assert_eq!("BinaryOp(Int(1), Mul, Int(2))", parse("1 * 2").format());
-        assert_eq!("BinaryOp(Int(1), Add, BinaryOp(Int(2), Mul, Int(3)))", parse("1 + 2 * 3").format());
-        assert_eq!("BinaryOp(Int(1), Mul, BinaryOp(Int(-2), Add, Int(3)))", parse("1 * (-2 + 3)").format());
+        assert_eq!("Call(Int(1), Mul, [Int(2)])", parse("1 * 2").format());
+        assert_eq!("Call(Int(1), Add, [Call(Int(2), Mul, [Int(3)])])", parse("1 + 2 * 3").format());
+        assert_eq!("Call(Int(1), Mul, [Call(Int(-2), Add, [Int(3)])])", parse("1 * (-2 + 3)").format());
     }
 }
 

@@ -16,7 +16,8 @@ mod parser;
 pub enum ErrorType {
     DivisionByZero,
     UndefinedSymbol(String),
-    CannotParse(String),
+    SyntaxError(String),
+    SemanticError(String),
     NotANumber,
     InconsistentType(String),
     AlreadyDefined(String),
@@ -68,7 +69,7 @@ impl Type {
 // *********************************** OpCode ******************************************
 
 #[derive(Debug, Clone, PartialEq, EnumString)]
-pub enum Operator {
+pub enum Fun {
     Mul,
     Div,
     Add,
@@ -82,43 +83,44 @@ pub enum Operator {
     Le,
     In,
     ToStr,
+    Declare,
     Assign,
     Defined(String)
 }
 
 
-impl Operator {
-    fn new(str: &str) -> Operator {
+impl Fun {
+    fn new(str: &str) -> Fun {
         let camel = format!("{}{}", (&str[..1].to_string()).to_uppercase(), &str[1..]);
-        match Operator::from_str(&camel) {
+        match Fun::from_str(&camel) {
             Ok(code) => code,
-            Err(_x) => Operator::Defined(str.to_string())
+            Err(_x) => Fun::Defined(str.to_string())
         }
     }
     fn call_args(&self) -> usize {
         match self {
-            Operator::ToStr => 0,
-            Operator::Defined(_s) => 99,
+            Fun::ToStr => 0,
+            Fun::Defined(_s) => 99,
             _ => 1
         }
     }
     fn calc_int(&self, a: &i64, b: &i64) -> Expr {
         match self {
-            Operator::Add => Int(a + b),
-            Operator::Sub => Int(a - b),
-            Operator::Mul => Int(a * b),
-            Operator::Mod => Int(a % b),
-            Operator::Div => if *b != 0 { Int(a / b) } else { Error(DivisionByZero) }
+            Fun::Add => Int(a + b),
+            Fun::Sub => Int(a - b),
+            Fun::Mul => Int(a * b),
+            Fun::Mod => Int(a % b),
+            Fun::Div => if *b != 0 { Int(a / b) } else { Error(DivisionByZero) }
             _ => panic!(),
         }
     }
     fn calc_float(&self, a: &f64, b: &f64) -> Expr {
         match self {
-            Operator::Add => Float(a + b),
-            Operator::Sub => Float(a - b),
-            Operator::Mul => Float(a * b),
-            Operator::Mod => Float(a % b),
-            Operator::Div => if *b != 0.0 { Float(a / b) } else { Error(DivisionByZero) }
+            Fun::Add => Float(a + b),
+            Fun::Sub => Float(a - b),
+            Fun::Mul => Float(a * b),
+            Fun::Mod => Float(a % b),
+            Fun::Div => if *b != 0.0 { Float(a / b) } else { Error(DivisionByZero) }
             _ => panic!(),
         }
     }
@@ -133,12 +135,12 @@ pub enum Expr {
     Str(String),
     Bool(bool),
     Id(String),
-    OperatorWrapper(Operator),
-    TypeWrapper(Type),
+    FunOperator(Fun),
+    TypeSpec(Type),
     Declare(String, Option<Type>, Box<Expr>),
     Assign(String, Box<Expr>),
-    BinaryOp(Box<Expr>, Operator, Box<Expr>),
-    Call(Box<Expr>, Operator, Vec<Expr>),
+    BinaryOp(Box<Expr>, Fun, Box<Expr>),
+    Call(Box<Expr>, Fun, Vec<Expr>),
     Error(ErrorType),
     Null,
 }
@@ -206,20 +208,20 @@ impl Expr {
         self
     }
     fn is_error(&self) -> bool { matches!(self, Error(_)) }
-    fn unitary_op(self, code: Operator) -> Expr {
+    fn unitary_op(self, code: Fun) -> Expr {
         match code {
-            Operator::ToStr => Str(self.print()),
+            Fun::ToStr => Str(self.print()),
             _ => panic!(),
         }
     }
-    fn binary_op(&self, code: Operator, right: Expr) -> Expr {
+    fn binary_op(&self, code: Fun, right: Expr) -> Expr {
         match code {
-            Operator::Add | Operator::Sub | Operator::Mul | Operator::Div | Operator::Mod => self.arithmetic_op(code, &right),
-            Operator::Eq | Operator::Neq | Operator::Ge | Operator::Gt | Operator::Le | Operator::Lt => self.comparison_op(code, &right),
+            Fun::Add | Fun::Sub | Fun::Mul | Fun::Div | Fun::Mod => self.arithmetic_op(code, &right),
+            Fun::Eq | Fun::Neq | Fun::Ge | Fun::Gt | Fun::Le | Fun::Lt => self.comparison_op(code, &right),
             _ => panic!(),
         }
     }
-    fn arithmetic_op(&self, code: Operator, right: &Expr) -> Expr {
+    fn arithmetic_op(&self, code: Fun, right: &Expr) -> Expr {
         match (self, right) {
             (Int(a), Int(b))    =>  code.calc_int(a, b),
             (Float(a), Float(b)) => code.calc_float(a, b),
@@ -228,21 +230,21 @@ impl Expr {
             _ =>  Error(NotANumber),
         }
     }
-    fn comparison_op(&self, code: Operator, right: &Expr) -> Expr {
+    fn comparison_op(&self, code: Fun, right: &Expr) -> Expr {
         let result = match code {
-            Operator::Eq => self.eq(right),
-            Operator::Neq => !self.eq(right),
+            Fun::Eq => self.eq(right),
+            Fun::Neq => !self.eq(right),
             _ => panic!("no yet implemented"),
         };
         Bool(result)
     }
-    fn method_call(self, code: Operator, args: Vec<Expr>) -> Expr {
+    fn method_call(self, code: Fun, args: Vec<Expr>) -> Expr {
         if code.call_args() != args.len() {
             Error(WrongArgumentsNumber)
         } else {
             match code {
-                Operator::Defined(_x) => todo!(),
-                Operator::ToStr => self.unitary_op(code),
+                Fun::Defined(_x) => todo!(),
+                Fun::ToStr => self.unitary_op(code),
                 _ => self.binary_op(code, args[0].clone())
             }
         }
@@ -298,8 +300,8 @@ mod tests {
 
     #[test]
     fn test_codes() {
-        assert_eq!(Operator::Eq, Operator::new("eq"));
-        assert_eq!(Operator::Defined("other".to_string()), Operator::new("other"));
+        assert_eq!(Fun::Eq, Fun::new("eq"));
+        assert_eq!(Fun::Defined("other".to_string()), Fun::new("other"));
     }
 
     #[test]
