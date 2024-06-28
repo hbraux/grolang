@@ -5,7 +5,7 @@ use std::string::ToString;
 use strum_macros::{Display, EnumString};
 
 use ErrorType::{DivisionByZero, InconsistentType, NotANumber, UndefinedSymbol, WrongArgumentsNumber};
-use Expr::{BinaryOp, Bool, Error, Float, Id, Int, Null, Str};
+use Expr::{Bool, Error, Float, Id, Int, Null, Str};
 
 use crate::Expr::{Call};
 use crate::parser::parse;
@@ -66,7 +66,8 @@ impl ValueType {
     }
 }
 
-// *********************************** Functions ******************************************
+// ********************************* Built-in Functions ******************************************
+
 #[derive(Debug, Clone, PartialEq, Default, EnumString)]
 #[strum(serialize_all = "lowercase")]
 pub enum DefType {
@@ -99,7 +100,7 @@ pub enum Fun {
     ToStr,
     Def(DefType),
     Set,
-    Custom(String)
+    Defined(String)
 }
 
 
@@ -107,13 +108,13 @@ impl Fun {
     fn new(str: &str) -> Fun {
         match Fun::from_str(&str) {
             Ok(x) => x,
-            Err(_x) => Fun::Custom(str.to_string())
+            Err(_x) => Fun::Defined(str.to_string())
         }
     }
     fn call_args(&self) -> usize {
         match self {
             Fun::ToStr => 0,
-            Fun::Custom(_s) => 99,
+            Fun::Defined(_s) => 99,
             _ => 1
         }
     }
@@ -150,7 +151,6 @@ pub enum Expr {
     Id(String),
     FunOperator(Fun),
     TypeSpec(ValueType),
-    BinaryOp(Box<Expr>, Fun, Box<Expr>),
     Call(Box<Expr>, Fun, Vec<Expr>),
     Error(ErrorType),
     Null,
@@ -178,9 +178,7 @@ impl Expr {
     pub fn eval(self, ctx: &mut Context) -> Expr {
         match self {
             Id(name) => ctx.get(&*name),
-            BinaryOp(left, code, right) => left.eval(ctx).binary_op(code, right.eval(ctx)),
-            Call(left, name, args) => left.eval(ctx)
-                .method_call(name, args.into_iter().map(|e| e.eval(ctx)).collect()),
+            Call(left, fun, args) => left.eval(ctx).call(fun, args.into_iter().map(|e| e.eval(ctx)).collect(), ctx),
             _ => self.clone(),
         }
     }
@@ -198,13 +196,13 @@ impl Expr {
         }
     }
     // private part
-    fn store(self, name: &str, ctx: &mut Context, is_new: bool) -> Expr {
+    fn store(self, ctx: &mut Context, name: String,  def_type: DefType, is_new: bool) -> Expr {
         if is_new && ctx.is_defined(&name) {
             Error(ErrorType::AlreadyDefined(name.to_owned()))
-        } else if !is_new && ctx.get_type(name) != self.get_type() {
+        } else if !is_new && ctx.get_type(&name) != self.get_type() {
             Error(InconsistentType(self.get_type().to_string()))
         } else {
-            ctx.set(name, self.clone());
+            ctx.set(&name, self.clone());
             self
         }
     }
@@ -223,19 +221,13 @@ impl Expr {
             _ => panic!(),
         }
     }
-    fn binary_op(&self, code: Fun, right: Expr) -> Expr {
-        match code {
-            Fun::Add | Fun::Sub | Fun::Mul | Fun::Div | Fun::Mod => self.arithmetic_op(code, &right),
-            Fun::Eq | Fun::Neq | Fun::Ge | Fun::Gt | Fun::Le | Fun::Lt => self.comparison_op(code, &right),
-            _ => panic!(),
-        }
-    }
-    fn arithmetic_op(&self, code: Fun, right: &Expr) -> Expr {
+
+    fn arithmetic_op(&self, fun: Fun, right: &Expr) -> Expr {
         match (self, right) {
-            (Int(a), Int(b))    =>  code.calc_int(a, b),
-            (Float(a), Float(b)) => code.calc_float(a, b),
-            (Int(a), Float(b))  => code.calc_float(&(*a as f64), b),
-            (Float(a), Int(b))  => code.calc_float(a, &(*b as f64)),
+            (Int(a), Int(b))    =>  fun.calc_int(a, b),
+            (Float(a), Float(b)) => fun.calc_float(a, b),
+            (Int(a), Float(b))  => fun.calc_float(&(*a as f64), b),
+            (Float(a), Int(b))  => fun.calc_float(a, &(*b as f64)),
             _ =>  Error(NotANumber),
         }
     }
@@ -247,14 +239,18 @@ impl Expr {
         };
         Bool(result)
     }
-    fn method_call(self, code: Fun, args: Vec<Expr>) -> Expr {
-        if code.call_args() != args.len() {
+
+    fn call(self, fun: Fun, args: Vec<Expr>,  ctx: &mut Context) -> Expr {
+        if fun.call_args() != args.len() {
             Error(WrongArgumentsNumber)
         } else {
-            match code {
-                Fun::Custom(_x) => todo!(),
-                Fun::ToStr => self.unitary_op(code),
-                _ => self.binary_op(code, args[0].clone())
+            match fun {
+                Fun::Defined(_x) => todo!(),
+                Fun::ToStr => self.unitary_op(fun),
+                Fun::Add | Fun::Sub | Fun::Mul | Fun::Div | Fun::Mod => self.arithmetic_op(fun, &args[0]),
+                Fun::Eq | Fun::Neq | Fun::Ge | Fun::Gt | Fun::Le | Fun::Lt => self.comparison_op(fun, &args[0]),
+                Fun::Def(def_type) => args[0].clone().store(ctx, self.print(), def_type, true),
+                _ => panic!(),
             }
         }
     }
@@ -315,7 +311,7 @@ mod tests {
     #[test]
     fn test_fun() {
         assert_eq!(Fun::Eq, Fun::new("eq"));
-        assert_eq!(Fun::Custom("other".to_string()), Fun::new("other"));
+        assert_eq!(Fun::Defined("other".to_string()), Fun::new("other"));
     }
 
     #[test]
