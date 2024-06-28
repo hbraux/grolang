@@ -64,13 +64,7 @@ fn unquote(str: &str) -> String {
     (&str[1..str.len() - 1]).to_string()
 }
 
-fn rule_name(pair: Pair<Rule>) -> String {
-    // TODO: there should be a better way to get rule Name
-    let s = format!("{:?}", pair.as_rule()).to_lowercase();
-    println!("DEBUG {}", pair);
-    s
-
-}
+fn rule_name(pair: Pair<Rule>) -> String { format!("{:?}", pair.as_rule()).to_lowercase() }
 
 fn to_literal(str: &str) -> Expr {
     match str {
