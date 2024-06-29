@@ -54,10 +54,9 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
 fn call(operator: String, pair: Pair<Rule>) -> Expr {
     let mut args: Vec<Expr> = pair.into_inner().into_iter().map(|p| parse_primary(p)).collect();
     if args.len() == 0 {
-        Expr::Error(SemanticError("missing arguments".to_string()))
-    } else {
-        Expr::Call(Box::new(args.remove(0)), Box::new(Expr::Id(operator.to_string())), args)
+        panic!("Too few arguments")
     }
+    Expr::Call(Box::new(args.remove(0)), Box::new(Expr::Id(operator.to_string())), args)
 }
 
 fn unquote(str: &str) -> String {

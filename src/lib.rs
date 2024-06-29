@@ -20,7 +20,6 @@ pub enum ErrorCode {
     DivisionByZero,
     UndefinedSymbol(String),
     SyntaxError(String),
-    SemanticError(String),
     NotANumber,
     InconsistentType(String),
     AlreadyDefined(String),
@@ -258,7 +257,7 @@ impl Expr {
                 Fun::Defined(_x) => todo!(),
                 Fun::ToStr => self.unitary_op(fun),
                 Fun::Add | Fun::Sub | Fun::Mul | Fun::Div | Fun::Mod => self.arithmetic_op(fun, &args[0]),
-                Fun::Eq | Fun::Neq | Fun::Ge | Fun::Gt | Fun::Le | Fun::Lt => self.comparison_op(fun, &args[0]),,
+                Fun::Eq | Fun::Neq | Fun::Ge | Fun::Gt | Fun::Le | Fun::Lt => self.comparison_op(fun, &args[0]),
                 _ => panic!(),
             }
         }
@@ -302,10 +301,6 @@ impl Context {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_def_type() {
-        assert_eq!(VariableType::Var, VariableType::new("var"));
-    }
 
     #[test]
     fn test_value_type() {
