@@ -5,8 +5,8 @@ use pest::pratt_parser::{Op, PrattParser};
 use pest::pratt_parser::Assoc::Left;
 use pest_derive::Parser;
 
-use crate::{Fun, ErrorType, Expr, FALSE, NULL, TRUE, ValueType, DefType};
-use crate::ErrorType::SemanticError;
+use crate::{ErrorCode, Expr, FALSE, NULL, TRUE};
+use crate::ErrorCode::SemanticError;
 
 #[derive(Parser)]
 #[grammar = "grammar.pest"]
@@ -22,14 +22,14 @@ lazy_static! {
 pub fn parse(str: &str) -> Expr {
     match GroParser::parse(Rule::Statement, str) {
         Ok(pairs) => parse_expr(pairs),
-        Err(e)    => Expr::Error(ErrorType::SyntaxError(e.to_string()))
+        Err(e)    => Expr::Error(ErrorCode::SyntaxError(e.to_string()))
     }
 }
 
 fn parse_expr(pairs: Pairs<Rule>) -> Expr {
     PARSER
         .map_primary(|p| parse_primary(p))
-        .map_infix(|left, op, right| Expr::Call(Box::new(left), Fun::new(rule_name(op).as_str()), vec!(right)))
+        .map_infix(|left, op, right| Expr::Call(Box::new(left), Box::new(operator_to_id(op)), vec!(right)))
         .parse(pairs)
 }
 
@@ -41,22 +41,22 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
         Rule::Special => to_literal(pair.as_str()),
         Rule::String => Expr::Str(unquote(pair.as_str())),
         Rule::Id => Expr::Id(pair.as_str().to_string()),
-        Rule::TypeSpec => Expr::TypeSpec(ValueType::new(pair.as_str().replace(":", "").trim())),
-        Rule::Operator => Expr::FunOperator(Fun::new(pair.as_str())),
+        Rule::TypeSpec => Expr::TypeSpec(pair.as_str().replace(":", "").trim().to_string()),
+        Rule::Operator => Expr::Id(pair.as_str().to_string()),
         Rule::Expr =>  parse_expr(pair.into_inner()),
-        Rule::Declaration => call(Fun::Def(DefType::new(pair.as_str().split(" ").next().unwrap())), pair),
-        Rule::Assignment => call(Fun::Set, pair),
+        Rule::Declaration => call("def".to_owned() + pair.as_str().split(" ").next().unwrap(), pair),
+        Rule::Assignment => call("set".to_owned(), pair),
         _ => unreachable!("Rule not implemented {}", pair)
     }
 }
 
 
-fn call(op: Fun, pair: Pair<Rule>) -> Expr {
+fn call(operator: String, pair: Pair<Rule>) -> Expr {
     let mut args: Vec<Expr> = pair.into_inner().into_iter().map(|p| parse_primary(p)).collect();
     if args.len() == 0 {
         Expr::Error(SemanticError("missing arguments".to_string()))
     } else {
-        Expr::Call(Box::new(args.remove(0)), op, args)
+        Expr::Call(Box::new(args.remove(0)), Box::new(Expr::Id(operator.to_string())), args)
     }
 }
 
@@ -64,7 +64,9 @@ fn unquote(str: &str) -> String {
     (&str[1..str.len() - 1]).to_string()
 }
 
-fn rule_name(pair: Pair<Rule>) -> String { format!("{:?}", pair.as_rule()).to_lowercase() }
+fn operator_to_id(pair: Pair<Rule>) -> Expr {
+    Expr::Id(format!("{:?}", pair.as_rule()).to_lowercase())
+}
 
 fn to_literal(str: &str) -> Expr {
     match str {
@@ -79,6 +81,7 @@ fn to_literal(str: &str) -> Expr {
 #[cfg(test)]
 mod tests {
     use crate::Expr;
+
     use super::*;
 
     #[test]

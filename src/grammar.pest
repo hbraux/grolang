@@ -29,8 +29,8 @@ BinaryExpr = _{ Term ~ ( Operator ~ Term ) + }
 CallExpr = { Id ~ "(" ~ Expr? ~ ( "," ~ Expr )* ~ ")" }
 Term = _{ Literal |  "(" ~ Expr ~ ")" }
 
-Header = _{ "var" | "val" | "const" | "fun" }
-Declaration = { Header ~ Id ~ TypeSpec? ~ "=" ~ Expr }
+VarType = _{ "var" | "val" | "const" }
+Declaration = { VarType ~ Id ~ TypeSpec? ~ "=" ~ Expr }
 Assignment = { Id ~ "=" ~ Expr }
 
 Statement = _{ Declaration | Assignment | Expr }

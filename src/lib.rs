@@ -4,7 +4,7 @@ use std::string::ToString;
 
 use strum_macros::{Display, EnumString};
 
-use ErrorType::{DivisionByZero, InconsistentType, NotANumber, UndefinedSymbol, WrongArgumentsNumber};
+use ErrorCode::{DivisionByZero, InconsistentType, NotANumber, UndefinedSymbol, WrongArgumentsNumber};
 use Expr::{Bool, Error, Float, Id, Int, Null, Str};
 
 use crate::Expr::{Call};
@@ -13,7 +13,7 @@ use crate::parser::parse;
 mod parser;
 
 #[derive(Debug, Clone, PartialEq, Display)]
-pub enum ErrorType {
+pub enum ErrorCode {
     DivisionByZero,
     UndefinedSymbol(String),
     SyntaxError(String),
@@ -27,40 +27,40 @@ pub enum ErrorType {
 // *********************************** Type ******************************************
 
 #[derive(Debug, Eq, PartialEq, Clone, Display)]
-pub enum ValueType {
+pub enum Type {
     Any,
     Int,
     Bool,
     Str,
     Float,
     Defined(String),
-    List(Box<ValueType>),
-    Option(Box<ValueType>),
-    Fail(Box<ValueType>),
-    Map(Box<ValueType>, Box<ValueType>),
+    List(Box<Type>),
+    Option(Box<Type>),
+    Fail(Box<Type>),
+    Map(Box<Type>, Box<Type>),
 }
 
-impl ValueType {
-    pub fn new(str: &str) -> ValueType {
+impl Type {
+    pub fn new(str: &str) -> Type {
         if str.ends_with("?") {
-            ValueType::Option(Box::new(ValueType::new(&str[0..str.len() - 1])))
+            Type::Option(Box::new(Type::new(&str[0..str.len() - 1])))
         } else if str.ends_with("!") {
-            ValueType::Fail(Box::new(ValueType::new(&str[0..str.len() - 1])))
+            Type::Fail(Box::new(Type::new(&str[0..str.len() - 1])))
         } else if str.starts_with("List<") {
-            ValueType::List(Box::new(ValueType::new(&str[5..str.len() - 1])))
+            Type::List(Box::new(Type::new(&str[5..str.len() - 1])))
         } else if str.starts_with("List<") {
-            ValueType::List(Box::new(ValueType::new(&str[5..str.len() - 1])))
+            Type::List(Box::new(Type::new(&str[5..str.len() - 1])))
         } else if str.starts_with("Map<") {
             let s: Vec<&str> = (&str[4..str.len() - 1]).split(',').collect();
-            ValueType::Map(Box::new(ValueType::new(s[0])), Box::new(ValueType::new(s[1])))
+            Type::Map(Box::new(Type::new(s[0])), Box::new(Type::new(s[1])))
         } else {
             match str {
-                "Any" => ValueType::Any,
-                "Int" => ValueType::Int,
-                "Bool" => ValueType::Bool,
-                "Str" => ValueType::Str,
-                "Float" => ValueType::Float,
-                _ => ValueType::Defined(str.to_string()),
+                "Any" => Type::Any,
+                "Int" => Type::Int,
+                "Bool" => Type::Bool,
+                "Str" => Type::Str,
+                "Float" => Type::Float,
+                _ => Type::Defined(str.to_string()),
             }
         }
     }
@@ -149,10 +149,10 @@ pub enum Expr {
     Str(String),
     Bool(bool),
     Id(String),
+    TypeSpec(String),
     FunOperator(Fun),
-    TypeSpec(ValueType),
-    Call(Box<Expr>, Fun, Vec<Expr>),
-    Error(ErrorType),
+    Call(Box<Expr>, Box<Expr>, Vec<Expr>),
+    Error(ErrorCode),
     Null,
 }
 
@@ -164,13 +164,13 @@ impl Expr {
     pub fn read(str: &str, _ctx: &Context) -> Expr { parse(str) }
     pub fn format(&self) -> String { format!("{:?}", self) }
 
-    pub fn get_type(&self) -> ValueType {
+    pub fn get_type(&self) -> Type {
         match self {
-            Bool(_) => ValueType::Bool,
-            Int(_) => ValueType::Int,
-            Float(_) => ValueType::Float,
-            Str(_) => ValueType::Str,
-            _ => ValueType::Any,
+            Bool(_) => Type::Bool,
+            Int(_) => Type::Int,
+            Float(_) => Type::Float,
+            Str(_) => Type::Str,
+            _ => Type::Any,
         }
     }
 
@@ -178,7 +178,7 @@ impl Expr {
     pub fn eval(self, ctx: &mut Context) -> Expr {
         match self {
             Id(name) => ctx.get(&*name),
-            Call(left, fun, args) => left.eval(ctx).call(fun, args.into_iter().map(|e| e.eval(ctx)).collect(), ctx),
+            Call(left, _, args) => left.eval(ctx).call(Fun::new("mul"), args.into_iter().map(|e| e.eval(ctx)).collect(), ctx),
             _ => self.clone(),
         }
     }
@@ -198,7 +198,7 @@ impl Expr {
     // private part
     fn store(self, ctx: &mut Context, name: String,  def_type: DefType, is_new: bool) -> Expr {
         if is_new && ctx.is_defined(&name) {
-            Error(ErrorType::AlreadyDefined(name.to_owned()))
+            Error(ErrorCode::AlreadyDefined(name.to_owned()))
         } else if !is_new && ctx.get_type(&name) != self.get_type() {
             Error(InconsistentType(self.get_type().to_string()))
         } else {
@@ -206,7 +206,7 @@ impl Expr {
             self
         }
     }
-    fn ensure(self, spec: Option<ValueType>) -> Expr {
+    fn ensure(self, spec: Option<Type>) -> Expr {
         if let Some(expected) = spec {
             if !self.is_error() && self.get_type() != expected {
                 return Error(InconsistentType(expected.to_string()));
@@ -273,7 +273,7 @@ impl Context {
     pub fn is_defined(&self, name: &str) -> bool {
         self.values.contains_key(name)
     }
-    pub fn get_type(&self, name: &str) -> ValueType {
+    pub fn get_type(&self, name: &str) -> Type {
         self.values.get(name).unwrap().get_type()
     }
     pub fn set(&mut self, name: &str, expr: Expr) {
@@ -300,12 +300,12 @@ mod tests {
 
     #[test]
     fn test_value_type() {
-        assert_eq!(ValueType::Any, ValueType::new("Any"));
-        assert_eq!(ValueType::Int, ValueType::new("Int"));
-        assert_eq!(ValueType::List(Box::new(ValueType::Int)), ValueType::new("List<Int>"));
-        assert_eq!(ValueType::Map(Box::new(ValueType::Int), Box::new(ValueType::Bool)), ValueType::new("Map<Int,Bool>"));
-        assert_eq!(ValueType::Option(Box::new(ValueType::Int)), ValueType::new("Int?"));
-        assert_eq!(ValueType::Fail(Box::new(ValueType::Int)), ValueType::new("Int!"));
+        assert_eq!(Type::Any, Type::new("Any"));
+        assert_eq!(Type::Int, Type::new("Int"));
+        assert_eq!(Type::List(Box::new(Type::Int)), Type::new("List<Int>"));
+        assert_eq!(Type::Map(Box::new(Type::Int), Box::new(Type::Bool)), Type::new("Map<Int,Bool>"));
+        assert_eq!(Type::Option(Box::new(Type::Int)), Type::new("Int?"));
+        assert_eq!(Type::Fail(Box::new(Type::Int)), Type::new("Int!"));
     }
 
     #[test]
