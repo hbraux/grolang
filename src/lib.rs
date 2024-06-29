@@ -8,6 +8,7 @@ use strum_macros::{Display, EnumString};
 
 use ErrorCode::{DivisionByZero, InconsistentType, NotANumber, UndefinedSymbol, WrongArgumentsNumber};
 use Expr::{Bool, Error, Float, Id, Int, Null, Str};
+use crate::ErrorCode::EvalIssue;
 
 use crate::Expr::{Call};
 use crate::parser::parse;
@@ -23,7 +24,8 @@ pub enum ErrorCode {
     NotANumber,
     InconsistentType(String),
     AlreadyDefined(String),
-    WrongArgumentsNumber
+    WrongArgumentsNumber,
+    EvalIssue
 }
 
 // *********************************** Type ******************************************
@@ -70,20 +72,6 @@ impl Type {
 
 // ********************************* Built-in Functions ******************************************
 
-#[derive(Debug, Clone, PartialEq, Default, EnumString)]
-#[strum(serialize_all = "lowercase")]
-pub enum DefType {
-    #[default]
-    Val,
-    Var,
-    Const,
-    Fun
-}
-
-impl DefType {
-    fn new(str: &str) -> DefType { DefType::from_str(&str).unwrap() }
-}
-
 #[derive(Debug, Clone, PartialEq, EnumString)]
 #[strum(serialize_all = "lowercase")]
 pub enum Fun {
@@ -100,8 +88,10 @@ pub enum Fun {
     Le,
     In,
     ToStr,
-    Def(DefType),
     Set,
+    Var,
+    Val,
+    Const,
     Defined(String)
 }
 
@@ -111,6 +101,12 @@ impl Fun {
         match Fun::from_str(&str) {
             Ok(x) => x,
             Err(_x) => Fun::Defined(str.to_string())
+        }
+    }
+    fn is_macro(&self) -> bool {
+        match self {
+            Fun::Var | Fun::Val | Fun::Set => true,
+            _ => false,
         }
     }
     fn call_args(&self) -> usize {
@@ -164,6 +160,7 @@ pub const NULL: Expr = Null;
 
 impl Expr {
     pub fn read(str: &str, _ctx: &Context) -> Expr { parse(str) }
+    // recursive format with debug
     pub fn format(&self) -> String { format!("{:?}", self) }
 
     pub fn get_type(&self) -> Type {
@@ -176,11 +173,19 @@ impl Expr {
         }
     }
 
-
     pub fn eval(self, ctx: &mut Context) -> Expr {
         match self {
             Id(name) => ctx.get(&*name),
-            Call(left, _, args) => left.eval(ctx).call(Fun::new("mul"), args.into_iter().map(|e| e.eval(ctx)).collect(), ctx),
+            Call(left, op, args) => if let Id(name) = op {
+                let fun = Fun::new(&name);
+                if fun.is_macro() {
+                    left.apply(ctx, fun, args)
+                } else {
+                    left.eval(ctx).call(fun, args.into_iter().map(|e| e.eval(ctx)).collect(), ctx)
+                }
+            } else {
+                Error(EvalIssue)
+            }
             _ => self.clone(),
         }
     }
@@ -198,7 +203,7 @@ impl Expr {
         }
     }
     // private part
-    fn store(self, ctx: &mut Context, name: String,  def_type: DefType, is_new: bool) -> Expr {
+    fn store(self, ctx: &mut Context, name: String, is_new: bool) -> Expr {
         if is_new && ctx.is_defined(&name) {
             Error(ErrorCode::AlreadyDefined(name.to_owned()))
         } else if !is_new && ctx.get_type(&name) != self.get_type() {
@@ -241,8 +246,11 @@ impl Expr {
         };
         Bool(result)
     }
+    fn apply(self, mut ctx: Context, fun: Fun, args: Vec<Expr>) -> Expr {
+        todo!()
+    }
 
-    fn call(self, fun: Fun, args: Vec<Expr>,  ctx: &mut Context) -> Expr {
+    fn call(self, fun: Fun, args: Vec<Expr>) -> Expr {
         if fun.call_args() != args.len() {
             Error(WrongArgumentsNumber)
         } else {
@@ -250,8 +258,7 @@ impl Expr {
                 Fun::Defined(_x) => todo!(),
                 Fun::ToStr => self.unitary_op(fun),
                 Fun::Add | Fun::Sub | Fun::Mul | Fun::Div | Fun::Mod => self.arithmetic_op(fun, &args[0]),
-                Fun::Eq | Fun::Neq | Fun::Ge | Fun::Gt | Fun::Le | Fun::Lt => self.comparison_op(fun, &args[0]),
-                Fun::Def(def_type) => args[0].clone().store(ctx, self.print(), def_type, true),
+                Fun::Eq | Fun::Neq | Fun::Ge | Fun::Gt | Fun::Le | Fun::Lt => self.comparison_op(fun, &args[0]),,
                 _ => panic!(),
             }
         }
@@ -297,7 +304,7 @@ mod tests {
 
     #[test]
     fn test_def_type() {
-        assert_eq!(DefType::Var, DefType::new("var"));
+        assert_eq!(VariableType::Var, VariableType::new("var"));
     }
 
     #[test]
