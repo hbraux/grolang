@@ -44,7 +44,7 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
         Rule::TypeSpec => Expr::TypeSpec(pair.as_str().replace(":", "").trim().to_string()),
         Rule::Operator => Expr::Id(pair.as_str().to_string()),
         Rule::Expr =>  parse_expr(pair.into_inner()),
-        Rule::Declaration => call("def".to_owned() + pair.as_str().split(" ").next().unwrap(), pair),
+        Rule::Declaration => call(pair.as_str().split(" ").next().unwrap().to_string(), pair),
         Rule::Assignment => call("set".to_owned(), pair),
         _ => unreachable!("Rule not implemented {}", pair)
     }
@@ -101,16 +101,16 @@ mod tests {
 
     #[test]
     fn test_expressions() {
-        assert_eq!("Call(Id(\"a\"), Def(Var), [Int(1)])", parse("var a = 1").format());
-        assert_eq!("Call(Id(\"f\"), Def(Val), [TypeSpec(Float), Float(1.0)])", parse("val f: Float = 1.0").format());
-        assert_eq!("Call(Id(\"a\"), Set, [Int(2)])", parse("a = 2").format());
+        assert_eq!("Call(Id(\"a\"), Id(\"var\"), [Int(1)])", parse("var a = 1").format());
+        assert_eq!("Call(Id(\"f\"), Id(\"val\"), [TypeSpec(\"Float\"), Float(1.0)])", parse("val f: Float = 1.0").format());
+        assert_eq!("Call(Id(\"a\"), Id(\"set\"), [Int(2)])", parse("a = 2").format());
     }
 
     #[test]
     fn test_arithmetic_order() {
-        assert_eq!("Call(Int(1), Mul, [Int(2)])", parse("1 * 2").format());
-        assert_eq!("Call(Int(1), Add, [Call(Int(2), Mul, [Int(3)])])", parse("1 + 2 * 3").format());
-        assert_eq!("Call(Int(1), Mul, [Call(Int(-2), Add, [Int(3)])])", parse("1 * (-2 + 3)").format());
+        assert_eq!("Call(Int(1), Id(\"mul\"), [Int(2)])", parse("1 * 2").format());
+        assert_eq!("Call(Int(1), Id(\"add\"), [Call(Int(2), Id(\"mul\"), [Int(3)])])", parse("1 + 2 * 3").format());
+        assert_eq!("Call(Int(1), Id(\"mul\"), [Call(Int(-2), Id(\"add\"), [Int(3)])])", parse("1 * (-2 + 3)").format());
     }
 }
 

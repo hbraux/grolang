@@ -1,3 +1,5 @@
+
+
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::string::ToString;
@@ -142,7 +144,7 @@ impl Fun {
 
 // *********************************** Expr ******************************************
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Display)]
 pub enum Expr {
     Int(i64),
     Float(f64),
