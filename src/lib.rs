@@ -10,7 +10,7 @@ use ErrorCode::{DivisionByZero, InconsistentType, NotANumber, UndefinedSymbol, W
 use Expr::{Bool, Error, Float, Id, Int, Null, Str};
 use crate::ErrorCode::EvalIssue;
 
-use crate::Expr::{Call};
+use crate::Expr::{Call, Symbol};
 use crate::parser::parse;
 
 mod parser;
@@ -102,12 +102,6 @@ impl Fun {
             Err(_x) => Fun::Defined(str.to_string())
         }
     }
-    fn is_macro(&self) -> bool {
-        match self {
-            Fun::Var | Fun::Val | Fun::Set => true,
-            _ => false,
-        }
-    }
     fn call_args(&self) -> usize {
         match self {
             Fun::ToStr => 0,
@@ -146,6 +140,7 @@ pub enum Expr {
     Str(String),
     Bool(bool),
     Id(String),
+    Symbol(String),
     TypeSpec(String),
     FunOperator(Fun),
     Call(Box<Expr>, Box<Expr>, Vec<Expr>),
@@ -174,18 +169,15 @@ impl Expr {
 
     pub fn eval(self, ctx: &mut Context) -> Expr {
         match self {
+            Symbol(name) => Id(name),
             Id(name) => ctx.get(&*name),
-            Call(left, op, args) => if let Id(name) = op {
-                let fun = Fun::new(&name);
-                if fun.is_macro() {
-                    left.apply(ctx, fun, args)
-                } else {
-                    left.eval(ctx).call(fun, args.into_iter().map(|e| e.eval(ctx)).collect(), ctx)
-                }
+            Int(_) | Float(_) | Str(_) | Bool(_) => self.clone(),
+            Call(left, op, args) => if let Id(name) = *op {
+                left.eval(ctx).call(ctx, Fun::new(&name), args.into_iter().map(|e| e.eval(ctx)).collect())
             } else {
                 Error(EvalIssue)
             }
-            _ => self.clone(),
+            _ => panic!()
         }
     }
     pub fn print(self) -> String {
@@ -245,11 +237,7 @@ impl Expr {
         };
         Bool(result)
     }
-    fn apply(self, mut ctx: Context, fun: Fun, args: Vec<Expr>) -> Expr {
-        todo!()
-    }
-
-    fn call(self, fun: Fun, args: Vec<Expr>) -> Expr {
+    fn call(self, ctx: &mut Context, fun: Fun, args: Vec<Expr>) -> Expr {
         if fun.call_args() != args.len() {
             Error(WrongArgumentsNumber)
         } else {

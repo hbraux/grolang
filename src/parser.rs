@@ -6,7 +6,6 @@ use pest::pratt_parser::Assoc::Left;
 use pest_derive::Parser;
 
 use crate::{ErrorCode, Expr, FALSE, NULL, TRUE};
-use crate::ErrorCode::SemanticError;
 
 #[derive(Parser)]
 #[grammar = "grammar.pest"]
@@ -44,19 +43,24 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
         Rule::TypeSpec => Expr::TypeSpec(pair.as_str().replace(":", "").trim().to_string()),
         Rule::Operator => Expr::Id(pair.as_str().to_string()),
         Rule::Expr =>  parse_expr(pair.into_inner()),
-        Rule::Declaration => call(pair.as_str().split(" ").next().unwrap().to_string(), pair),
-        Rule::Assignment => call("set".to_owned(), pair),
+        Rule::Declaration => call(pair.as_str().split(" ").next().unwrap().to_string(), pair, true),
+        Rule::Assignment => call("set".to_owned(), pair, true),
         _ => unreachable!("Rule not implemented {}", pair)
     }
 }
 
 
-fn call(operator: String, pair: Pair<Rule>) -> Expr {
+fn call(operator: String, pair: Pair<Rule>, is_macro: bool) -> Expr {
     let mut args: Vec<Expr> = pair.into_inner().into_iter().map(|p| parse_primary(p)).collect();
     if args.len() == 0 {
         panic!("Too few arguments")
     }
-    Expr::Call(Box::new(args.remove(0)), Box::new(Expr::Id(operator.to_string())), args)
+    let mut left = args.remove(0);
+    if is_macro {
+        if let Expr::Id(x) = left {
+            left = Expr::Symbol(x);
+        } }
+    Expr::Call(Box::new(left), Box::new(Expr::Id(operator.to_string())), args)
 }
 
 fn unquote(str: &str) -> String {
