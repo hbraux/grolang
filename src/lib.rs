@@ -173,7 +173,7 @@ impl Expr {
             Id(name) => ctx.get(&*name),
             Int(_) | Float(_) | Str(_) | Bool(_) => self.clone(),
             Call(left, op, args) => if let Id(name) = *op {
-                left.eval(ctx).call(ctx, Fun::new(&name), args.into_iter().map(|e| e.eval(ctx)).collect())
+                left.eval(ctx).call(Fun::new(&name), args.into_iter().map(|e| e.eval(ctx)).collect(), ctx)
             } else {
                 Error(EvalIssue)
             }
@@ -237,7 +237,7 @@ impl Expr {
         };
         Bool(result)
     }
-    fn call(self, ctx: &mut Context, fun: Fun, args: Vec<Expr>) -> Expr {
+    fn call(self, fun: Fun, args: Vec<Expr>, ctx: &mut Context) -> Expr {
         if fun.call_args() != args.len() {
             Error(WrongArgumentsNumber)
         } else {
