@@ -129,6 +129,7 @@ mod tests {
         assert_eq!("Call(Symbol(\"a\"), Id(\"defvar\"), [Int(1)])", parse("'a.defvar(1)").format());
         assert_eq!("Call(Symbol(\"f\"), Id(\"defval\"), [TypeSpec(\"Float\"), Float(1.0)])", parse("val f: Float = 1.0").format());
         assert_eq!("Call(Symbol(\"a\"), Id(\"set\"), [Int(2)])", parse("a = 2").format());
+        assert_eq!("Call(Symbol(\"a\"), Id(\"set\"), [Int(2)])", parse("'a.set(2)").format());
     }
 
     #[test]
