@@ -10,7 +10,7 @@ use ErrorCode::{DivisionByZero, InconsistentType, NotANumber, UndefinedSymbol, W
 use Expr::{Bool, Error, Float, Id, Int, Null, Str};
 use crate::ErrorCode::EvalIssue;
 
-use crate::Expr::{Call, Symbol};
+use crate::Expr::{AnyCall, Symbol};
 use crate::parser::parse;
 
 mod parser;
@@ -143,7 +143,9 @@ pub enum Expr {
     Symbol(String),
     TypeSpec(String),
     FunOperator(Fun),
-    Call(Box<Expr>, Box<Expr>, Vec<Expr>),
+    UnitaryCall(Box<Expr>, Box<Expr>),
+    BinaryCall(Box<Expr>, Box<Expr>, Box<Expr>),
+    AnyCall(Box<Expr>, Box<Expr>, Vec<Expr>),
     Error(ErrorCode),
     Null,
 }
@@ -172,7 +174,7 @@ impl Expr {
             Symbol(name) => Id(name),
             Id(name) => ctx.get(&*name),
             Int(_) | Float(_) | Str(_) | Bool(_) => self.clone(),
-            Call(left, op, args) => if let Id(name) = *op {
+            AnyCall(left, op, args) => if let Id(name) = *op {
                 left.eval(ctx).call(Fun::new(&name), args.into_iter().map(|e| e.eval(ctx)).collect(), ctx)
             } else {
                 Error(EvalIssue)

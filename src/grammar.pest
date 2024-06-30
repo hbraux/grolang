@@ -3,7 +3,7 @@
 Special = { "true" | "false" | "null" }
 
 Int = @{  "-"? ~ ASCII_DIGIT+  ~ ( "_" ~ ASCII_DIGIT+)* }
-Float = @{ "-"? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT* ~ (^"e" ~ "-"? ~ ASCII_DIGIT+)? }
+Float = @{ "-"? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ ~ (^"e" ~ "-"? ~ ASCII_DIGIT+)? }
 
 String = { "\"" ~ stringChar*  ~  "\"" }
 stringChar = _{ !"\""  ~ ANY }
@@ -23,8 +23,10 @@ Operator = _{ Add | Sub | Mul | Div | Mod | Eq | Neq }
     Eq = { "==" }
     Neq = { "!=" }
 
+Dot = { "." }
 
-Expr = { BinaryExpr | CallExpr | Term }
+Expr = { BinaryExpr | CallExpr | ChainExpr | Term }
+ChainExpr = _{ Term ~ ( Dot ~ CallExpr )+  }
 BinaryExpr = _{ Term ~ ( Operator ~ Term ) + }
 CallExpr = { Id ~ "(" ~ Expr? ~ ( "," ~ Expr )* ~ ")" }
 Term = _{ Literal |  "(" ~ Expr ~ ")" }

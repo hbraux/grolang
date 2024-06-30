@@ -13,7 +13,9 @@ struct GroParser;
 
 lazy_static! {
     static ref PARSER: PrattParser<Rule> = {
-        PrattParser::new().op(Op::infix(Rule::Add, Left) | Op::infix(Rule::Sub, Left))
+        PrattParser::new()
+        .op(Op::infix(Rule::Dot, Left))
+        .op(Op::infix(Rule::Add, Left) | Op::infix(Rule::Sub, Left))
         .op(Op::infix(Rule::Mul, Left) | Op::infix(Rule::Div, Left) | Op::infix(Rule::Mod, Left))
     };
 }
@@ -28,10 +30,22 @@ pub fn parse(str: &str) -> Expr {
 fn parse_expr(pairs: Pairs<Rule>) -> Expr {
     PARSER
         .map_primary(|p| parse_primary(p))
-        .map_infix(|left, op, right| Expr::Call(Box::new(left), Box::new(operator_to_id(op)), vec!(right)))
+        .map_infix(|left, op, right| reduce(left, op, right))
         .parse(pairs)
 }
 
+fn reduce(left: Expr, op: Pair<Rule>, right: Expr) -> Expr {
+    if let Rule::Dot = op.as_rule()  {
+        if let Expr::UnitaryCall(x, y) = right {
+            if y.len() == 1 {
+                return Expr::BinaryCall(Box::new(left), x, Box::new(y.get(0).unwrap().clone()))
+            } else {
+                return Expr::BinaryCall(Box::new(left), x, Box::new(y.get(0).unwrap().clone()))
+            }
+        }
+    }
+    Expr::BinaryCall(Box::new(left), Box::new(Expr::Id(operator_name(op))), Box::new(right))
+}
 
 fn parse_primary(pair: Pair<Rule>) -> Expr {
     match pair.as_rule() {
@@ -43,32 +57,41 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
         Rule::TypeSpec => Expr::TypeSpec(pair.as_str().replace(":", "").trim().to_string()),
         Rule::Operator => Expr::Id(pair.as_str().to_string()),
         Rule::Expr =>  parse_expr(pair.into_inner()),
-        Rule::Declaration => call(pair.as_str().split(" ").next().unwrap().to_string(), pair, true),
-        Rule::Assignment => call("set".to_owned(), pair, true),
+        Rule::Declaration => macro_call("def".to_owned() + pair.as_str().split(" ").next().unwrap(), pair),
+        Rule::Assignment => macro_call("set".to_owned(), pair),
+        Rule::CallExpr => call(pair),
         _ => unreachable!("Rule not implemented {}", pair)
     }
 }
 
-
-fn call(operator: String, pair: Pair<Rule>, is_macro: bool) -> Expr {
+fn macro_call(operator: String, pair: Pair<Rule>) -> Expr {
     let mut args: Vec<Expr> = pair.into_inner().into_iter().map(|p| parse_primary(p)).collect();
-    if args.len() == 0 {
-        panic!("Too few arguments")
-    }
     let mut left = args.remove(0);
-    if is_macro {
-        if let Expr::Id(x) = left {
-            left = Expr::Symbol(x);
-        } }
-    Expr::Call(Box::new(left), Box::new(Expr::Id(operator.to_string())), args)
+    if let Expr::Id(x) = left {
+        Expr::AnyCall(Box::new(Expr::Symbol(x)), Box::new(Expr::Id(operator.to_string())), args)
+    } else {
+        panic!()
+    }
+}
+
+
+fn call(pair: Pair<Rule>) -> Expr {
+    let mut args: Vec<Expr> = pair.into_inner().into_iter().map(|p| parse_primary(p)).collect();
+    let mut left = args.remove(0);
+    if let Expr::Id(_) = left {
+        Expr::UnitaryCall(Box::new(left), args)
+    } else {
+        panic!()
+    }
+
 }
 
 fn unquote(str: &str) -> String {
     (&str[1..str.len() - 1]).to_string()
 }
 
-fn operator_to_id(pair: Pair<Rule>) -> Expr {
-    Expr::Id(format!("{:?}", pair.as_rule()).to_lowercase())
+fn operator_name(pair: Pair<Rule>) -> String {
+    format!("{:?}", pair.as_rule()).to_lowercase()
 }
 
 fn to_literal(str: &str) -> Expr {
@@ -104,16 +127,25 @@ mod tests {
 
     #[test]
     fn test_expressions() {
-        assert_eq!("Call(Id(\"a\"), Id(\"var\"), [Int(1)])", parse("var a = 1").format());
-        assert_eq!("Call(Id(\"f\"), Id(\"val\"), [TypeSpec(\"Float\"), Float(1.0)])", parse("val f: Float = 1.0").format());
-        assert_eq!("Call(Id(\"a\"), Id(\"set\"), [Int(2)])", parse("a = 2").format());
+        assert_eq!("Call(Symbol(\"a\"), Id(\"set\"), [Int(2)])", parse("print()").format());
+        assert_eq!("Call(Symbol(\"a\"), Id(\"set\"), [Int(2)])", parse("print(a)").format());
+        assert_eq!("BinaryCall(Symbol(\"a\"), Id(\"defvar\"), Int(1))", parse("var a = 1").format());
+        assert_eq!("Call(Symbol(\"f\"), Id(\"defval\"), [TypeSpec(\"Float\"), Float(1.0)])", parse("val f: Float = 1.0").format());
+        assert_eq!("Call(Symbol(\"a\"), Id(\"set\"), [Int(2)])", parse("a = 2").format());
     }
 
     #[test]
     fn test_arithmetic_order() {
-        assert_eq!("Call(Int(1), Id(\"mul\"), [Int(2)])", parse("1 * 2").format());
-        assert_eq!("Call(Int(1), Id(\"add\"), [Call(Int(2), Id(\"mul\"), [Int(3)])])", parse("1 + 2 * 3").format());
-        assert_eq!("Call(Int(1), Id(\"mul\"), [Call(Int(-2), Id(\"add\"), [Int(3)])])", parse("1 * (-2 + 3)").format());
+        assert_eq!("BinaryCall(Int(1), Id(\"mul\"), Int(2))", parse("1 * 2").format());
+        assert_eq!("BinaryCall(Int(1), Id(\"add\"), BinaryCall(Int(2), Id(\"mul\"), Int(3)))", parse("1 + 2 * 3").format());
+        assert_eq!("BinaryCall(Int(1), Id(\"mul\"), BinaryCall(Int(-2), Id(\"add\"), Int(3)))", parse("1 * (-2 + 3)").format());
+
+    }
+
+    #[test]
+    fn test_chain_calls() {
+        assert_eq!("BinaryCall(Int(1), Id(\"mul\"), Int(2))", parse("1.mul(2)").format());
+        assert_eq!("BinaryCall(Int(1), Id(\"mul\"), BinaryCall(Int(-2), Id(\"add\"), Int(3)))", parse("1.mul(-2.add(3))").format());
     }
 }
 
