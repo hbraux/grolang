@@ -222,7 +222,7 @@ impl Expr {
             panic!("{} is not an id", self)
         }
     }
-    fn _ensure(self, spec: Option<Type>) -> Expr {
+    fn ensure(self, spec: Option<Type>) -> Expr {
         if let Some(expected) = spec {
             if !self.is_error() && self.get_type() != expected {
                 return Error(InconsistentType(expected.to_string()));
@@ -230,7 +230,7 @@ impl Expr {
         }
         self
     }
-    fn _is_error(&self) -> bool { matches!(self, Error(_)) }
+    fn is_error(&self) -> bool { matches!(self, Error(_)) }
     fn unitary_op(self, code: Fun) -> Expr {
         match code {
             Fun::ToStr => Str(self.print()),
