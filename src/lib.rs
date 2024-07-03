@@ -10,7 +10,7 @@ use ErrorCode::{DivisionByZero, InconsistentType, NotANumber, UndefinedSymbol, W
 use Expr::{Bool, Error, Float, Id, Int, Nil, Str};
 use crate::ErrorCode::EvalIssue;
 
-use crate::Expr::{Call, Symbol};
+use crate::Expr::{Call, Symbol, TypeOf, TypeSpec};
 use crate::parser::parse;
 
 mod parser;
@@ -23,6 +23,7 @@ pub enum ErrorCode {
     NotANumber,
     InconsistentType(String),
     AlreadyDefined(String),
+    NotDefined(String),
     WrongArgumentsNumber(usize,usize),
     EvalIssue
 }
@@ -142,7 +143,7 @@ pub enum Expr {
     Id(String),
     Symbol(String),
     TypeSpec(String),
-    FunOperator(Fun),
+    TypeOf(Type),
     ChainCall(Box<Expr>, Vec<Expr>),
     Call(Box<Expr>, Box<Expr>, Vec<Expr>),
     Error(ErrorCode),
@@ -174,13 +175,14 @@ impl Expr {
             Symbol(name) => Id(name),
             Id(name) => ctx.get(&*name),
             Int(_) | Float(_) | Str(_) | Bool(_) => self.clone(),
+            TypeSpec(s) => TypeOf(Type::new(&s)),
             Call(left, op, args) => if let Id(name) = *op {
                 let fun = Fun::new(&name);
                 left.eval(ctx).call(fun, args.into_iter().map(|e| e.eval(ctx)).collect(), ctx)
             } else {
                 Error(EvalIssue)
             }
-            _ => panic!()
+            _ => panic!("not supported {}", self)
         }
     }
     pub fn print(self) -> String {
@@ -198,15 +200,29 @@ impl Expr {
         }
     }
     // private part
-    fn store(self, ctx: &mut Context, value: &Expr, fun: Fun, is_new: bool) -> Expr {
-        let name = self.to_string();
-        if is_new && ctx.is_defined(&name) {
-            Error(ErrorCode::AlreadyDefined(name.to_owned()))
-        } else if !is_new && ctx.get_type(&name) != self.get_type() {
-            Error(InconsistentType(self.get_type().to_string()))
+    fn store(self, ctx: &mut Context, args: Vec<Expr>, _fun: Fun, is_new: bool) -> Expr {
+        let mut value= &args[0];
+        if let TypeOf(expected) = value {
+            value = &args[1];
+            if value.get_type() != *expected {
+                return  Error(InconsistentType(value.get_type().to_string()))
+            }
+        }
+        // TODO: handle variable type
+        if let Id(name) = self {
+            let is_defined = ctx.is_defined(&name);
+            if is_new && is_defined {
+                Error(ErrorCode::AlreadyDefined(name.to_owned()))
+            } else if !is_new && !is_defined {
+                Error(ErrorCode::NotDefined(name.to_owned()))
+            } else if !is_new && ctx.get_type(&name) != value.get_type() {
+                Error(InconsistentType(value.get_type().to_string()))
+            } else {
+                ctx.set(&name, value.clone());
+                value.clone()
+            }
         } else {
-            ctx.set(&name, self.clone());
-            self
+            panic!()
         }
     }
     fn ensure(self, spec: Option<Type>) -> Expr {
@@ -243,7 +259,7 @@ impl Expr {
         Bool(result)
     }
     fn call(self, fun: Fun, args: Vec<Expr>, ctx: &mut Context) -> Expr {
-        if fun.call_args() != args.len() {
+        if args.len() < fun.call_args() {
             Error(WrongArgumentsNumber(fun.call_args() , args.len()))
         } else {
             match fun {
@@ -251,7 +267,8 @@ impl Expr {
                 Fun::ToStr => self.unitary_op(fun),
                 Fun::Add | Fun::Sub | Fun::Mul | Fun::Div | Fun::Mod => self.arithmetic_op(fun, &args[0]),
                 Fun::Eq | Fun::Neq | Fun::Ge | Fun::Gt | Fun::Le | Fun::Lt => self.comparison_op(fun, &args[0]),
-                Fun::Defvar | Fun::Defval | Fun::Defconst => self.store(ctx, &args[0], fun, true),
+                Fun::Defvar | Fun::Defval | Fun::Defconst => self.store(ctx, args, fun, true),
+                Fun::Set => self.store(ctx, args, fun, false),
                 _ => panic!(),
             }
         }
@@ -330,15 +347,17 @@ mod tests {
     #[test]
     fn test_variables() {
         let mut ctx = Context::new();
+        assert_eq!("Error(NotDefined(\"a\"))", ctx.exec("a = 0"));
         assert_eq!("1", ctx.exec("var a = 1"));
+        assert_eq!("true", ctx.exec("'z.defval(true)"));
         assert_eq!("Error(AlreadyDefined(\"a\"))", ctx.exec("var a = 3"));
         assert_eq!("3", ctx.exec("a = 3"));
+        assert_eq!("0", ctx.exec("'a.set(0)"));
         assert_eq!("Error(InconsistentType(\"Float\"))", ctx.exec("a = 3.0"));
-        assert_eq!("2", ctx.exec("var b: Int = 2"));
-        assert_eq!("3.2", ctx.exec("var c=3.2"));
-        assert_eq!("Error(InconsistentType(\"Int\"))", ctx.exec("var d: Int =3.2"));
-        assert_eq!("3", ctx.exec("a"));
-        assert_eq!("2", ctx.exec("b"));
+        assert_eq!("3.2", ctx.exec("val c=3.2"));
+        assert_eq!("Error(InconsistentType(\"Float\"))", ctx.exec("var d: Int = 3.2"));
+        assert_eq!("0", ctx.exec("a"));
+        assert_eq!("3.2", ctx.exec("c"));
     }
 
     #[test]

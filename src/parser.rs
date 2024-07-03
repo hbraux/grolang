@@ -14,9 +14,11 @@ struct GroParser;
 lazy_static! {
     static ref PARSER: PrattParser<Rule> = {
         PrattParser::new()
-        .op(Op::infix(Rule::Dot, Left))
+        .op(Op::infix(Rule::Eq, Left) | Op::infix(Rule::Neq, Left) | Op::infix(Rule::Ge, Left) | Op::infix(Rule::Gt, Left) | Op::infix(Rule::Le, Left) | Op::infix(Rule::Lt, Left))
         .op(Op::infix(Rule::Add, Left) | Op::infix(Rule::Sub, Left))
         .op(Op::infix(Rule::Mul, Left) | Op::infix(Rule::Div, Left) | Op::infix(Rule::Mod, Left))
+        .op(Op::infix(Rule::Exp, Left))
+        .op(Op::infix(Rule::Dot, Left))
     };
 }
 
@@ -130,6 +132,7 @@ mod tests {
         assert_eq!("Call(Symbol(\"f\"), Id(\"defval\"), [TypeSpec(\"Float\"), Float(1.0)])", parse("val f: Float = 1.0").format());
         assert_eq!("Call(Symbol(\"a\"), Id(\"set\"), [Int(2)])", parse("a = 2").format());
         assert_eq!("Call(Symbol(\"a\"), Id(\"set\"), [Int(2)])", parse("'a.set(2)").format());
+        assert_eq!("Call(Symbol(\"a\"), Id(\"eq\"), [Int(2)])", parse("'a == 2").format());
     }
 
     #[test]
