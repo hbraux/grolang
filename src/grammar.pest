@@ -1,0 +1,48 @@
+// see https://pest.rs/book/examples/calculator.html
+
+Special = { "true" | "false" | "nil" }
+
+Int = @{  "-"? ~ ASCII_DIGIT+  ~ ( "_" ~ ASCII_DIGIT+)* }
+Float = @{ "-"? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ ~ (^"e" ~ "-"? ~ ASCII_DIGIT+)? }
+
+String = { "\"" ~ stringChar*  ~  "\"" }
+stringChar = _{ !"\""  ~ ANY }
+
+Id = @{ ASCII_ALPHA ~ ASCII_ALPHANUMERIC* }
+Symbol = @{ "'" ~ Id }
+Literal = _{ Special | Float | Int | Symbol | Id | String }
+
+TypeSpec = @{ ":" ~ WHITESPACE* ~ Id ~ ( "<" ~ Id ~( "," ~ Id )? ~ ">")? }
+
+Operator = _{ Add | Sub | Mul | Div | Mod | Exp | Eq | Neq | Le | Lt | Ge | Gt}
+    Add = { "+" }
+    Sub = { "-" }
+    Mul = { "*" }
+    Div = { "/" }
+    Mod = { "%" }
+    Exp = { "^" }
+    Eq = { "==" }
+    Neq = { "!=" }
+    Lt = { "<=" }
+    Le = { "<" }
+    Gt = { ">" }
+    Ge = { "=>" }
+
+Dot = { "." }
+
+Expr = { BinaryExpr | CallExpr | ChainExpr | Term }
+ChainExpr = _{ Term ~ ( Dot ~ CallExpr )+  }
+BinaryExpr = _{ Term ~ ( Operator ~ Term ) + }
+CallExpr = { Id ~ "(" ~ Expr? ~ ( "," ~ Expr )* ~ ")" }
+Term = _{ Literal |  "(" ~ Expr ~ ")" }
+
+VarType = _{ "var" | "val" | "const" }
+Declaration = { VarType ~ Id ~ TypeSpec? ~ "=" ~ Expr }
+Assignment = { Id ~ "=" ~ Expr }
+
+Statement = _{ Declaration | Assignment | Expr }
+
+
+equation = _{ SOI ~ Expr ~ EOI }
+WHITESPACE = _{ " " }
+

@@ -1,24 +1,31 @@
-#[macro_use]
-extern crate lalrpop_util;
-lalrpop_mod!(pub grammar);
 
-use crate::Expr::{Assign, Call};
+
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::string::ToString;
+
 use strum_macros::{Display, EnumString};
-use ErrorType::{CannotParse, DivisionByZero, NotANumber, UndefinedSymbol,WrongArgumentsNumber, InconsistentType};
-use Expr::{BinaryOp, Bool, Declare, Error, Float, Id, Int, Null, Str};
+
+use ErrorCode::{DivisionByZero, InconsistentType, NotANumber, UndefinedSymbol, WrongArgumentsNumber};
+use Expr::{Bool, Error, Float, Id, Int, Nil, Str};
+use crate::ErrorCode::EvalIssue;
+
+use crate::Expr::{Call, Symbol, TypeOf, TypeSpec};
+use crate::parser::parse;
+
+mod parser;
 
 #[derive(Debug, Clone, PartialEq, Display)]
-pub enum ErrorType {
+pub enum ErrorCode {
     DivisionByZero,
     UndefinedSymbol(String),
-    CannotParse(String),
+    SyntaxError(String),
     NotANumber,
     InconsistentType(String),
     AlreadyDefined(String),
-    WrongArgumentsNumber
+    NotDefined(String),
+    WrongArgumentsNumber(usize,usize),
+    EvalIssue
 }
 
 // *********************************** Type ******************************************
@@ -57,22 +64,17 @@ impl Type {
                 "Bool" => Type::Bool,
                 "Str" => Type::Str,
                 "Float" => Type::Float,
-                _ => {
-                    if str.chars().all(|x| x.is_alphabetic()) {
-                        Type::Defined(str.to_string())
-                    } else {
-                        panic!("{} is not a valid type name", str)
-                    }
-                }
+                _ => Type::Defined(str.to_string()),
             }
         }
     }
 }
 
-// *********************************** OpCode ******************************************
+// ********************************* Built-in Functions ******************************************
 
 #[derive(Debug, Clone, PartialEq, EnumString)]
-pub enum Code {
+#[strum(serialize_all = "lowercase")]
+pub enum Fun {
     Mul,
     Div,
     Add,
@@ -86,53 +88,45 @@ pub enum Code {
     Le,
     In,
     ToStr,
+    Set,
+    Defvar,
+    Defval,
+    Defconst,
     Defined(String)
 }
 
-impl Code {
-    fn new(str: &str) -> Code {
-        let camel = format!("{}{}", (&str[..1].to_string()).to_uppercase(), &str[1..]);
-        match Code::from_str(&camel) {
-            Ok(code) => code,
-            Err(_x) => Code::Defined(str.to_string())
+
+impl Fun {
+    fn new(str: &str) -> Fun {
+        match Fun::from_str(&str) {
+            Ok(x) => x,
+            Err(_x) => Fun::Defined(str.to_string())
         }
     }
     fn call_args(&self) -> usize {
         match self {
-            Code::ToStr => 0,
-            Code::Defined(_s) => 99,
+            Fun::ToStr => 0,
+            Fun::Defined(_s) => 99,
             _ => 1
         }
     }
     fn calc_int(&self, a: &i64, b: &i64) -> Expr {
         match self {
-            Code::Add => Int(a + b),
-            Code::Sub => Int(a - b),
-            Code::Mul => Int(a * b),
-            Code::Mod => Int(a % b),
-            Code::Div => {
-                if *b != 0 {
-                    Int(a / b)
-                } else {
-                    Error(DivisionByZero)
-                }
-            }
+            Fun::Add => Int(a + b),
+            Fun::Sub => Int(a - b),
+            Fun::Mul => Int(a * b),
+            Fun::Mod => Int(a % b),
+            Fun::Div => if *b != 0 { Int(a / b) } else { Error(DivisionByZero) }
             _ => panic!(),
         }
     }
     fn calc_float(&self, a: &f64, b: &f64) -> Expr {
         match self {
-            Code::Add => Float(a + b),
-            Code::Sub => Float(a - b),
-            Code::Mul => Float(a * b),
-            Code::Mod => Float(a % b),
-            Code::Div => {
-                if *b != 0.0 {
-                    Float(a / b)
-                } else {
-                    Error(DivisionByZero)
-                }
-            }
+            Fun::Add => Float(a + b),
+            Fun::Sub => Float(a - b),
+            Fun::Mul => Float(a * b),
+            Fun::Mod => Float(a % b),
+            Fun::Div => if *b != 0.0 { Float(a / b) } else { Error(DivisionByZero) }
             _ => panic!(),
         }
     }
@@ -140,33 +134,31 @@ impl Code {
 
 // *********************************** Expr ******************************************
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Display)]
 pub enum Expr {
     Int(i64),
     Float(f64),
     Str(String),
     Bool(bool),
     Id(String),
-    Declare(String, Option<Type>, Box<Expr>),
-    Assign(String, Box<Expr>),
-    BinaryOp(Box<Expr>, Code, Box<Expr>),
-    Call(Box<Expr>, String, Vec<Box<Expr>>),
-    Error(ErrorType),
-    Null,
+    Symbol(String),
+    TypeSpec(String),
+    TypeOf(Type),
+    ChainCall(Box<Expr>, Vec<Expr>),
+    Call(Box<Expr>, Box<Expr>, Vec<Expr>),
+    Error(ErrorCode),
+    Nil,
 }
 
 pub const TRUE: Expr = Bool(true);
 pub const FALSE: Expr = Bool(false);
-pub const NULL: Expr = Null;
+pub const NIL: Expr = Nil;
 
 impl Expr {
-    //noinspection ALL
-    pub fn read(str: &str, _ctx: &Context) -> Expr {
-        match grammar::StatementParser::new().parse(str) {
-            Ok(expr) => *expr,
-            Err(e) => Error(CannotParse(e.to_string())),
-        }
-    }
+    pub fn read(str: &str, _ctx: &Context) -> Expr { parse(str) }
+    // recursive format with debug
+    pub fn format(&self) -> String { format!("{:?}", self) }
+
     pub fn get_type(&self) -> Type {
         match self {
             Bool(_) => Type::Bool,
@@ -176,17 +168,61 @@ impl Expr {
             _ => Type::Any,
         }
     }
-    fn is_error(&self) -> bool {
-        matches!(self, Error(_))
+
+    pub fn eval(self, ctx: &mut Context) -> Expr {
+        match self {
+            Nil => Nil,
+            Symbol(name) => Id(name),
+            Id(name) => ctx.get(&*name),
+            Int(_) | Float(_) | Str(_) | Bool(_) => self.clone(),
+            TypeSpec(s) => TypeOf(Type::new(&s)),
+            Call(left, op, args) => if let Id(name) = *op {
+                let fun = Fun::new(&name);
+                left.eval(ctx).call(fun, args.into_iter().map(|e| e.eval(ctx)).collect(), ctx)
+            } else {
+                Error(EvalIssue)
+            }
+            _ => panic!("not supported {}", self)
+        }
     }
-    fn store(self, name: &str, ctx: &mut Context, is_new: bool) -> Expr {
-        if is_new && ctx.is_defined(&name) {
-            Error(ErrorType::AlreadyDefined(name.to_owned()))
-        } else if !is_new && ctx.get_type(name) != self.get_type() {
-            Error(InconsistentType(self.get_type().to_string()))
+    pub fn print(self) -> String {
+        match self {
+            Bool(x) => x.to_string(),
+            Int(x) => x.to_string(),
+            Str(x) => format!("\"{}\"", x),
+            Nil => "nil".to_string(),
+            Float(x) => {
+                let str = x.to_string();
+                if str.contains('.') { str } else { format!("{}.0", str) }
+            }
+            Id(x) => x,
+            _ => format!("{:?}", self),
+        }
+    }
+    // private part
+    fn store(self, ctx: &mut Context, args: Vec<Expr>, _fun: Fun, is_new: bool) -> Expr {
+        let mut value= &args[0];
+        if let TypeOf(expected) = value {
+            value = &args[1];
+            if value.get_type() != *expected {
+                return  Error(InconsistentType(value.get_type().to_string()))
+            }
+        }
+        // TODO: handle variable type
+        if let Id(name) = self {
+            let is_defined = ctx.is_defined(&name);
+            if is_new && is_defined {
+                Error(ErrorCode::AlreadyDefined(name.to_owned()))
+            } else if !is_new && !is_defined {
+                Error(ErrorCode::NotDefined(name.to_owned()))
+            } else if !is_new && ctx.get_type(&name) != value.get_type() {
+                Error(InconsistentType(value.get_type().to_string()))
+            } else {
+                ctx.set(&name, value.clone());
+                value.clone()
+            }
         } else {
-            ctx.set(name, self.clone());
-            self
+            panic!()
         }
     }
     fn ensure(self, spec: Option<Type>) -> Expr {
@@ -197,69 +233,43 @@ impl Expr {
         }
         self
     }
-    pub fn eval(self, ctx: &mut Context) -> Expr {
-        match self {
-            Id(name) => ctx.get(&*name),
-            Assign(name, value) => value.eval(ctx).store(&name, ctx, false),
-            Declare(name, spec, value) => value.eval(ctx).ensure(spec).store(&name, ctx, true),
-            BinaryOp(left, code, right) => left.eval(ctx).binary_op(code, right.eval(ctx)),
-            Call(left, name, args) => left.eval(ctx)
-                .method_call(&name, args.into_iter().map(|e| e.eval(ctx)).collect()),
-            _ => self.clone(),
-        }
-    }
-    pub fn print(self) -> String {
-        match self {
-            Bool(x) => x.to_string(),
-            Int(x) => x.to_string(),
-            Str(x) => format!("\"{}\"", x),
-            Null => "null".to_string(),
-            Float(x) => {
-                let str = x.to_string();
-                if str.contains('.') { str } else { format!("{}.0", str) }
-            }
-            _ => format!("{:?}", self),
-        }
-    }
-    fn unitary_op(self, code: Code) -> Expr {
+    fn is_error(&self) -> bool { matches!(self, Error(_)) }
+    fn unitary_op(self, code: Fun) -> Expr {
         match code {
-            Code::ToStr => Str(self.print()),
+            Fun::ToStr => Str(self.print()),
             _ => panic!(),
         }
     }
-    fn binary_op(&self, code: Code, right: Expr) -> Expr {
-        match code {
-            Code::Add | Code::Sub | Code::Mul | Code::Div | Code::Mod => self.arithmetic_op(code, &right),
-            Code::Eq | Code::Neq | Code::Ge | Code::Gt | Code::Le | Code::Lt => self.comparison_op(code, &right),
-            _ => panic!(),
-        }
-    }
-    fn arithmetic_op(&self, code: Code, right: &Expr) -> Expr {
+
+    fn arithmetic_op(&self, fun: Fun, right: &Expr) -> Expr {
         match (self, right) {
-            (Int(a), Int(b))    =>  code.calc_int(a, b),
-            (Float(a), Float(b)) => code.calc_float(a, b),
-            (Int(a), Float(b))  => code.calc_float(&(*a as f64), b),
-            (Float(a), Int(b))  => code.calc_float(a, &(*b as f64)),
+            (Int(a), Int(b))    =>  fun.calc_int(a, b),
+            (Float(a), Float(b)) => fun.calc_float(a, b),
+            (Int(a), Float(b))  => fun.calc_float(&(*a as f64), b),
+            (Float(a), Int(b))  => fun.calc_float(a, &(*b as f64)),
             _ =>  Error(NotANumber),
         }
     }
-    fn comparison_op(&self, code: Code, right: &Expr) -> Expr {
+    fn comparison_op(&self, code: Fun, right: &Expr) -> Expr {
         let result = match code {
-            Code::Eq => self.eq(right),
-            Code::Neq => !self.eq(right),
+            Fun::Eq => self.eq(right),
+            Fun::Neq => !self.eq(right),
             _ => panic!("no yet implemented"),
         };
         Bool(result)
     }
-    fn method_call(self, name: &str, args: Vec<Expr>) -> Expr {
-        let code = Code::new(name);
-        if code.call_args() != args.len() {
-            Error(WrongArgumentsNumber)
+    fn call(self, fun: Fun, args: Vec<Expr>, ctx: &mut Context) -> Expr {
+        if args.len() < fun.call_args() {
+            Error(WrongArgumentsNumber(fun.call_args() , args.len()))
         } else {
-            match code {
-                Code::Defined(_x) => todo!(),
-                Code::ToStr => self.unitary_op(code),
-                _ => self.binary_op(code, args[0].clone())
+            match fun {
+                Fun::Defined(_x) => todo!(),
+                Fun::ToStr => self.unitary_op(fun),
+                Fun::Add | Fun::Sub | Fun::Mul | Fun::Div | Fun::Mod => self.arithmetic_op(fun, &args[0]),
+                Fun::Eq | Fun::Neq | Fun::Ge | Fun::Gt | Fun::Le | Fun::Lt => self.comparison_op(fun, &args[0]),
+                Fun::Defvar | Fun::Defval | Fun::Defconst => self.store(ctx, args, fun, true),
+                Fun::Set => self.store(ctx, args, fun, false),
+                _ => panic!(),
             }
         }
     }
@@ -272,12 +282,7 @@ pub struct Context {
 }
 
 impl Context {
-    pub fn new() -> Context {
-        Context {
-            values: HashMap::new(),
-        }
-    }
-
+    pub fn new() -> Context { Context { values: HashMap::new() } }
     pub fn get(&self, name: &str) -> Expr {
         match self.values.get(name) {
             Some(expr) => expr.clone(),
@@ -296,7 +301,7 @@ impl Context {
     pub fn read(&mut self, str: &str) -> Expr {
         Expr::read(str, self)
     }
-    pub fn eval(&mut self, str: &str) -> String {
+    pub fn exec(&mut self, str: &str) -> String {
         self.read(str).eval(self).print()
     }
 }
@@ -306,6 +311,7 @@ impl Context {
 #[cfg(test)]
 mod tests {
     use super::*;
+
 
     #[test]
     fn test_types() {
@@ -318,65 +324,65 @@ mod tests {
     }
 
     #[test]
-    fn test_codes() {
-        assert_eq!(Code::Eq, Code::new("eq"));
-        assert_eq!(Code::Defined("other".to_string()), Code::new("other"));
+    fn test_fun() {
+        assert_eq!(Fun::Eq, Fun::new("eq"));
+        assert_eq!(Fun::Defined("other".to_string()), Fun::new("other"));
     }
 
     #[test]
     fn test_literals() {
         let mut ctx = Context::new();
-        assert_eq!("1", ctx.eval("1"));
-        assert_eq!("9123456", ctx.eval("9_123_456"));
-        assert_eq!("2.0", ctx.eval("2."));
-        assert_eq!("-1.23", ctx.eval("-1.23"));
-        assert_eq!("23000.0", ctx.eval("2.3e4"));
-        assert_eq!("false", ctx.eval("false"));
-        assert_eq!("true", ctx.eval("true"));
-        assert_eq!("null", ctx.eval("null"));
-        assert_eq!("\"abc\"", ctx.eval("\"abc\""));
+        assert_eq!("1", ctx.exec("1"));
+        assert_eq!("9123456", ctx.exec("9_123_456"));
+        assert_eq!("2.0", ctx.exec("2.0"));
+        assert_eq!("-1.23", ctx.exec("-1.23"));
+        assert_eq!("23000.0", ctx.exec("2.3e4"));
+        assert_eq!("false", ctx.exec("false"));
+        assert_eq!("true", ctx.exec("true"));
+        assert_eq!("nil", ctx.exec("nil"));
+        assert_eq!("\"abc\"", ctx.exec("\"abc\""));
+        assert_eq!("x", ctx.exec("'x"));
     }
 
     #[test]
     fn test_variables() {
         let mut ctx = Context::new();
-        assert_eq!("1", ctx.eval("var a = 1"));
-        assert_eq!("Error(AlreadyDefined(\"a\"))", ctx.eval("var a = 3"));
-        assert_eq!("3", ctx.eval("a = 3"));
-        assert_eq!("Error(InconsistentType(\"Float\"))", ctx.eval("a = 3.0"));
-        assert_eq!("2", ctx.eval("var b: Int = 2"));
-        assert_eq!("3.2", ctx.eval("var c=3.2"));
-        assert_eq!("Error(InconsistentType(\"Int\"))", ctx.eval("var d: Int =3.2"));
-        assert_eq!("3", ctx.eval("a"));
-        assert_eq!("2", ctx.eval("b"));
+        assert_eq!("Error(NotDefined(\"a\"))", ctx.exec("a = 0"));
+        assert_eq!("1", ctx.exec("var a = 1"));
+        assert_eq!("true", ctx.exec("'z.defval(true)"));
+        assert_eq!("Error(AlreadyDefined(\"a\"))", ctx.exec("var a = 3"));
+        assert_eq!("3", ctx.exec("a = 3"));
+        assert_eq!("0", ctx.exec("'a.set(0)"));
+        assert_eq!("Error(InconsistentType(\"Float\"))", ctx.exec("a = 3.0"));
+        assert_eq!("3.2", ctx.exec("val c=3.2"));
+        assert_eq!("Error(InconsistentType(\"Float\"))", ctx.exec("var d: Int = 3.2"));
+        assert_eq!("0", ctx.exec("a"));
+        assert_eq!("3.2", ctx.exec("c"));
     }
 
     #[test]
     fn test_arithmetics() {
         let mut ctx = Context::new();
-        assert_eq!("1", ctx.eval("var a = 1"));
-        assert_eq!("2", ctx.eval("var b = 2"));
-        assert_eq!("14", ctx.eval("2 + 3 * 4"));
-        assert_eq!("20", ctx.eval("(2 + 3) * 4"));
-        assert_eq!("4", ctx.eval("4 / 1"));
-        assert_eq!("2", ctx.eval("22%10"));
-        assert_eq!("2", ctx.eval("-2 * -1"));
-        assert_eq!("3.3", ctx.eval("1 + 2.3"));
-        assert_eq!("5", ctx.eval("4 + a"));
-        assert_eq!("2", ctx.eval("b / a"));
-        assert_eq!("Error(DivisionByZero)", ctx.eval("1 / 0"));
-        assert_eq!("3", ctx.eval("a.add(b)"));
-        assert_eq!("6", ctx.eval("b.mul(3)"));
+        assert_eq!("14", ctx.exec("2 + 3 * 4"));
+        assert_eq!("20", ctx.exec("(2 + 3) * 4"));
+        assert_eq!("4", ctx.exec("4 / 1"));
+        assert_eq!("2", ctx.exec("22%10"));
+        assert_eq!("2", ctx.exec("-2 * -1"));
+        assert_eq!("3.3", ctx.exec("1 + 2.3"));
+        assert_eq!("Error(DivisionByZero)", ctx.exec("1 / 0"));
+        assert_eq!("3", ctx.exec("2.add(1)"));
+        assert_eq!("6", ctx.exec("2.mul(3)"));
     }
 
     #[test]
     fn test_comparisons() {
         let mut ctx = Context::new();
-        assert_eq!("1", ctx.eval("var a = 1"));
-        assert_eq!("2", ctx.eval("var b = 2"));
-        assert_eq!("true", ctx.eval("a == a"));
-        assert_eq!("true", ctx.eval("a == 1"));
-        assert_eq!("true", ctx.eval("1 == a"));
-        assert_eq!("false", ctx.eval("a == b"));
+        assert_eq!("1", ctx.exec("var a = 1"));
+        assert_eq!("2", ctx.exec("var b = 2"));
+        assert_eq!("true", ctx.exec("a == a"));
+        assert_eq!("true", ctx.exec("a == 1"));
+        assert_eq!("true", ctx.exec("1 == a"));
+        assert_eq!("false", ctx.exec("a == b"));
+        assert_eq!("true", ctx.exec("a != b"));
     }
 }
