@@ -141,6 +141,8 @@ pub enum Expr {
     Symbol(String),
     TypeSpec(String),
     TypeOf(Type),
+    Block(Vec<Expr>),
+    IfThenElse(Box<Expr>, Box<Expr>, Box<Expr>),
     ChainCall(Box<Expr>, Vec<Expr>),
     Call(Box<Expr>, Box<Expr>, Vec<Expr>),
     Error(ErrorCode),
