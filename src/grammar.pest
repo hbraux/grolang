@@ -1,6 +1,6 @@
 // see https://pest.rs/book/examples/calculator.html
 
-Special = { "true" | "false" | "null" }
+Special = { "true" | "false" | "nil" }
 
 Int = @{  "-"? ~ ASCII_DIGIT+  ~ ( "_" ~ ASCII_DIGIT+)* }
 Float = @{ "-"? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ ~ (^"e" ~ "-"? ~ ASCII_DIGIT+)? }

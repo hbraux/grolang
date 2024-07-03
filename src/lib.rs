@@ -7,7 +7,7 @@ use std::string::ToString;
 use strum_macros::{Display, EnumString};
 
 use ErrorCode::{DivisionByZero, InconsistentType, NotANumber, UndefinedSymbol, WrongArgumentsNumber};
-use Expr::{Bool, Error, Float, Id, Int, Null, Str};
+use Expr::{Bool, Error, Float, Id, Int, Nil, Str};
 use crate::ErrorCode::EvalIssue;
 
 use crate::Expr::{Call, Symbol};
@@ -146,12 +146,12 @@ pub enum Expr {
     ChainCall(Box<Expr>, Vec<Expr>),
     Call(Box<Expr>, Box<Expr>, Vec<Expr>),
     Error(ErrorCode),
-    Null,
+    Nil,
 }
 
 pub const TRUE: Expr = Bool(true);
 pub const FALSE: Expr = Bool(false);
-pub const NULL: Expr = Null;
+pub const NIL: Expr = Nil;
 
 impl Expr {
     pub fn read(str: &str, _ctx: &Context) -> Expr { parse(str) }
@@ -292,7 +292,7 @@ mod tests {
 
 
     #[test]
-    fn test_value_type() {
+    fn test_types() {
         assert_eq!(Type::Any, Type::new("Any"));
         assert_eq!(Type::Int, Type::new("Int"));
         assert_eq!(Type::List(Box::new(Type::Int)), Type::new("List<Int>"));
@@ -312,7 +312,7 @@ mod tests {
         let mut ctx = Context::new();
         assert_eq!("1", ctx.exec("1"));
         assert_eq!("9123456", ctx.exec("9_123_456"));
-        assert_eq!("2.0", ctx.exec("2."));
+        assert_eq!("2.0", ctx.exec("2.0"));
         assert_eq!("-1.23", ctx.exec("-1.23"));
         assert_eq!("23000.0", ctx.exec("2.3e4"));
         assert_eq!("false", ctx.exec("false"));

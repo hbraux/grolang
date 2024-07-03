@@ -5,7 +5,7 @@ use pest::pratt_parser::{Op, PrattParser};
 use pest::pratt_parser::Assoc::Left;
 use pest_derive::Parser;
 
-use crate::{ErrorCode, Expr, FALSE, NULL, TRUE};
+use crate::{ErrorCode, Expr, FALSE, NIL, TRUE};
 
 #[derive(Parser)]
 #[grammar = "grammar.pest"]
@@ -82,7 +82,7 @@ fn fun_call(pair: Pair<Rule>) -> Expr {
 }
 
 fn unquote(str: &str) -> String {
-    (&str[1..str.len()-2]).to_string()
+    (&str[1..str.len()-1]).to_string()
 }
 
 fn remove_first(str: &str) -> String {
@@ -96,7 +96,7 @@ fn to_literal(str: &str) -> Expr {
     match str {
         "true" => TRUE,
         "false" => FALSE,
-        "null" => NULL,
+        "nil" => NIL,
         _ => panic!(),
     }
 }
@@ -118,7 +118,7 @@ mod tests {
         assert_eq!(Expr::Float(0.12), parse("1.2e-1"));
         assert_eq!(TRUE, parse("true"));
         assert_eq!(FALSE, parse("false"));
-        assert_eq!(NULL, parse("null"));
+        assert_eq!(NIL, parse("nil"));
         assert_eq!(Expr::Str("abc".to_string()), parse("\"abc\""));
         assert_eq!(Expr::Str("true".to_string()), parse("\"true\""));
     }
