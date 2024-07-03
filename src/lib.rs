@@ -1,5 +1,3 @@
-
-
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::string::ToString;
@@ -8,7 +6,6 @@ use strum_macros::{Display, EnumString};
 
 use ErrorCode::{DivisionByZero, InconsistentType, NotANumber, UndefinedSymbol, WrongArgumentsNumber};
 use Expr::{Bool, Error, Float, Id, Int, Nil, Str};
-use crate::ErrorCode::EvalIssue;
 
 use crate::Expr::{Call, Symbol, TypeOf, TypeSpec};
 use crate::parser::parse;
@@ -180,9 +177,9 @@ impl Expr {
                 let fun = Fun::new(&name);
                 left.eval(ctx).call(fun, args.into_iter().map(|e| e.eval(ctx)).collect(), ctx)
             } else {
-                Error(EvalIssue)
+                panic!("{} is not and Id", op)
             }
-            _ => panic!("not supported {}", self)
+            _ => panic!("cannot eval {}", self)
         }
     }
     pub fn print(self) -> String {
@@ -222,10 +219,10 @@ impl Expr {
                 value.clone()
             }
         } else {
-            panic!()
+            panic!("{} is not an id", self)
         }
     }
-    fn ensure(self, spec: Option<Type>) -> Expr {
+    fn _ensure(self, spec: Option<Type>) -> Expr {
         if let Some(expected) = spec {
             if !self.is_error() && self.get_type() != expected {
                 return Error(InconsistentType(expected.to_string()));
@@ -233,7 +230,7 @@ impl Expr {
         }
         self
     }
-    fn is_error(&self) -> bool { matches!(self, Error(_)) }
+    fn _is_error(&self) -> bool { matches!(self, Error(_)) }
     fn unitary_op(self, code: Fun) -> Expr {
         match code {
             Fun::ToStr => Str(self.print()),
@@ -311,7 +308,6 @@ impl Context {
 #[cfg(test)]
 mod tests {
     use super::*;
-
 
     #[test]
     fn test_types() {
