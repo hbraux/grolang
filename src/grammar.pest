@@ -39,9 +39,10 @@ Term = _{ Literal |  "(" ~ Expr ~ ")" }
 VarType = _{ "var" | "val" | "const" }
 Declaration = { VarType ~ Id ~ TypeSpec? ~ "=" ~ Expr }
 Assignment = { Id ~ "=" ~ Expr }
+IfThen = { "if" ~ Expr ~ Block ~ }
 
 Statement = _{ Declaration | Assignment | Expr }
-
+Block = { "{" ~ NEWLINE* ~ (Statement ~ NEWLINE)+ ~NEWLINE*  ~ "}" }
 
 equation = _{ SOI ~ Expr ~ EOI }
 WHITESPACE = _{ " " }
