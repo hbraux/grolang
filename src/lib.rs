@@ -23,7 +23,7 @@ pub enum ErrorCode {
     NotANumber,
     InconsistentType(String),
     AlreadyDefined(String),
-    WrongArgumentsNumber,
+    WrongArgumentsNumber(usize,usize),
     EvalIssue
 }
 
@@ -88,9 +88,9 @@ pub enum Fun {
     In,
     ToStr,
     Set,
-    Var,
-    Val,
-    Const,
+    Defvar,
+    Defval,
+    Defconst,
     Defined(String)
 }
 
@@ -170,11 +170,13 @@ impl Expr {
 
     pub fn eval(self, ctx: &mut Context) -> Expr {
         match self {
+            Nil => Nil,
             Symbol(name) => Id(name),
             Id(name) => ctx.get(&*name),
             Int(_) | Float(_) | Str(_) | Bool(_) => self.clone(),
             Call(left, op, args) => if let Id(name) = *op {
-                left.eval(ctx).call(Fun::new(&name), args.into_iter().map(|e| e.eval(ctx)).collect(), ctx)
+                let fun = Fun::new(&name);
+                left.eval(ctx).call(fun, args.into_iter().map(|e| e.eval(ctx)).collect(), ctx)
             } else {
                 Error(EvalIssue)
             }
@@ -186,16 +188,18 @@ impl Expr {
             Bool(x) => x.to_string(),
             Int(x) => x.to_string(),
             Str(x) => format!("\"{}\"", x),
-            Null => "null".to_string(),
+            Nil => "nil".to_string(),
             Float(x) => {
                 let str = x.to_string();
                 if str.contains('.') { str } else { format!("{}.0", str) }
             }
+            Id(x) => x,
             _ => format!("{:?}", self),
         }
     }
     // private part
-    fn store(self, ctx: &mut Context, name: String, is_new: bool) -> Expr {
+    fn store(self, ctx: &mut Context, value: &Expr, fun: Fun, is_new: bool) -> Expr {
+        let name = self.to_string();
         if is_new && ctx.is_defined(&name) {
             Error(ErrorCode::AlreadyDefined(name.to_owned()))
         } else if !is_new && ctx.get_type(&name) != self.get_type() {
@@ -240,13 +244,14 @@ impl Expr {
     }
     fn call(self, fun: Fun, args: Vec<Expr>, ctx: &mut Context) -> Expr {
         if fun.call_args() != args.len() {
-            Error(WrongArgumentsNumber)
+            Error(WrongArgumentsNumber(fun.call_args() , args.len()))
         } else {
             match fun {
                 Fun::Defined(_x) => todo!(),
                 Fun::ToStr => self.unitary_op(fun),
                 Fun::Add | Fun::Sub | Fun::Mul | Fun::Div | Fun::Mod => self.arithmetic_op(fun, &args[0]),
                 Fun::Eq | Fun::Neq | Fun::Ge | Fun::Gt | Fun::Le | Fun::Lt => self.comparison_op(fun, &args[0]),
+                Fun::Defvar | Fun::Defval | Fun::Defconst => self.store(ctx, &args[0], fun, true),
                 _ => panic!(),
             }
         }
@@ -317,8 +322,9 @@ mod tests {
         assert_eq!("23000.0", ctx.exec("2.3e4"));
         assert_eq!("false", ctx.exec("false"));
         assert_eq!("true", ctx.exec("true"));
-        assert_eq!("null", ctx.exec("null"));
+        assert_eq!("nil", ctx.exec("nil"));
         assert_eq!("\"abc\"", ctx.exec("\"abc\""));
+        assert_eq!("x", ctx.exec("'x"));
     }
 
     #[test]

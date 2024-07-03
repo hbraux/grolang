@@ -73,7 +73,7 @@ fn macro_call(operator: String, pair: Pair<Rule>) -> Expr {
 
 fn fun_call(pair: Pair<Rule>) -> Expr {
     let mut args: Vec<Expr> = pair.into_inner().into_iter().map(|p| parse_primary(p)).collect();
-    let mut left = args.remove(0);
+    let left = args.remove(0);
     if let Expr::Id(_) = left {
         Expr::ChainCall(Box::new(left), args)
     } else {
