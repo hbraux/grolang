@@ -370,8 +370,7 @@ mod tests {
         assert_eq!("2", ctx.exec("-2 * -1"));
         assert_eq!("3.3", ctx.exec("1 + 2.3"));
         assert_eq!("Error(DivisionByZero)", ctx.exec("1 / 0"));
-        assert_eq!("3", ctx.exec("2.add(1)"));
-        assert_eq!("6", ctx.exec("2.mul(3)"));
+        assert_eq!("8", ctx.exec("2.mul(3.add(1))"));
     }
 
     #[test]
