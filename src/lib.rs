@@ -124,7 +124,7 @@ impl Operator {
             Operator::Sub => Int(a - b),
             Operator::Mul => Int(a * b),
             Operator::Mod => Int(a % b),
-            Operator::Div => if *b != 0 { Int(a / b) } else { Error(DivisionByZero) }
+            Operator::Div => if b != 0 { Int(a / b) } else { Error(DivisionByZero) }
             _ => panic!(),
         }
     }
@@ -134,7 +134,7 @@ impl Operator {
             Operator::Sub => Float(a - b),
             Operator::Mul => Float(a * b),
             Operator::Mod => Float(a % b),
-            Operator::Div => if *b != 0.0 { Float(a / b) } else { Error(DivisionByZero) }
+            Operator::Div => if b != 0.0 { Float(a / b) } else { Error(DivisionByZero) }
             _ => panic!(),
         }
     }
@@ -193,10 +193,16 @@ impl Expr {
         }
     }
 
-    fn to_operator(self) -> Operator {
+    pub fn to_symbol(&self) -> Expr {
         match self {
-            Id(name) => Operator::new(&name),
-            _ => panic!("{} is not and Id", op)
+            Id(name) => Expr::Symbol(name.clone()),
+            _ => panic!("{} is not an Id", self)
+        }
+    }
+    fn to_operator(&self) -> Operator {
+        match self {
+            Id(name) => Operator::new(name),
+            _ => panic!("{} is not an Id", self)
         }
     }
     pub fn print(self) -> String {
@@ -296,8 +302,8 @@ impl Expr {
         match op {
             Operator::Defined(_x) => todo!(),
             Operator::ToStr => self.unitary_op(op),
-            Operator::Add | Operator::Sub | Operator::Mul | Operator::Div | Operator::Mod => self.arithmetic_op(op, (*args[0]).eval(ctx)),
-            Operator::Eq | Operator::Neq | Operator::Ge | Operator::Gt | Operator::Le | Operator::Lt => self.comparison_op(op, (*args[0]).eval(ctx)),
+            Operator::Add | Operator::Sub | Operator::Mul | Operator::Div | Operator::Mod => self.arithmetic_op(op, args[0].clone().eval(ctx)),
+            Operator::Eq | Operator::Neq | Operator::Ge | Operator::Gt | Operator::Le | Operator::Lt => self.comparison_op(op, args[0].clone().eval(ctx)),
             Operator::And | Operator::Or => self.binary_op(op, &args[0], ctx),
             Operator::DefVar | Operator::DefVal | Operator::DefConst => self.store(ctx, args, op, true),
             Operator::Set => self.store(ctx, args, op, false),

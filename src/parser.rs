@@ -1,3 +1,4 @@
+use std::string::ToString;
 use lazy_static::lazy_static;
 use pest::iterators::{Pair, Pairs};
 use pest::Parser;
@@ -6,6 +7,7 @@ use pest::pratt_parser::Assoc::Left;
 use pest_derive::Parser;
 
 use crate::{ErrorCode, Expr, FALSE, NIL, TRUE};
+use crate::Expr::Nil;
 
 #[derive(Parser)]
 #[grammar = "grammar.pest"]
@@ -58,34 +60,28 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
         Rule::TypeSpec => Expr::parse_type_spec(pair.as_str()),
         Rule::Operator => Expr::Id(pair.as_str().to_string()),
         Rule::Expr =>  parse_pairs(pair.into_inner()),
-        Rule::CallExpr => simple_call(to_vec(pair)),
-        Rule::Declaration => smart_call("def".to_owned() + pair.as_str().split(" ").next().unwrap(), true, to_vec(pair)),
-        Rule::Assignment => smart_call("set".to_owned(), true, to_vec(pair)),
-        Rule::IfElse => smart_call("ifElse".to_owned(), false, to_vec(pair)),
-        Rule::Block => Expr::Block(to_vec(pair)),
+        Rule::CallExpr => chain_call(to_vec(pair, 0)),
+        Rule::Declaration => call(("def".to_owned() + pair.as_str().split(" ").next().unwrap()).as_str(), to_vec(pair, 3), |e| e.to_symbol()),
+        Rule::Assignment => call(SET, to_vec(pair, 2), |e| e.to_symbol()),
+        Rule::IfElse => call("ifElse", to_vec(pair, 3), |e| e),
+        Rule::Block => Expr::Block(to_vec(pair, 0)),
         _ => unreachable!("Rule not implemented {}", pair.to_string())
     }
 }
 
-fn to_vec(pair: Pair<Rule>) -> Vec<Expr> {
-    pair.into_inner().into_iter().map(|p| parse_primary(p)).collect()
-}
-fn simple_call(mut args: Vec<Expr>) -> Expr {
-    let left = args.remove(0);
-    match left {
-        Expr::Id(_) => Expr::ChainCall(Box::new(left), args),
-        _ => panic!("expects the left argument to be the function id"),
+fn to_vec(pair: Pair<Rule>, expected_len: usize) -> Vec<Expr> {
+    let mut args: Vec<Expr> = pair.into_inner().into_iter().map(|p| parse_primary(p)).collect();
+    if expected_len > 0 && args.len() < expected_len {
+        args.resize(expected_len, Nil)
     }
+    args
 }
-
-fn smart_call(operator: String, cast_to_symbol: bool, mut args: Vec<Expr>) -> Expr {
-    let mut left = args.remove(0);
-    if let (true, Expr::Id(name)) = (cast_to_symbol, &left) {
-        left = Expr::Symbol(name.clone());
-    }
-    Expr::Call(Box::new(left), Box::new(Expr::Id(operator.to_string())), args)
+fn chain_call(mut args: Vec<Expr>) -> Expr {
+    Expr::ChainCall(Box::new(args.remove(0)), args)
 }
-
+fn call(id: &str,  mut args: Vec<Expr>, left_apply: fn(Expr) -> Expr) -> Expr {
+    Expr::Call(Box::new(left_apply(args.remove(0))), Box::new(Expr::Id(id.to_string())), args)
+}
 
 fn unquote(str: &str) -> String {
     (&str[1..str.len()-1]).to_string()
@@ -107,6 +103,7 @@ fn to_literal(str: &str) -> Expr {
     }
 }
 
+const SET: &str = "set";
 
 #[cfg(test)]
 mod tests {
@@ -131,8 +128,7 @@ mod tests {
 
     #[test]
     fn test_declarations() {
-        assert_eq!("Call(Symbol(a), Id(defvar), [Int(1)])", parse("var a = 1").format());
-        assert_eq!("Call(Symbol(a), Id(defvar), [Int(1)])", parse("'a.defvar(1)").format());
+        assert_eq!("Call(Symbol(a), Id(defvar), [Int(1), Nil])", parse("var a = 1").format());
         assert_eq!("Call(Symbol(f), Id(defval), [TypeSpec(Float), Float(1.0)])", parse("val f: Float = 1.0").format());
     }
 
