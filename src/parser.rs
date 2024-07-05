@@ -24,12 +24,12 @@ lazy_static! {
 
 pub fn parse(str: &str) -> Expr {
     match GroParser::parse(Rule::Statement, str) {
-        Ok(pairs) => parse_expr(pairs),
+        Ok(pairs) => parse_pairs(pairs),
         Err(e)    => Expr::Error(ErrorCode::SyntaxError(e.to_string()))
     }
 }
 
-fn parse_expr(pairs: Pairs<Rule>) -> Expr {
+fn parse_pairs(pairs: Pairs<Rule>) -> Expr {
     PARSER
         .map_primary(|p| parse_primary(p))
         .map_infix(|left, op, right| reduce_expr(left, op, right))
@@ -37,8 +37,8 @@ fn parse_expr(pairs: Pairs<Rule>) -> Expr {
 }
 
 fn reduce_expr(left: Expr, op: Pair<Rule>, right: Expr) -> Expr {
-    if op.as_rule() == Rule::Dot {
-        if let Expr::ChainCall(x, y) = right {
+    if op.as_rule() == Rule::Dot {  // conditions can't be combined
+        if let Expr::ChainCall(x, y) = right {  
             return Expr::Call(Box::new(left), x, y)
         }
     }
@@ -53,14 +53,14 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
         Rule::String => Expr::Str(unquote(pair.as_str())),
         Rule::Id => Expr::Id(pair.as_str().to_string()),
         Rule::Symbol => Expr::Symbol(remove_first(pair.as_str())),
-        Rule::TypeSpec => Expr::TypeSpec(pair.as_str().replace(":", "").trim().to_string()),
+        Rule::TypeSpec => Expr::parse_type_spec(pair.as_str()),
         Rule::Operator => Expr::Id(pair.as_str().to_string()),
-        Rule::Expr =>  parse_expr(pair.into_inner()),
-        Rule::Declaration => macro_call("def".to_owned() + pair.as_str().split(" ").next().unwrap(), to_vec(pair)),
-        Rule::Assignment => macro_call("set".to_owned(), to_vec(pair)),
-        Rule::CallExpr => fun_call(to_vec(pair)),
+        Rule::Expr =>  parse_pairs(pair.into_inner()),
+        Rule::CallExpr => simple_call(to_vec(pair)),
+        Rule::Declaration => smart_call("def".to_owned() + pair.as_str().split(" ").next().unwrap(), true, to_vec(pair)),
+        Rule::Assignment => smart_call("set".to_owned(), true, to_vec(pair)),
+        Rule::IfElse => smart_call("if".to_owned(), false, to_vec(pair)),
         Rule::Block => Expr::Block(to_vec(pair)),
-        Rule::IfThenElse => macro_call("if".to_owned(), to_vec(pair)),
         _ => unreachable!("Rule not implemented {}", pair.to_string())
     }
 }
@@ -68,25 +68,22 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
 fn to_vec(pair: Pair<Rule>) -> Vec<Expr> {
     pair.into_inner().into_iter().map(|p| parse_primary(p)).collect()
 }
-
-
-fn macro_call(operator: String, mut args: Vec<Expr>) -> Expr {
+fn simple_call(mut args: Vec<Expr>) -> Expr {
     let left = args.remove(0);
-    if let Expr::Id(x) = left {
-        Expr::Call(Box::new(Expr::Symbol(x)), Box::new(Expr::Id(operator.to_string())), args)
-    } else {
-        Expr::Call(Box::new(left), Box::new(Expr::Id(operator.to_string())), args)
+    match left {
+        Expr::Id(_) => Expr::ChainCall(Box::new(left), args),
+        _ => panic!("expects the left argument to be the function id"),
     }
 }
 
-fn fun_call(mut args: Vec<Expr>) -> Expr {
-    let left = args.remove(0);
-    if let Expr::Id(_) = left {
-        Expr::ChainCall(Box::new(left), args)
-    } else {
-        panic!()
+fn smart_call(operator: String, cast_to_symbol: bool, mut args: Vec<Expr>) -> Expr {
+    let mut left = args.remove(0);
+    if let (true, Expr::Id(name)) = (cast_to_symbol, &left) {
+        left = Expr::Symbol(name.clone());
     }
+    Expr::Call(Box::new(left), Box::new(Expr::Id(operator.to_string())), args)
 }
+
 
 fn unquote(str: &str) -> String {
     (&str[1..str.len()-1]).to_string()
@@ -132,32 +129,32 @@ mod tests {
 
     #[test]
     fn test_declarations() {
-        assert_eq!("Call(Symbol(\"a\"), Id(\"defvar\"), [Int(1)])", parse("var a = 1").format());
-        assert_eq!("Call(Symbol(\"a\"), Id(\"defvar\"), [Int(1)])", parse("'a.defvar(1)").format());
-        assert_eq!("Call(Symbol(\"f\"), Id(\"defval\"), [TypeSpec(\"Float\"), Float(1.0)])", parse("val f: Float = 1.0").format());
-        assert_eq!("Call(Symbol(\"a\"), Id(\"set\"), [Int(2)])", parse("a = 2").format());
-        assert_eq!("Call(Symbol(\"a\"), Id(\"set\"), [Int(2)])", parse("'a.set(2)").format());
-        assert_eq!("Call(Symbol(\"a\"), Id(\"eq\"), [Int(2)])", parse("'a == 2").format());
+        assert_eq!("Call(Symbol(a), Id(defvar), [Int(1)])", parse("var a = 1").format());
+        assert_eq!("Call(Symbol(a), Id(defvar), [Int(1)])", parse("'a.defvar(1)").format());
+        assert_eq!("Call(Symbol(f), Id(defval), [TypeSpec(Float), Float(1.0)])", parse("val f: Float = 1.0").format());
+        assert_eq!("Call(Symbol(a), Id(set), [Int(2)])", parse("a = 2").format());
+        assert_eq!("Call(Symbol(a), Id(set), [Int(2)])", parse("'a.set(2)").format());
+        assert_eq!("Call(Symbol(a), Id(eq), [Int(2)])", parse("'a == 2").format());
     }
 
     #[test]
     fn test_arithmetic_order() {
-        assert_eq!("Call(Int(1), Id(\"mul\"), [Int(2)])", parse("1 * 2").format());
-        assert_eq!("Call(Int(1), Id(\"add\"), [Call(Int(2), Id(\"mul\"), [Int(3)])])", parse("1 + 2 * 3").format());
-        assert_eq!("Call(Int(1), Id(\"mul\"), [Call(Int(-2), Id(\"add\"), [Int(3)])])", parse("1 * (-2 + 3)").format());
+        assert_eq!("Call(Int(1), Id(mul), [Int(2)])", parse("1 * 2").format());
+        assert_eq!("Call(Int(1), Id(add), [Call(Int(2), Id(mul), [Int(3)])])", parse("1 + 2 * 3").format());
+        assert_eq!("Call(Int(1), Id(mul), [Call(Int(-2), Id(add), [Int(3)])])", parse("1 * (-2 + 3)").format());
 
     }
 
     #[test]
     fn test_chain_calls() {
-        assert_eq!("ChainCall(Id(\"print\"), [Id(\"a\")])", parse("print(a)").format());
-        assert_eq!("Call(Int(1), Id(\"mul\"), [Int(2)])", parse("1.mul(2)]").format());
-        assert_eq!("Call(Int(1), Id(\"mul\"), [Call(Int(-2), Id(\"add\"), [Int(3)])])", parse("1.mul(-2.add(3))").format());
+        assert_eq!("ChainCall(Id(print), [Id(a)])", parse("print(a)").format());
+        assert_eq!("Call(Int(1), Id(mul), [Int(2)])", parse("1.mul(2)]").format());
+        assert_eq!("Call(Int(1), Id(mul), [Call(Int(-2), Id(add), [Int(3)])])", parse("1.mul(-2.add(3))").format());
     }
 
     #[test]
     fn test_expressions() {
-        assert_eq!("Call(Call(Id(\"a\"), Id(\"eq\"), [Int(1)]), Id(\"if\"), [Block([Int(2)]), Block([Int(3)])])", parse("if (a == 1) { 2 } else { 3 }").format());
+        assert_eq!("Call(Call(Id(a), Id(eq), [Int(1)]), Id(if), [Block([Int(2)]), Block([Int(3)])])", parse("if (a == 1) { 2 } else { 3 }").format());
 
     }
 }

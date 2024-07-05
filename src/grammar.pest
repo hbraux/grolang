@@ -30,8 +30,8 @@ Operator = _{ Add | Sub | Mul | Div | Mod | Exp | Eq | Neq | Le | Lt | Ge | Gt}
 
 Dot = { "." }
 
-Expr = { BinaryExpr | CallExpr | ChainExpr | Term }
-ChainExpr = _{ Term ~ ( Dot ~ CallExpr )+  }
+Expr = { BinaryExpr | CallExpr | ChainCall | Term }
+ChainCall = _{ Term ~ ( Dot ~ CallExpr )+  }
 BinaryExpr = _{ Term ~ ( Operator ~ Term ) + }
 CallExpr = { Id ~ "(" ~ Expr? ~ ( "," ~ Expr )* ~ ")" }
 Term = _{ Literal |  "(" ~ Expr ~ ")" }
@@ -42,8 +42,8 @@ Assignment = { Id ~ "=" ~ Expr }
 
 
 Block = { "{" ~ NEWLINE* ~ Statement ~ ( NEWLINE ~ Statement)* ~ NEWLINE* ~ "}" }
-IfThenElse = { "if" ~ "(" ~ Expr ~ ")" ~ Block ~ ( "else" ~ Block)? }
-Statement = _{ Declaration | Assignment | IfThenElse | Expr }
+IfElse = { "if" ~ "(" ~ Expr ~ ")" ~ Block ~ ( "else" ~ Block)? }
+Statement = _{ Declaration | Assignment | IfElse | Expr }
 
 equation = _{ SOI ~ Expr ~ EOI }
 WHITESPACE = _{ " " }

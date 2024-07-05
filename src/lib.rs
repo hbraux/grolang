@@ -7,7 +7,7 @@ use strum_macros::{Display, EnumString};
 use ErrorCode::{DivisionByZero, InconsistentType, NotANumber, UndefinedSymbol, WrongArgumentsNumber};
 use Expr::{Bool, Error, Float, Id, Int, Nil, Str};
 
-use crate::Expr::{Call, Symbol, TypeOf, TypeSpec};
+use crate::Expr::{Call, Symbol, TypeSpec};
 use crate::parser::parse;
 
 mod parser;
@@ -139,8 +139,7 @@ pub enum Expr {
     Bool(bool),
     Id(String),
     Symbol(String),
-    TypeSpec(String),
-    TypeOf(Type),
+    TypeSpec(Type),
     Block(Vec<Expr>),
     ChainCall(Box<Expr>, Vec<Expr>),
     Call(Box<Expr>, Box<Expr>, Vec<Expr>),
@@ -154,8 +153,13 @@ pub const NIL: Expr = Nil;
 
 impl Expr {
     pub fn read(str: &str, _ctx: &Context) -> Expr { parse(str) }
+
+    pub fn parse_type_spec(str: &str) -> Expr {
+        TypeSpec(Type::new(str.replace(":", "").trim()))
+    }
+
     // recursive format with debug
-    pub fn format(&self) -> String { format!("{:?}", self) }
+    pub fn format(&self) -> String { format!("{:?}", self).replace("\"","") }
 
     pub fn get_type(&self) -> Type {
         match self {
@@ -172,8 +176,7 @@ impl Expr {
             Nil => Nil,
             Symbol(name) => Id(name),
             Id(name) => ctx.get(&*name),
-            Int(_) | Float(_) | Str(_) | Bool(_) => self.clone(),
-            TypeSpec(s) => TypeOf(Type::new(&s)),
+            Int(_) | Float(_) | Str(_) | Bool(_) | TypeSpec(_) => self,
             Call(left, op, args) => if let Id(name) = *op {
                 let fun = Fun::new(&name);
                 left.eval(ctx).call(fun, args.into_iter().map(|e| e.eval(ctx)).collect(), ctx)
@@ -200,7 +203,7 @@ impl Expr {
     // private part
     fn store(self, ctx: &mut Context, args: Vec<Expr>, _fun: Fun, is_new: bool) -> Expr {
         let mut value= &args[0];
-        if let TypeOf(expected) = value {
+        if let TypeSpec(expected) = value {
             value = &args[1];
             if value.get_type() != *expected {
                 return  Error(InconsistentType(value.get_type().to_string()))
