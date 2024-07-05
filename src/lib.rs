@@ -4,9 +4,10 @@ use std::string::ToString;
 
 use strum_macros::{Display, EnumString};
 
-use ErrorCode::{DivisionByZero, InconsistentType, NotANumber, UndefinedSymbol, WrongArgumentsNumber};
+use ErrorCode::{DivisionByZero, InconsistentType, UndefinedSymbol, WrongArgumentsNumber};
 use Expr::{Bool, Error, Float, Id, Int, Nil, Str};
 
+use crate::ErrorCode::NotABoolean;
 use crate::Expr::{Call, Symbol, TypeSpec};
 use crate::parser::parse;
 
@@ -18,6 +19,7 @@ pub enum ErrorCode {
     UndefinedSymbol(String),
     SyntaxError(String),
     NotANumber,
+    NotABoolean,
     InconsistentType(String),
     AlreadyDefined(String),
     NotDefined(String),
@@ -103,9 +105,9 @@ impl Operator {
             Err(_x) => Operator::Defined(str.to_string())
         }
     }
-    fn is_macro(&self) -> bool {
+    fn is_lazy(&self) -> bool { // lazy operators evalaate their arguments when needed
         match self {
-            Operator::IfElse => true,
+            Operator::IfElse |  Operator::And |  Operator::Or => true,
             _ => false,
         }
     }
@@ -116,7 +118,7 @@ impl Operator {
             _ => 1
         }
     }
-    fn calc_int(&self, a: &i64, b: &i64) -> Expr {
+    fn calc_int(&self, a: i64, b: i64) -> Expr {
         match self {
             Operator::Add => Int(a + b),
             Operator::Sub => Int(a - b),
@@ -126,7 +128,7 @@ impl Operator {
             _ => panic!(),
         }
     }
-    fn calc_float(&self, a: &f64, b: &f64) -> Expr {
+    fn calc_float(&self, a: f64, b: f64) -> Expr {
         match self {
             Operator::Add => Float(a + b),
             Operator::Sub => Float(a - b),
@@ -186,17 +188,15 @@ impl Expr {
             Symbol(name) => Id(name),
             Id(name) => ctx.get(&*name),
             Int(_) | Float(_) | Str(_) | Bool(_) | TypeSpec(_) => self,
-            Call(left, op, args) => if let Id(name) = *op {
-                let op = Operator::new(&name);
-                if op.is_macro() {
-                    left.eval(ctx).call(op, args, ctx)
-                } else {
-                    left.eval(ctx).call(op, args.into_iter().map(|e| e.eval(ctx)).collect(), ctx)
-                }
-            } else {
-                panic!("{} is not and Id", op)
-            }
-            _ => panic!("cannot eval {}", self)
+            Call(left, op, args) => left.eval(ctx).call(op.to_operator(), args, ctx),
+            _ => panic!("{}.eval() not implemented", self)
+        }
+    }
+
+    fn to_operator(self) -> Operator {
+        match self {
+            Id(name) => Operator::new(&name),
+            _ => panic!("{} is not and Id", op)
         }
     }
     pub fn print(self) -> String {
@@ -214,12 +214,13 @@ impl Expr {
         }
     }
     // private part
+
     fn store(self, ctx: &mut Context, args: Vec<Expr>, _fun: Operator, is_new: bool) -> Expr {
         let mut value= &args[0];
         if let TypeSpec(expected) = value {
             value = &args[1];
             if value.get_type() != *expected {
-                return  Error(InconsistentType(value.get_type().to_string()))
+                return Error(InconsistentType(value.get_type().to_string()))
             }
         }
         // TODO: handle variable type
@@ -255,36 +256,52 @@ impl Expr {
         }
     }
 
-    fn arithmetic_op(&self, op: Operator, right: &Expr) -> Expr {
+    fn arithmetic_op(&self, op: Operator, right: Expr) -> Expr {
         match (self, right) {
-            (Int(a), Int(b))    =>  op.calc_int(a, b),
-            (Float(a), Float(b)) => op.calc_float(a, b),
-            (Int(a), Float(b))  => op.calc_float(&(*a as f64), b),
-            (Float(a), Int(b))  => op.calc_float(a, &(*b as f64)),
-            _ =>  Error(NotANumber),
+            (Int(a), Int(b))    =>  op.calc_int(*a, b),
+            (Float(a), Float(b)) => op.calc_float(*a, b),
+            (Int(a), Float(b))  => op.calc_float(*a as f64, b),
+            (Float(a), Int(b))  => op.calc_float(*a, b as f64),
+            _ => panic!(),
         }
     }
-    fn comparison_op(&self, code: Operator, right: &Expr) -> Expr {
-        let result = match code {
-            Operator::Eq => self.eq(right),
-            Operator::Neq => !self.eq(right),
+    fn comparison_op(&self, op: Operator, right: Expr) -> Expr {
+        let result = match op {
+            Operator::Eq => self.eq(&right),
+            Operator::Neq => !self.eq(&right),
             _ => panic!("no yet implemented"),
         };
         Bool(result)
     }
+    fn binary_op(&self, op: Operator, right: &Expr, ctx: &mut Context) -> Expr {
+        match (op, self) {
+            (Operator::And, &FALSE) => FALSE,
+            (Operator::Or, &TRUE) => TRUE,
+            (Operator::And, &TRUE) => right.clone().eval(ctx).to_bool(),
+            (Operator::Or, &FALSE) => right.clone().eval(ctx).to_bool(),
+            _ => panic!("not boolean"),
+        }
+    }
+    fn to_bool(self) -> Expr {
+       match self {
+           Bool(_) => self,
+           _ => Error(NotABoolean)
+       }
+    }
+
     fn call(self, op: Operator, args: Vec<Expr>, ctx: &mut Context) -> Expr {
         if args.len() < op.call_args() {
-            Error(WrongArgumentsNumber(op.call_args(), args.len()))
-        } else {
-            match op {
-                Operator::Defined(_x) => todo!(),
-                Operator::ToStr => self.unitary_op(op),
-                Operator::Add | Operator::Sub | Operator::Mul | Operator::Div | Operator::Mod => self.arithmetic_op(op, &args[0]),
-                Operator::Eq | Operator::Neq | Operator::Ge | Operator::Gt | Operator::Le | Operator::Lt => self.comparison_op(op, &args[0]),
-                Operator::DefVar | Operator::DefVal | Operator::DefConst => self.store(ctx, args, op, true),
-                Operator::Set => self.store(ctx, args, op, false),
-                _ => panic!(),
-            }
+            return Error(WrongArgumentsNumber(op.call_args(), args.len()))
+        }
+        match op {
+            Operator::Defined(_x) => todo!(),
+            Operator::ToStr => self.unitary_op(op),
+            Operator::Add | Operator::Sub | Operator::Mul | Operator::Div | Operator::Mod => self.arithmetic_op(op, (*args[0]).eval(ctx)),
+            Operator::Eq | Operator::Neq | Operator::Ge | Operator::Gt | Operator::Le | Operator::Lt => self.comparison_op(op, (*args[0]).eval(ctx)),
+            Operator::And | Operator::Or => self.binary_op(op, &args[0], ctx),
+            Operator::DefVar | Operator::DefVal | Operator::DefConst => self.store(ctx, args, op, true),
+            Operator::Set => self.store(ctx, args, op, false),
+            _ => panic!(),
         }
     }
 }
@@ -392,9 +409,16 @@ mod tests {
         assert_eq!("1", ctx.exec("var a = 1"));
         assert_eq!("2", ctx.exec("var b = 2"));
         assert_eq!("true", ctx.exec("a == a"));
-        assert_eq!("true", ctx.exec("a == 1"));
         assert_eq!("true", ctx.exec("1 == a"));
         assert_eq!("false", ctx.exec("a == b"));
         assert_eq!("true", ctx.exec("a != b"));
+        assert_eq!("true", ctx.exec("a == 1 && b == 2"));
+        assert_eq!("false", ctx.exec("a == 1 && b == 1"));
+    }
+
+    #[test]
+    fn test_ifelse() {
+        let mut ctx = Context::new();
+        assert_eq!("14", ctx.exec("if (true) { 1 } else { 0 }"))
     }
 }
