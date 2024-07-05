@@ -13,7 +13,9 @@ struct GroParser;
 
 lazy_static! {
     static ref PARSER: PrattParser<Rule> = {
+        // operator priorities from lowest to highest
         PrattParser::new()
+        .op(Op::infix(Rule::Or, Left) | Op::infix(Rule::And, Left))
         .op(Op::infix(Rule::Eq, Left) | Op::infix(Rule::Neq, Left) | Op::infix(Rule::Ge, Left) | Op::infix(Rule::Gt, Left) | Op::infix(Rule::Le, Left) | Op::infix(Rule::Lt, Left))
         .op(Op::infix(Rule::Add, Left) | Op::infix(Rule::Sub, Left))
         .op(Op::infix(Rule::Mul, Left) | Op::infix(Rule::Div, Left) | Op::infix(Rule::Mod, Left))
@@ -59,7 +61,7 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
         Rule::CallExpr => simple_call(to_vec(pair)),
         Rule::Declaration => smart_call("def".to_owned() + pair.as_str().split(" ").next().unwrap(), true, to_vec(pair)),
         Rule::Assignment => smart_call("set".to_owned(), true, to_vec(pair)),
-        Rule::IfElse => smart_call("if".to_owned(), false, to_vec(pair)),
+        Rule::IfElse => smart_call("ifElse".to_owned(), false, to_vec(pair)),
         Rule::Block => Expr::Block(to_vec(pair)),
         _ => unreachable!("Rule not implemented {}", pair.to_string())
     }
@@ -132,6 +134,10 @@ mod tests {
         assert_eq!("Call(Symbol(a), Id(defvar), [Int(1)])", parse("var a = 1").format());
         assert_eq!("Call(Symbol(a), Id(defvar), [Int(1)])", parse("'a.defvar(1)").format());
         assert_eq!("Call(Symbol(f), Id(defval), [TypeSpec(Float), Float(1.0)])", parse("val f: Float = 1.0").format());
+    }
+
+    #[test]
+    fn test_assignments() {
         assert_eq!("Call(Symbol(a), Id(set), [Int(2)])", parse("a = 2").format());
         assert_eq!("Call(Symbol(a), Id(set), [Int(2)])", parse("'a.set(2)").format());
         assert_eq!("Call(Symbol(a), Id(eq), [Int(2)])", parse("'a == 2").format());
@@ -142,7 +148,11 @@ mod tests {
         assert_eq!("Call(Int(1), Id(mul), [Int(2)])", parse("1 * 2").format());
         assert_eq!("Call(Int(1), Id(add), [Call(Int(2), Id(mul), [Int(3)])])", parse("1 + 2 * 3").format());
         assert_eq!("Call(Int(1), Id(mul), [Call(Int(-2), Id(add), [Int(3)])])", parse("1 * (-2 + 3)").format());
+    }
 
+    #[test]
+    fn test_boolean_expressions() {
+        assert_eq!("Call(Call(Call(Id(x), Id(eq), [Int(2)]), Id(or), [Call(Id(y), Id(eq), [Int(1)])]), Id(and), [Id(z)])", parse("(x == 2) || (y == 1) && z").format());
     }
 
     #[test]
@@ -153,8 +163,8 @@ mod tests {
     }
 
     #[test]
-    fn test_expressions() {
-        assert_eq!("Call(Call(Id(a), Id(eq), [Int(1)]), Id(if), [Block([Int(2)]), Block([Int(3)])])", parse("if (a == 1) { 2 } else { 3 }").format());
+    fn test_ifelse() {
+        assert_eq!("Call(Call(Id(a), Id(eq), [Int(1)]), Id(ifElse), [Block([Int(2)]), Block([Int(3)])])", parse("if (a == 1) { 2 } else { 3 }").format());
 
     }
 }

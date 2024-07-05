@@ -14,7 +14,7 @@ Literal = _{ Special | Float | Int | Symbol | Id | String }
 
 TypeSpec = @{ ":" ~ WHITESPACE* ~ Id ~ ( "<" ~ Id ~( "," ~ Id )? ~ ">")? }
 
-Operator = _{ Add | Sub | Mul | Div | Mod | Exp | Eq | Neq | Le | Lt | Ge | Gt}
+Operator = _{ Add | Sub | Mul | Div | Mod | Exp | Eq | Neq | Le | Lt | Ge | Gt | And | Or }
     Add = { "+" }
     Sub = { "-" }
     Mul = { "*" }
@@ -27,6 +27,8 @@ Operator = _{ Add | Sub | Mul | Div | Mod | Exp | Eq | Neq | Le | Lt | Ge | Gt}
     Le = { "<" }
     Gt = { ">" }
     Ge = { "=>" }
+    And = { "&&" }
+    Or = { "||" }
 
 Dot = { "." }
 
