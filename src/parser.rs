@@ -42,11 +42,11 @@ fn parse_pairs(pairs: Pairs<Rule>) -> Expr {
 
 fn reduce_expr(left: Expr, op: Pair<Rule>, right: Expr) -> Expr {
     if op.as_rule() == Rule::Dot {  // conditions can't be combined
-        if let Expr::ChainCall(x, y) = right {  
-            return Expr::Call(Box::new(left), x, y)
+        if let Expr::ChainCall(args) = right {
+            return Expr::Call(Box::new(left), args)
         }
     }
-    Expr::Call(Box::new(left), Box::new(Expr::Id(operator_name(op))), vec!(right))
+    Expr::Call(Box::new(left), vec!(Expr::Symbol(operator_name(op)), right))
 }
 
 fn parse_primary(pair: Pair<Rule>) -> Expr {
@@ -55,18 +55,21 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
         Rule::Float => Expr::Float(pair.as_str().parse::<f64>().unwrap()),
         Rule::Special => to_literal(pair.as_str()),
         Rule::String => Expr::Str(unquote(pair.as_str())),
-        Rule::Id => Expr::Id(pair.as_str().to_string()),
-        Rule::Symbol => Expr::Symbol(remove_first(pair.as_str())),
+        Rule::Symbol => Expr::Symbol(pair.as_str().to_string()),
         Rule::TypeSpec => Expr::parse_type_spec(pair.as_str()),
-        Rule::Operator => Expr::Id(pair.as_str().to_string()),
+        Rule::Operator => Expr::Symbol(pair.as_str().to_string()),
         Rule::Expr =>  parse_pairs(pair.into_inner()),
-        Rule::CallExpr => chain_call(to_vec(pair, 0)),
-        Rule::Declaration => call(("def".to_owned() + pair.as_str().split(" ").next().unwrap()).as_str(), to_vec(pair, 3), |e| e.to_symbol()),
-        Rule::Assignment => call(SET, to_vec(pair, 2), |e| e.to_symbol()),
-        Rule::IfElse => call("ifElse", to_vec(pair, 3), |e| e),
+        Rule::CallExpr => Expr::ChainCall(to_vec(pair, 0)),
+        Rule::Declaration => Expr::Call(to_box(pair.as_str().split(" ").next().unwrap()), to_vec(pair, 3)),
+        Rule::Assignment => Expr::Call(to_box("set"), to_vec(pair, 0)),
+        Rule::IfElse =>  Expr::Call(to_box("if"), to_vec(pair, 3)),
         Rule::Block => Expr::Block(to_vec(pair, 0)),
         _ => unreachable!("Rule not implemented {}", pair.to_string())
     }
+}
+
+fn to_box(str: &str) -> Box<Expr> {
+    Box::new(Expr::Symbol(str.to_string()))
 }
 
 fn to_vec(pair: Pair<Rule>, expected_len: usize) -> Vec<Expr> {
@@ -76,20 +79,12 @@ fn to_vec(pair: Pair<Rule>, expected_len: usize) -> Vec<Expr> {
     }
     args
 }
-fn chain_call(mut args: Vec<Expr>) -> Expr {
-    Expr::ChainCall(Box::new(args.remove(0)), args)
-}
-fn call(id: &str,  mut args: Vec<Expr>, left_apply: fn(Expr) -> Expr) -> Expr {
-    Expr::Call(Box::new(left_apply(args.remove(0))), Box::new(Expr::Id(id.to_string())), args)
-}
+
 
 fn unquote(str: &str) -> String {
     (&str[1..str.len()-1]).to_string()
 }
 
-fn remove_first(str: &str) -> String {
-    (&str[1..str.len()]).to_string()
-}
 fn operator_name(pair: Pair<Rule>) -> String {
     format!("{:?}", pair.as_rule()).to_lowercase()
 }
@@ -102,8 +97,6 @@ fn to_literal(str: &str) -> Expr {
         _ => panic!(),
     }
 }
-
-const SET: &str = "set";
 
 #[cfg(test)]
 mod tests {

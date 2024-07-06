@@ -8,11 +8,10 @@ Float = @{ "-"? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ ~ (^"e" ~ "-"? ~ ASCII_DIGIT
 String = { "\"" ~ stringChar*  ~  "\"" }
 stringChar = _{ !"\""  ~ ANY }
 
-Id = @{ ASCII_ALPHA ~ ASCII_ALPHANUMERIC* }
-Symbol = @{ "'" ~ Id }
-Literal = _{ Special | Float | Int | Symbol | Id | String }
+Symbol = @{ ASCII_ALPHA ~ ASCII_ALPHANUMERIC* }
+Literal = _{ Special | Float | Int | Symbol | String }
 
-TypeSpec = @{ ":" ~ WHITESPACE* ~ Id ~ ( "<" ~ Id ~( "," ~ Id )? ~ ">")? }
+TypeSpec = @{ ":" ~ WHITESPACE* ~ Symbol ~ ( "<" ~ Symbol ~( "," ~ Symbol )? ~ ">")? }
 
 Operator = _{ Add | Sub | Mul | Div | Mod | Exp | Eq | Neq | Le | Lt | Ge | Gt | And | Or }
     Add = { "+" }
@@ -35,12 +34,12 @@ Dot = { "." }
 Expr = { BinaryExpr | CallExpr | ChainCall | Term }
 ChainCall = _{ Term ~ ( Dot ~ CallExpr )+  }
 BinaryExpr = _{ Term ~ ( Operator ~ Term ) + }
-CallExpr = { Id ~ "(" ~ Expr? ~ ( "," ~ Expr )* ~ ")" }
+CallExpr = { Symbol ~ "(" ~ Expr? ~ ( "," ~ Expr )* ~ ")" }
 Term = _{ Literal |  "(" ~ Expr ~ ")" }
 
 VarType = _{ "var" | "val" | "const" }
-Declaration = { VarType ~ Id ~ TypeSpec? ~ "=" ~ Expr }
-Assignment = { Id ~ "=" ~ Expr }
+Declaration = { VarType ~ Symbol ~ TypeSpec? ~ "=" ~ Expr }
+Assignment = { Symbol ~ "=" ~ Expr }
 
 
 Block = { "{" ~ NEWLINE* ~ Statement ~ ( NEWLINE ~ Statement)* ~ NEWLINE* ~ "}" }

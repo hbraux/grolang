@@ -5,7 +5,7 @@ use std::string::ToString;
 use strum_macros::{Display, EnumString};
 
 use ErrorCode::{DivisionByZero, InconsistentType, UndefinedSymbol, WrongArgumentsNumber};
-use Expr::{Bool, Error, Float, Id, Int, Nil, Str};
+use Expr::{Bool, Error, Float, Int, Nil, Str};
 
 use crate::ErrorCode::NotABoolean;
 use crate::Expr::{Call, Symbol, TypeSpec};
@@ -148,12 +148,11 @@ pub enum Expr {
     Float(f64),
     Str(String),
     Bool(bool),
-    Id(String),
     Symbol(String),
     TypeSpec(Type),
     Block(Vec<Expr>),
-    ChainCall(Box<Expr>, Vec<Expr>),
-    Call(Box<Expr>, Box<Expr>, Vec<Expr>),
+    ChainCall(Vec<Expr>),
+    Call(Box<Expr>, Vec<Expr>),
     Error(ErrorCode),
     Nil,
 }
@@ -185,26 +184,13 @@ impl Expr {
     pub fn eval(self, ctx: &mut Context) -> Expr {
         match self {
             Nil => Nil,
-            Symbol(name) => Id(name),
-            Id(name) => ctx.get(&*name),
+            Symbol(name) => ctx.get(&*name),
             Int(_) | Float(_) | Str(_) | Bool(_) | TypeSpec(_) => self,
-            Call(left, op, args) => left.eval(ctx).call(op.to_operator(), args, ctx),
+            Call(op, mut args) => args.remove(0).eval(ctx).call(op.to_operator(), args, ctx),
             _ => panic!("{}.eval() not implemented", self)
         }
     }
 
-    pub fn to_symbol(&self) -> Expr {
-        match self {
-            Id(name) => Expr::Symbol(name.clone()),
-            _ => panic!("{} is not an Id", self)
-        }
-    }
-    fn to_operator(&self) -> Operator {
-        match self {
-            Id(name) => Operator::new(name),
-            _ => panic!("{} is not an Id", self)
-        }
-    }
     pub fn print(self) -> String {
         match self {
             Bool(x) => x.to_string(),
@@ -215,12 +201,17 @@ impl Expr {
                 let str = x.to_string();
                 if str.contains('.') { str } else { format!("{}.0", str) }
             }
-            Id(x) => x,
+            Symbol(x) => x,
             _ => format!("{:?}", self),
         }
     }
     // private part
-
+    fn to_operator(&self) -> Operator {
+        match self {
+            Symbol(name) => Operator::new(name),
+            _ => panic!("{} is not an Id", self)
+        }
+    }
     fn store(self, ctx: &mut Context, args: Vec<Expr>, _fun: Operator, is_new: bool) -> Expr {
         let mut value= &args[0];
         if let TypeSpec(expected) = value {
@@ -230,7 +221,7 @@ impl Expr {
             }
         }
         // TODO: handle variable type
-        if let Id(name) = self {
+        if let Symbol(name) = self {
             let is_defined = ctx.is_defined(&name);
             if is_new && is_defined {
                 Error(ErrorCode::AlreadyDefined(name.to_owned()))
