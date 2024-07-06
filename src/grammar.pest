@@ -1,4 +1,4 @@
-// Ficher décrivant la grammaire du langage (voir https://pest.rs/book/grammars/peg.html)
+// Langgae grammar, see https://pest.rs/book/grammars/peg.html)
 
 Special = { "true" | "false" | "nil" }
 
