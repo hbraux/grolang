@@ -151,8 +151,7 @@ pub enum Expr {
     Symbol(String),
     TypeSpec(Type),
     Block(Vec<Expr>),
-    ChainCall(Vec<Expr>),
-    Call(Box<Expr>, Vec<Expr>),
+    Call(Vec<Expr>),
     Error(ErrorCode),
     Nil,
 }
@@ -186,7 +185,7 @@ impl Expr {
             Nil => Nil,
             Symbol(name) => ctx.get(&*name),
             Int(_) | Float(_) | Str(_) | Bool(_) | TypeSpec(_) => self,
-            Call(op, mut args) => args.remove(0).eval(ctx).call(op.to_operator(), args, ctx),
+            Call(mut args) => args.remove(0).eval(ctx).call(Operator::Add, args, ctx),
             _ => panic!("{}.eval() not implemented", self)
         }
     }

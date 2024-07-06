@@ -37,8 +37,8 @@ BinaryExpr = _{ Term ~ ( Operator ~ Term ) + }
 CallExpr = { Symbol ~ "(" ~ Expr? ~ ( "," ~ Expr )* ~ ")" }
 Term = _{ Literal |  "(" ~ Expr ~ ")" }
 
-VarType = _{ "var" | "val" | "const" }
-Declaration = { VarType ~ Symbol ~ TypeSpec? ~ "=" ~ Expr }
+VarType = _{ "var" | "val" }
+Declaration = { Symbol ~ Symbol ~ TypeSpec? ~ "=" ~ Expr }
 Assignment = { Symbol ~ "=" ~ Expr }
 
 
