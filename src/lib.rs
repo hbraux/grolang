@@ -164,7 +164,6 @@ impl Expr {
     pub fn read(str: &str, _ctx: &Context) -> Expr {
         parse(str).unwrap_or_else(|s| Error(ErrorCode::ParseError(s)))
     }
-
     pub fn parse_type_spec(str: &str) -> Expr {
         TypeSpec(Type::new(str.replace(":", "").trim()))
     }

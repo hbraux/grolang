@@ -2,7 +2,6 @@
 
 Special = { "true" | "false" | "nil" }
 
-// nombres
 Int = @{  "-"? ~ ASCII_DIGIT+  ~ ( "_" ~ ASCII_DIGIT+)* }
 Float = @{ "-"? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ ~ (^"e" ~ "-"? ~ ASCII_DIGIT+)? }
 
