@@ -58,16 +58,16 @@ pub enum BuiltIn {
 }
 
 impl BuiltIn {
-    fn is_lazy(&self) -> bool {
+    fn is_macro(&self) -> bool {
         match self {
-            BuiltIn::If |  BuiltIn::And |  BuiltIn::Or => true,
+            BuiltIn::If |  BuiltIn::And | BuiltIn::Or => true,
             _ => false,
         }
     }
     fn call_args(&self) -> usize {
         match self {
-            BuiltIn::ToStr => 0,
-            _ => 1
+            BuiltIn::ToStr => 1,
+            _ => 2
         }
     }
     fn calc_int(&self, a: i64, b: i64) -> Expr {
@@ -138,7 +138,7 @@ impl Expr {
             Nil | Error(_) | Int(_) | Float(_) | Str(_) | Bool(_) | TypeSpec(_) => self,
             Symbol(name) => ctx.get(&*name),
             Call(mut args) => match args.remove(0) {
-                Symbol(name) =>  args.remove(0).call(&name, args, ctx),
+                Symbol(name) => call(&name, args, ctx),
                 e => Error(ErrorCode::NotSymbol(e.to_string()))
             }
             _ => panic!("{}.eval() not implemented", self)
@@ -232,27 +232,31 @@ impl Expr {
            _ => Error(ErrorCode::NotBoolean)
        }
     }
+}
 
-
-    fn call(self, name: &str, args: Vec<Expr>, ctx: &mut Context) -> Expr {
-        if let Ok(op) = BuiltIn::from_str(name) {
-            if args.len() < op.call_args() {
-                return Error(ErrorCode::WrongArgumentsNumber(op.call_args(), args.len()))
-            }
-            match op {
-                BuiltIn::ToStr => self.unitary_op(op),
-                BuiltIn::Add | BuiltIn::Sub | BuiltIn::Mul | BuiltIn::Div | BuiltIn::Mod => self.arithmetic_op(op, args[0].clone().eval(ctx)),
-                BuiltIn::Eq | BuiltIn::Neq | BuiltIn::Ge | BuiltIn::Gt | BuiltIn::Le | BuiltIn::Lt => self.comparison_op(op, args[0].clone().eval(ctx)),
-                BuiltIn::And | BuiltIn::Or => self.binary_op(op, &args[0], ctx),
-                BuiltIn::Var | BuiltIn::Val => self.store(ctx, args, op, true),
-                BuiltIn::Set => self.store(ctx, args, op, false),
-                _ => panic!(),
-            }
-        } else {
-            panic!("{} is not a built-in fucntion", name)
+fn call(name: &str, mut args: Vec<Expr>, ctx: &mut Context) -> Expr {
+    if let Ok(op) = BuiltIn::from_str(name) {
+        if args.len() < op.call_args() {
+            return Error(ErrorCode::WrongArgumentsNumber(op.call_args(), args.len()))
         }
+        let mut obj = args.remove(0);
+        if !op.is_macro() {
+            obj = obj.eval(ctx)
+        }
+        match op {
+            BuiltIn::ToStr => obj.unitary_op(op),
+            BuiltIn::Add | BuiltIn::Sub | BuiltIn::Mul | BuiltIn::Div | BuiltIn::Mod => obj.arithmetic_op(op, args[0].clone().eval(ctx)),
+            BuiltIn::Eq | BuiltIn::Neq | BuiltIn::Ge | BuiltIn::Gt | BuiltIn::Le | BuiltIn::Lt => obj.comparison_op(op, args[0].clone().eval(ctx)),
+            BuiltIn::And | BuiltIn::Or => obj.binary_op(op, &args[0], ctx),
+            BuiltIn::Var | BuiltIn::Val => obj.store(ctx, args, op, true),
+            BuiltIn::Set => obj.store(ctx, args, op, false),
+            _ => panic!(),
+        }
+    } else {
+        panic!("{} is not a built-in function", name)
     }
 }
+
 
 // *********************************** Context ******************************************
 
