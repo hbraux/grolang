@@ -6,8 +6,7 @@ use pest::pratt_parser::{Op, PrattParser};
 use pest::pratt_parser::Assoc::Left;
 use pest_derive::Parser;
 
-use crate::{ErrorCode, Expr, FALSE, NIL, TRUE};
-use crate::Expr::Nil;
+use crate::{Expr, FALSE, NIL, TRUE};
 
 #[derive(Parser)]
 #[grammar = "grammar.pest"]
@@ -26,10 +25,10 @@ lazy_static! {
     };
 }
 
-pub fn parse(str: &str) -> Expr {
+pub fn parse(str: &str) -> Result<Expr, String> {
     match GroParser::parse(Rule::Statement, str) {
-        Ok(pairs) => parse_pairs(pairs),
-        Err(e)    => Expr::Error(ErrorCode::SyntaxError(e.to_string()))
+        Ok(pairs) => Ok(parse_pairs(pairs)),
+        Err(e)    => Err(e.variant.message().to_string()),
     }
 }
 
@@ -75,9 +74,9 @@ fn to_vec(pair: Pair<Rule>, expected_len: usize, optional_pos: usize, prefix: Op
     let mut args: Vec<Expr> = pair.into_inner().into_iter().map(|p| parse_primary(p)).collect();
     if expected_len > 0 && args.len() < expected_len {
         if optional_pos > 0 {
-            args.insert(optional_pos, Nil)
+            args.insert(optional_pos, Expr::Nil)
         } else {
-            args.resize(expected_len, Nil)
+            args.resize(expected_len, Expr::Nil)
         }
     }
     if let Some(s) = prefix {
@@ -85,6 +84,7 @@ fn to_vec(pair: Pair<Rule>, expected_len: usize, optional_pos: usize, prefix: Op
     }
     args
 }
+
 fn unquote(str: &str) -> String {
     (&str[1..str.len()-1]).to_string()
 }
@@ -103,61 +103,65 @@ fn to_literal(str: &str) -> Expr {
 #[cfg(test)]
 mod tests {
     use crate::Expr;
-
     use super::*;
+    fn read(str: &str) -> String { parse(str).unwrap().format() }
 
     #[test]
-    fn test_parse() {
-        assert_eq!(Expr::Int(1), parse("1"));
-        assert_eq!(Expr::Int(1234567), parse("1_234_567"));
-        assert_eq!(Expr::Int(-23_000), parse("-23_000"));
-        assert_eq!(Expr::Float(3.4), parse("3.4"));
-        assert_eq!(Expr::Float(12000.0), parse("1.2e4"));
-        assert_eq!(Expr::Float(0.12), parse("1.2e-1"));
-        assert_eq!(TRUE, parse("true"));
-        assert_eq!(FALSE, parse("false"));
-        assert_eq!(NIL, parse("nil"));
-        assert_eq!(Expr::Str("abc".to_string()), parse("\"abc\""));
-        assert_eq!(Expr::Str("true".to_string()), parse("\"true\""));
+    fn test_literals() {
+        assert_eq!(Expr::Int(1), parse("1").unwrap());
+        assert_eq!(Expr::Int(1234567), parse("1_234_567").unwrap());
+        assert_eq!(Expr::Int(-23_000), parse("-23_000").unwrap());
+        assert_eq!(Expr::Float(3.4), parse("3.4").unwrap());
+        assert_eq!(Expr::Float(12000.0), parse("1.2e4").unwrap());
+        assert_eq!(Expr::Float(0.12), parse("1.2e-1").unwrap());
+        assert_eq!(TRUE, parse("true").unwrap());
+        assert_eq!(FALSE, parse("false").unwrap());
+        assert_eq!(NIL, parse("nil").unwrap());
+        assert_eq!(Expr::Str("abc".to_string()), parse("\"abc\"").unwrap());
+        assert_eq!(Expr::Str("true".to_string()), parse("\"true\"").unwrap());
+    }
+
+    #[test]
+    fn test_failure() {
+        assert_eq!(parse("=2").err(), Some("expected Symbol, Expr, or IfElse".to_owned()));
     }
 
     #[test]
     fn test_declarations() {
-        assert_eq!("Call([Symbol(var), Symbol(a), Nil, Int(1)])", parse("var a = 1").format());
-        assert_eq!("Call([Symbol(val), Symbol(f), TypeSpec(Float), Float(1.0)])", parse("val f: Float = 1.0").format());
+        assert_eq!("Call([Symbol(var), Symbol(a), Nil, Int(1)])", read("var a = 1"));
+        assert_eq!("Call([Symbol(val), Symbol(f), TypeSpec(Float), Float(1.0)])", read("val f: Float = 1.0"));
     }
 
     #[test]
     fn test_assignments() {
-        assert_eq!("Call([Symbol(set), Symbol(a), Int(2)])", parse("a = 2").format());
-        assert_eq!("Call([Symbol(set), Symbol(a), Int(2)])", parse("set(a, 2)").format());
+        assert_eq!("Call([Symbol(set), Symbol(a), Int(2)])", read("a = 2"));
+        assert_eq!("Call([Symbol(set), Symbol(a), Int(2)])", read("set(a, 2)"));
     }
 
     #[test]
     fn test_arithmetic_order() {
-        assert_eq!("Call([Symbol(mul), Int(1), Int(2)])", parse("1 * 2").format());
-        assert_eq!("Call([Symbol(add), Int(1), Call([Symbol(mul), Int(2), Int(3)])])", parse("1 + 2 * 3").format());
-        assert_eq!("Call([Symbol(mul), Int(1), Call([Symbol(add), Int(-2), Int(3)])])", parse("1 * (-2 + 3)").format());
+        assert_eq!("Call([Symbol(mul), Int(1), Int(2)])", read("1 * 2"));
+        assert_eq!("Call([Symbol(add), Int(1), Call([Symbol(mul), Int(2), Int(3)])])", read("1 + 2 * 3"));
+        assert_eq!("Call([Symbol(mul), Int(1), Call([Symbol(add), Int(-2), Int(3)])])", read("1 * (-2 + 3)"));
     }
 
     #[test]
     fn test_boolean_expressions() {
         assert_eq!("Call([Symbol(and), Call([Symbol(or), Call([Symbol(eq), Symbol(x), Int(2)]), Call([Symbol(eq), Symbol(y), Int(1)])]), Symbol(z)])",
-                   parse("(x == 2) || (y == 1) && z").format());
+                   read("(x == 2) || (y == 1) && z"));
     }
 
     #[test]
     fn test_calls() {
-        assert_eq!("Call([Symbol(print), Symbol(a)])", parse("print(a)").format());
-        assert_eq!("Call([Int(1), Symbol(mul), Int(2)])", parse("1.mul(2)]").format());
-        assert_eq!("Call([Int(1), Symbol(mul), Call([Int(-2), Symbol(add), Int(3)])])", parse("1.mul(-2.add(3))").format());
+        assert_eq!("Call([Symbol(print), Symbol(a)])", read("print(a)"));
+        assert_eq!("Call([Int(1), Symbol(mul), Int(2)])", read("1.mul(2)]"));
+        assert_eq!("Call([Int(1), Symbol(mul), Call([Int(-2), Symbol(add), Int(3)])])", read("1.mul(-2.add(3))"));
     }
 
     #[test]
     fn test_if() {
-        assert_eq!("Call([Symbol(if), Call([Symbol(eq), Symbol(a), Int(1)]), Block([Int(2)]), Block([Int(3)])])",
-                   parse("if (a == 1) { 2 } else { 3 }").format());
-        assert_eq!("Call([Symbol(if), Bool(true), Block([Int(1)]), Nil])", parse("if (true) { 1 } ").format());
+        assert_eq!("Call([Symbol(if), Call([Symbol(eq), Symbol(a), Int(1)]), Block([Int(2)]), Block([Int(3)])])", read("if (a == 1) { 2 } else { 3 }"));
+        assert_eq!("Call([Symbol(if), Bool(true), Block([Int(1)]), Nil])", read("if (true) { 1 } "));
     }
 }
 

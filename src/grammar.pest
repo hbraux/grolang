@@ -1,7 +1,8 @@
-// see https://pest.rs/book/examples/calculator.html
+// Ficher décrivant la grammaire du langage (voir https://pest.rs/book/grammars/peg.html)
 
 Special = { "true" | "false" | "nil" }
 
+// nombres
 Int = @{  "-"? ~ ASCII_DIGIT+  ~ ( "_" ~ ASCII_DIGIT+)* }
 Float = @{ "-"? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ ~ (^"e" ~ "-"? ~ ASCII_DIGIT+)? }
 
@@ -28,7 +29,6 @@ Operator = _{ Add | Sub | Mul | Div | Mod | Exp | Eq | Neq | Le | Lt | Ge | Gt |
     Ge = { "=>" }
     And = { "&&" }
     Or = { "||" }
-
 Dot = { "." }
 
 Expr = { BinaryExpr | CallExpr | ChainCall | Term }
@@ -40,7 +40,6 @@ Term = _{ Literal |  "(" ~ Expr ~ ")" }
 VarType = _{ "var" | "val" }
 Declaration = { Symbol ~ Symbol ~ TypeSpec? ~ "=" ~ Expr }
 Assignment = { Symbol ~ "=" ~ Expr }
-
 
 Block = { "{" ~ NEWLINE* ~ Statement ~ ( NEWLINE ~ Statement)* ~ NEWLINE* ~ "}" }
 IfElse = { "if" ~ "(" ~ Expr ~ ")" ~ Block ~ ( "else" ~ Block)? }

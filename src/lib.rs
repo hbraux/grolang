@@ -4,20 +4,20 @@ use std::string::ToString;
 
 use strum_macros::{Display, EnumString};
 
-use ErrorCode::{DivisionByZero, InconsistentType, UndefinedSymbol, WrongArgumentsNumber};
+
 use Expr::{Bool, Error, Float, Int, Nil, Str};
 
-use crate::ErrorCode::NotABoolean;
 use crate::Expr::{Call, Symbol, TypeSpec};
 use crate::parser::parse;
 
 mod parser;
 
+
 #[derive(Debug, Clone, PartialEq, Display)]
 pub enum ErrorCode {
+    ParseError(String),
     DivisionByZero,
     UndefinedSymbol(String),
-    SyntaxError(String),
     NotANumber,
     NotABoolean,
     InconsistentType(String),
@@ -124,7 +124,7 @@ impl Operator {
             Operator::Sub => Int(a - b),
             Operator::Mul => Int(a * b),
             Operator::Mod => Int(a % b),
-            Operator::Div => if b != 0 { Int(a / b) } else { Error(DivisionByZero) }
+            Operator::Div => if b != 0 { Int(a / b) } else { Error(ErrorCode::DivisionByZero) }
             _ => panic!(),
         }
     }
@@ -134,7 +134,7 @@ impl Operator {
             Operator::Sub => Float(a - b),
             Operator::Mul => Float(a * b),
             Operator::Mod => Float(a % b),
-            Operator::Div => if b != 0.0 { Float(a / b) } else { Error(DivisionByZero) }
+            Operator::Div => if b != 0.0 { Float(a / b) } else { Error(ErrorCode::DivisionByZero) }
             _ => panic!(),
         }
     }
@@ -161,7 +161,9 @@ pub const FALSE: Expr = Bool(false);
 pub const NIL: Expr = Nil;
 
 impl Expr {
-    pub fn read(str: &str, _ctx: &Context) -> Expr { parse(str) }
+    pub fn read(str: &str, _ctx: &Context) -> Expr {
+        parse(str).unwrap_or_else(|s| Error(ErrorCode::ParseError(s)))
+    }
 
     pub fn parse_type_spec(str: &str) -> Expr {
         TypeSpec(Type::new(str.replace(":", "").trim()))
@@ -216,7 +218,7 @@ impl Expr {
         if let TypeSpec(expected) = value {
             value = &args[1];
             if value.get_type() != *expected {
-                return Error(InconsistentType(value.get_type().to_string()))
+                return Error(ErrorCode::InconsistentType(value.get_type().to_string()))
             }
         }
         // TODO: handle variable type
@@ -227,7 +229,7 @@ impl Expr {
             } else if !is_new && !is_defined {
                 Error(ErrorCode::NotDefined(name.to_owned()))
             } else if !is_new && ctx.get_type(&name) != value.get_type() {
-                Error(InconsistentType(value.get_type().to_string()))
+                Error(ErrorCode::InconsistentType(value.get_type().to_string()))
             } else {
                 ctx.set(&name, value.clone());
                 value.clone()
@@ -239,7 +241,7 @@ impl Expr {
     fn ensure(self, spec: Option<Type>) -> Expr {
         if let Some(expected) = spec {
             if !self.is_error() && self.get_type() != expected {
-                return Error(InconsistentType(expected.to_string()));
+                return Error(ErrorCode::InconsistentType(expected.to_string()));
             }
         }
         self
@@ -281,13 +283,13 @@ impl Expr {
     fn to_bool(self) -> Expr {
        match self {
            Bool(_) => self,
-           _ => Error(NotABoolean)
+           _ => Error(ErrorCode::NotABoolean)
        }
     }
 
     fn call(self, op: Operator, args: Vec<Expr>, ctx: &mut Context) -> Expr {
         if args.len() < op.call_args() {
-            return Error(WrongArgumentsNumber(op.call_args(), args.len()))
+            return Error(ErrorCode::WrongArgumentsNumber(op.call_args(), args.len()))
         }
         match op {
             Operator::Defined(_x) => todo!(),
@@ -313,7 +315,7 @@ impl Context {
     pub fn get(&self, name: &str) -> Expr {
         match self.values.get(name) {
             Some(expr) => expr.clone(),
-            None => Error(UndefinedSymbol(name.to_string())),
+            None => Error(ErrorCode::UndefinedSymbol(name.to_string())),
         }
     }
     pub fn is_defined(&self, name: &str) -> bool {
