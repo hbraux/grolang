@@ -4,6 +4,8 @@ use crate::{Env, Expr};
 use crate::errors::ErrorCode;
 use crate::Expr::{Bool, Float, Int};
 use crate::expr::Expr::{Error, Str, Symbol, TypeSpec};
+use crate::expr::{FALSE,TRUE};
+
 
 #[derive(Debug, Clone, PartialEq, EnumString)]
 #[strum(serialize_all = "lowercase")]
@@ -31,12 +33,6 @@ pub enum BuiltIn {
 
 
 impl BuiltIn {
-    fn is_macro(&self) -> bool {
-        match self {
-            BuiltIn::If |  BuiltIn::And | BuiltIn::Or => true,
-            _ => false,
-        }
-    }
     fn call_args(&self) -> usize {
         match self {
             BuiltIn::ToStr => 1,
@@ -129,8 +125,10 @@ fn store(ctx: &mut Env, args: Vec<Expr>, is_mutable: Option<bool>) -> Expr {
             Error(ErrorCode::NotDefined(name.to_owned()))
         } else if is_mutable.is_none() && ctx.get_type(&name) != value.get_type() {
             Error(ErrorCode::InconsistentType(value.get_type().to_string()))
+        } else if is_mutable.is_none() && ctx.is_mutable(&name) {
+            Error(ErrorCode::NotMutable(value.get_type().to_string()))
         } else {
-            ctx.set(&name, value.clone());
+            ctx.set(&name, value, is_mutable);
             value.clone()
         }
     } else {

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::string::ToString;
 
 use crate::errors::ErrorCode;
@@ -16,10 +16,11 @@ mod builtin;
 
 pub struct Env {
     values: HashMap<String, Expr>,
+    mutables: HashSet<String>,
 }
 
 impl Env {
-    pub fn new() -> Env { Env { values: HashMap::new() } }
+    pub fn new() -> Env { Env { values: HashMap::new(), mutables: HashSet::new() } }
     pub fn get(&self, name: &str) -> Expr {
         match self.values.get(name) {
             Some(expr) => expr.clone(),
@@ -29,11 +30,17 @@ impl Env {
     pub fn is_defined(&self, name: &str) -> bool {
         self.values.contains_key(name)
     }
+    pub fn is_mutable(&self, name: &str) -> bool {
+        self.values.contains_key(name)
+    }
     pub fn get_type(&self, name: &str) -> Type {
         self.values.get(name).unwrap().get_type()
     }
-    pub fn set(&mut self, name: &str, expr: Expr) {
-        self.values.insert(name.to_string(), expr);
+    pub fn set(&mut self, name: &str, expr: &Expr, is_mutable: Option<bool>) {
+        if is_mutable == Some(true) {
+            self.mutables.insert(name.to_string());
+        }
+        self.values.insert(name.to_string(), expr.clone());
     }
     pub fn read(&mut self, str: &str) -> Expr { Expr::read(str, self) }
     pub fn exec(&mut self, str: &str) -> String { self.read(str).eval(self).print() }

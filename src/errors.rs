@@ -8,6 +8,7 @@ pub enum ErrorCode {
     UndefinedSymbol(String),
     NotNumber,
     NotBoolean,
+    NotMutable(String),
     InconsistentType(String),
     AlreadyDefined(String),
     NotDefined(String),
