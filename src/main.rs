@@ -1,7 +1,7 @@
 use std::{env, io};
 use std::io::Write;
 
-use grolang::Context;
+use grolang::Env;
 use grolang::Expr::Error;
 
 const LANG: &str = "GroLang";
@@ -26,7 +26,7 @@ fn main() {
 fn repl() {
     println!("{BLUE}Bienvenue sur {LANG} version {VERSION}{STD}");
     println!("Taper :q pour quitter, :h pour de l'aide");
-    let mut ctx = Context::new();
+    let mut ctx = Env::new();
     loop {
         print!("{}", PROMPT);
         io::stdout().flush().unwrap();

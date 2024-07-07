@@ -6,7 +6,8 @@ use pest::pratt_parser::{Op, PrattParser};
 use pest::pratt_parser::Assoc::Left;
 use pest_derive::Parser;
 
-use crate::{Expr, FALSE, NIL, TRUE};
+
+use crate::expr::{Expr, FALSE, NIL, TRUE};
 
 #[derive(Parser)]
 #[grammar = "grammar.pest"]
@@ -41,13 +42,12 @@ fn parse_pairs(pairs: Pairs<Rule>) -> Expr {
 
 fn reduce_expr(left: Expr, op: Pair<Rule>, right: Expr) -> Expr {
     if op.as_rule() == Rule::Dot {
-        if let Expr::Call(v) = right {
-            let mut args = v.clone();
+        if let Expr::Call(name, mut args) = right {
             args.insert(0, left);
-            return Expr::Call(args)
+            return Expr::Call(name, args)
         }
     }
-    Expr::Call(vec!(Expr::Symbol(operator_name(op)), left, right))
+    Expr::Call(operator_name(op), vec!(left, right))
 }
 
 
@@ -61,16 +61,24 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
         Rule::TypeSpec => Expr::parse_type_spec(pair.as_str()),
         Rule::Operator => Expr::Symbol(pair.as_str().to_string()),
         Rule::Expr =>  parse_pairs(pair.into_inner()),
-        Rule::CallExpr => Expr::Call(to_vec(pair, 0, 0, None)),
-        Rule::Declaration => Expr::Call(to_vec(pair, 4, 2, None)),
-        Rule::Assignment => Expr::Call(to_vec(pair, 0, 0, Some("set"))),
-        Rule::IfElse =>  Expr::Call(to_vec(pair, 3, 0 , Some("if"))),
-        Rule::Block => Expr::Block(to_vec(pair, 0, 0, None)),
+        Rule::CallExpr => build_call(to_vec(pair, 0, 0)),
+        Rule::Declaration => build_call(to_vec(pair, 4, 2)),
+        Rule::Assignment => Expr::Call("set".to_owned(), to_vec(pair, 0, 0)),
+        Rule::IfElse =>  Expr::Call("if".to_owned(),to_vec(pair, 3, 0 )),
+        Rule::Block => Expr::Block(to_vec(pair, 0, 0)),
         _ => unreachable!("rule not implemented {}", pair.to_string())
     }
 }
 
-fn to_vec(pair: Pair<Rule>, expected_len: usize, optional_pos: usize, prefix: Option<&str>) -> Vec<Expr> {
+fn build_call(mut args: Vec<Expr>) -> Expr {
+    if let Expr::Symbol(name) = args.remove(0) {
+        Expr::Call(name, args)
+    } else {
+        panic!("first arg should be a symbol")
+    }
+}
+
+fn to_vec(pair: Pair<Rule>, expected_len: usize, optional_pos: usize) -> Vec<Expr> {
     let mut args: Vec<Expr> = pair.into_inner().into_iter().map(|p| parse_primary(p)).collect();
     if expected_len > 0 && args.len() < expected_len {
         if optional_pos > 0 {
@@ -78,9 +86,6 @@ fn to_vec(pair: Pair<Rule>, expected_len: usize, optional_pos: usize, prefix: Op
         } else {
             args.resize(expected_len, Expr::Nil)
         }
-    }
-    if let Some(s) = prefix {
-        args.insert(0,  Expr::Symbol(s.to_string()))
     }
     args
 }
@@ -102,7 +107,6 @@ fn to_literal(str: &str) -> Expr {
 
 #[cfg(test)]
 mod tests {
-    use crate::Expr;
     use super::*;
     fn read(str: &str) -> String { parse(str).unwrap().format() }
 
