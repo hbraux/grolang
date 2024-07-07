@@ -132,40 +132,40 @@ mod tests {
 
     #[test]
     fn test_declarations() {
-        assert_eq!("Call([Symbol(var), Symbol(a), Nil, Int(1)])", read("var a = 1"));
-        assert_eq!("Call([Symbol(val), Symbol(f), TypeSpec(Float), Float(1.0)])", read("val f: Float = 1.0"));
+        assert_eq!("Call(var, [Symbol(a), Nil, Int(1)])", read("var a = 1"));
+        assert_eq!("Call(val, [Symbol(f), TypeSpec(Float), Float(1.0)])", read("val f: Float = 1.0"));
     }
 
     #[test]
     fn test_assignments() {
-        assert_eq!("Call([Symbol(set), Symbol(a), Int(2)])", read("a = 2"));
-        assert_eq!("Call([Symbol(set), Symbol(a), Int(2)])", read("set(a, 2)"));
+        assert_eq!("Call(set, [Symbol(a), Int(2)])", read("a = 2"));
+        assert_eq!("Call(set, [Symbol(a), Int(2)])", read("set(a, 2)"));
     }
 
     #[test]
     fn test_arithmetic_order() {
-        assert_eq!("Call([Symbol(mul), Int(1), Int(2)])", read("1 * 2"));
-        assert_eq!("Call([Symbol(add), Int(1), Call([Symbol(mul), Int(2), Int(3)])])", read("1 + 2 * 3"));
-        assert_eq!("Call([Symbol(mul), Int(1), Call([Symbol(add), Int(-2), Int(3)])])", read("1 * (-2 + 3)"));
+        assert_eq!("Call(mul, [Int(1), Int(2)])", read("1 * 2"));
+        assert_eq!("Call(add, [Int(1), Call(mul, [Int(2), Int(3)])])", read("1 + 2 * 3"));
+        assert_eq!("Call(mul, [Int(1), Call(add, [Int(-2), Int(3)])])", read("1 * (-2 + 3)"));
     }
 
     #[test]
     fn test_boolean_expressions() {
-        assert_eq!("Call([Symbol(and), Call([Symbol(or), Call([Symbol(eq), Symbol(x), Int(2)]), Call([Symbol(eq), Symbol(y), Int(1)])]), Symbol(z)])",
-                   read("(x == 2) || (y == 1) && z"));
+        assert_eq!("Call(and, [Call(or, [Call(eq, [Symbol(x), Int(2)]), Call(eq, [Symbol(y), Int(1)])]), Symbol(z)])",
+            read("(x == 2) || (y == 1) && z"));
     }
 
     #[test]
     fn test_calls() {
-        assert_eq!("Call([Symbol(print), Symbol(a)])", read("print(a)"));
-        assert_eq!("Call([Int(1), Symbol(mul), Int(2)])", read("1.mul(2)]"));
-        assert_eq!("Call([Int(1), Symbol(mul), Call([Int(-2), Symbol(add), Int(3)])])", read("1.mul(-2.add(3))"));
+        assert_eq!("Call(print, [Symbol(a)])", read("print(a)"));
+        assert_eq!("Call(mul, [Int(1), Int(2)])", read("1.mul(2)]"));
+        assert_eq!("Call(mul, [Int(1), Call(add, [Int(-2), Int(3)])])", read("1.mul(-2.add(3))"));
     }
 
     #[test]
     fn test_if() {
-        assert_eq!("Call([Symbol(if), Call([Symbol(eq), Symbol(a), Int(1)]), Block([Int(2)]), Block([Int(3)])])", read("if (a == 1) { 2 } else { 3 }"));
-        assert_eq!("Call([Symbol(if), Bool(true), Block([Int(1)]), Nil])", read("if (true) { 1 } "));
+        assert_eq!("Call(if, [Call(eq, [Symbol(a), Int(1)]), Block([Int(2)]), Block([Int(3)])])", read("if (a == 1) { 2 } else { 3 }"));
+        assert_eq!("Call(if, [Bool(true), Block([Int(1)]), Nil])", read("if (true) { 1 } "));
     }
 }
 
