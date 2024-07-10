@@ -65,66 +65,67 @@ mod tests {
 
     #[test]
     fn test_literals() {
-        let mut ctx = Scope::new();
-        assert_eq!("1", ctx.exec("1"));
-        assert_eq!("9123456", ctx.exec("9_123_456"));
-        assert_eq!("2.0", ctx.exec("2.0"));
-        assert_eq!("-1.23", ctx.exec("-1.23"));
-        assert_eq!("23000.0", ctx.exec("2.3e4"));
-        assert_eq!("false", ctx.exec("false"));
-        assert_eq!("true", ctx.exec("true"));
-        assert_eq!("nil", ctx.exec("nil"));
-        assert_eq!("\"abc\"", ctx.exec("\"abc\""));
+        let mut scope = Scope::new();
+        assert_eq!("1", scope.exec("1"));
+        assert_eq!("9123456", scope.exec("9_123_456"));
+        assert_eq!("2.0", scope.exec("2.0"));
+        assert_eq!("-1.23", scope.exec("-1.23"));
+        assert_eq!("23000.0", scope.exec("2.3e4"));
+        assert_eq!("false", scope.exec("false"));
+        assert_eq!("true", scope.exec("true"));
+        assert_eq!("nil", scope.exec("nil"));
+        assert_eq!("\"abc\"", scope.exec("\"abc\""));
     }
 
     #[test]
     fn test_variables() {
-        let mut ctx = Scope::new();
-        assert_eq!("NotDefined(a)", ctx.exec("a = 0"));
-        assert_eq!("1", ctx.exec("var a = 1"));
-        assert_eq!("true", ctx.exec("z.val(true)"));
-        assert_eq!("AlreadyDefined(a)", ctx.exec("var a = 3"));
-        assert_eq!("3", ctx.exec("a = 3"));
-        assert_eq!("0", ctx.exec("a.set(0)"));
-        assert_eq!("InconsistentType(Float)", ctx.exec("a = 3.0"));
-        assert_eq!("3.2", ctx.exec("val c=3.2"));
-        assert_eq!("InconsistentType(Float)", ctx.exec("var d: Int = 3.2"));
-        assert_eq!("0", ctx.exec("a"));
-        assert_eq!("3.2", ctx.exec("c"));
-        assert_eq!("0", ctx.exec("val i = 0"));
-        assert_eq!("NotMutable(i)", ctx.exec("i = 1"));
+        let mut scope = Scope::new();
+        assert_eq!("NotDefined(a)", scope.exec("a = 0"));
+        assert_eq!("1", scope.exec("var a = 1"));
+        assert_eq!("true", scope.exec("z.val(nil, true)"));
+        assert_eq!("AlreadyDefined(a)", scope.exec("var a = 3"));
+        assert_eq!("3", scope.exec("a = 3"));
+        assert_eq!("0", scope.exec("a.set(0)"));
+        assert_eq!("InconsistentType(Float)", scope.exec("a = 3.0"));
+        assert_eq!("3.2", scope.exec("val c=3.2"));
+        assert_eq!("InconsistentType(Float)", scope.exec("var d: Int = 3.2"));
+        assert_eq!("0", scope.exec("a"));
+        assert_eq!("3.2", scope.exec("c"));
+        assert_eq!("0", scope.exec("val i = 0"));
+        assert_eq!("NotMutable(i)", scope.exec("i = 1"));
     }
 
     #[test]
     fn test_arithmetics() {
-        let mut ctx = Scope::new();
-        assert_eq!("14", ctx.exec("2 + 3 * 4"));
-        assert_eq!("20", ctx.exec("(2 + 3) * 4"));
-        assert_eq!("4", ctx.exec("4 / 1"));
-        assert_eq!("2", ctx.exec("22%10"));
-        assert_eq!("2", ctx.exec("-2 * -1"));
-        assert_eq!("3.3", ctx.exec("1 + 2.3"));
-        assert_eq!("DivisionByZero", ctx.exec("1 / 0")); // lazy evaluation
+        let mut scope = Scope::new();
+        assert_eq!("14", scope.exec("2 + 3 * 4"));
+        assert_eq!("20", scope.exec("(2 + 3) * 4"));
+        assert_eq!("4", scope.exec("4 / 1"));
+        assert_eq!("2", scope.exec("22%10"));
+        assert_eq!("2", scope.exec("-2 * -1"));
+        assert_eq!("3.3", scope.exec("1 + 2.3"));
+        assert_eq!("DivisionByZero", scope.exec("1 / 0")); // lazy evaluation
     }
 
     #[test]
     fn test_comparisons() {
-        let mut ctx = Scope::new();
-        assert_eq!("1", ctx.exec("var a = 1"));
-        assert_eq!("2", ctx.exec("var b = 2"));
-        assert_eq!("true", ctx.exec("a == a"));
-        assert_eq!("true", ctx.exec("1 == a"));
-        assert_eq!("false", ctx.exec("a == b"));
-        assert_eq!("true", ctx.exec("a != b"));
-        assert_eq!("true", ctx.exec("a == 1 && b == 2"));
-        assert_eq!("false", ctx.exec("a == 1 && b == 1"));
-        assert_eq!("false", ctx.exec("a == 2 && b == 2"));
-        assert_eq!("false", ctx.exec("a == 2 && b/0")); // lazy eval
+        let mut scope = Scope::new();
+        assert_eq!("1", scope.exec("var a = 1"));
+        assert_eq!("2", scope.exec("var b = 2"));
+        assert_eq!("true", scope.exec("a == a"));
+        assert_eq!("true", scope.exec("1 == a"));
+        assert_eq!("false", scope.exec("a == b"));
+        assert_eq!("true", scope.exec("a != b"));
+        assert_eq!("true", scope.exec("a == 1 && b == 2"));
+        assert_eq!("false", scope.exec("a == 1 && b == 1"));
+        assert_eq!("false", scope.exec("a == 2 && b == 2"));
+        assert_eq!("false", scope.exec("a == 2 && b/0")); // lazy eval
     }
 
     #[test]
-    fn test_ifelse() {
-        let mut ctx = Scope::new();
-        assert_eq!("1", ctx.exec("if (true) { 1 } else { 0 }"))
+    fn test_others() {
+        let mut scope = Scope::new();
+        assert_eq!("1", scope.exec("if (true) { 1 } else { 0 }"));
+        assert_eq!("nil", scope.exec("print(\"hello world\")"));
     }
 }

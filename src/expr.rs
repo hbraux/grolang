@@ -52,7 +52,7 @@ impl Expr {
             Nil | Int(_) | Float(_) | Str(_) | Bool(_) | TypeSpec(_) => Ok(self.clone()),
             Symbol(name) => scope.get(&*name),
             Block(args) => args.iter().map(|e| e.eval(scope)).last().unwrap(),
-            Call(name, args) => if let Ok(op) = BuiltIn::from_str(&name) { op.apply(args, scope) } else { panic!("{} is not a built-in function", name) }
+            Call(name, args) => if let Ok(op) = BuiltIn::from_str(&name) { op.call(args, scope) } else { panic!("{} is not a built-in function", name) }
         }
     }
     pub fn eval_or_error(&self, scope: &mut Scope) -> Expr {
