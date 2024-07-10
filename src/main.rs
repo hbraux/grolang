@@ -1,8 +1,9 @@
 use std::{env, io};
 use std::io::Write;
 
-use grolang::Context;
-use grolang::Expr::Error;
+use grolang::Scope;
+use grolang::expr::Expr;
+
 
 const LANG: &str = "GroLang";
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -26,7 +27,7 @@ fn main() {
 fn repl() {
     println!("{BLUE}Bienvenue sur {LANG} version {VERSION}{STD}");
     println!("Taper :q pour quitter, :h pour de l'aide");
-    let mut ctx = Context::new();
+    let mut ctx = Scope::new();
     loop {
         print!("{}", PROMPT);
         io::stdout().flush().unwrap();
@@ -45,13 +46,13 @@ fn repl() {
             continue;
         }
         let expr = ctx.read(input);
-        if let Error(error) = expr {
+        if let Expr::Failure(error) = expr {
             println!("{RED}Erreur de syntaxe ({:?}){STD}", error);
             continue;
         }
         println!("DEBUG: {:?}", expr);
-        let result = expr.eval(&mut ctx);
-        if let Error(error) = result {
+        let result = expr.eval_or_error(&mut ctx);
+        if let Expr::Failure(error) = result {
             println!("{RED}Erreur d'évaluation ({:?}){STD}", error);
         } else {
             println!("{}", result.print())

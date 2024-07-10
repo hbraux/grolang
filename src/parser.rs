@@ -1,3 +1,4 @@
+use std::string::ToString;
 use lazy_static::lazy_static;
 use pest::iterators::{Pair, Pairs};
 use pest::Parser;
@@ -5,7 +6,8 @@ use pest::pratt_parser::{Op, PrattParser};
 use pest::pratt_parser::Assoc::Left;
 use pest_derive::Parser;
 
-use crate::{ErrorCode, Expr, FALSE, NIL, TRUE};
+
+use crate::expr::{Expr, FALSE, NIL, TRUE};
 
 #[derive(Parser)]
 #[grammar = "grammar.pest"]
@@ -13,7 +15,9 @@ struct GroParser;
 
 lazy_static! {
     static ref PARSER: PrattParser<Rule> = {
+        // operator priorities from lowest to highest
         PrattParser::new()
+        .op(Op::infix(Rule::Or, Left) | Op::infix(Rule::And, Left))
         .op(Op::infix(Rule::Eq, Left) | Op::infix(Rule::Neq, Left) | Op::infix(Rule::Ge, Left) | Op::infix(Rule::Gt, Left) | Op::infix(Rule::Le, Left) | Op::infix(Rule::Lt, Left))
         .op(Op::infix(Rule::Add, Left) | Op::infix(Rule::Sub, Left))
         .op(Op::infix(Rule::Mul, Left) | Op::infix(Rule::Div, Left) | Op::infix(Rule::Mod, Left))
@@ -22,14 +26,14 @@ lazy_static! {
     };
 }
 
-pub fn parse(str: &str) -> Expr {
+pub fn parse(str: &str) -> Result<Expr, String> {
     match GroParser::parse(Rule::Statement, str) {
-        Ok(pairs) => parse_expr(pairs),
-        Err(e)    => Expr::Error(ErrorCode::SyntaxError(e.to_string()))
+        Ok(pairs) => Ok(parse_pairs(pairs)),
+        Err(e)    => Err(e.variant.message().to_string()),
     }
 }
 
-fn parse_expr(pairs: Pairs<Rule>) -> Expr {
+fn parse_pairs(pairs: Pairs<Rule>) -> Expr {
     PARSER
         .map_primary(|p| parse_primary(p))
         .map_infix(|left, op, right| reduce_expr(left, op, right))
@@ -38,12 +42,14 @@ fn parse_expr(pairs: Pairs<Rule>) -> Expr {
 
 fn reduce_expr(left: Expr, op: Pair<Rule>, right: Expr) -> Expr {
     if op.as_rule() == Rule::Dot {
-        if let Expr::ChainCall(x, y) = right {
-            return Expr::Call(Box::new(left), x, y)
+        if let Expr::Call(name, mut args) = right {
+            args.insert(0, left);
+            return Expr::Call(name, args)
         }
     }
-    Expr::Call(Box::new(left), Box::new(Expr::Id(operator_name(op))), vec!(right))
+    Expr::Call(operator_name(op), vec!(left, right))
 }
+
 
 fn parse_primary(pair: Pair<Rule>) -> Expr {
     match pair.as_rule() {
@@ -51,103 +57,115 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
         Rule::Float => Expr::Float(pair.as_str().parse::<f64>().unwrap()),
         Rule::Special => to_literal(pair.as_str()),
         Rule::String => Expr::Str(unquote(pair.as_str())),
-        Rule::Id => Expr::Id(pair.as_str().to_string()),
-        Rule::Symbol => Expr::Symbol(remove_first(pair.as_str())),
-        Rule::TypeSpec => Expr::TypeSpec(pair.as_str().replace(":", "").trim().to_string()),
-        Rule::Operator => Expr::Id(pair.as_str().to_string()),
-        Rule::Expr =>  parse_expr(pair.into_inner()),
-        Rule::Declaration => macro_call("def".to_owned() + pair.as_str().split(" ").next().unwrap(), pair),
-        Rule::Assignment => macro_call("set".to_owned(), pair),
-        Rule::CallExpr => fun_call(pair),
-        _ => unreachable!("Rule not implemented {}", pair.to_string())
+        Rule::Symbol => Expr::Symbol(pair.as_str().to_string()),
+        Rule::TypeSpec => Expr::parse_type_spec(pair.as_str()),
+        Rule::Operator => Expr::Symbol(pair.as_str().to_string()),
+        Rule::Expr =>  parse_pairs(pair.into_inner()),
+        Rule::CallExpr => build_call(to_vec(pair, 0, 0)),
+        Rule::Declaration => build_call(to_vec(pair, 4, 2)),
+        Rule::Assignment => Expr::Call("set".to_owned(), to_vec(pair, 0, 0)),
+        Rule::IfElse =>  Expr::Call("if".to_owned(),to_vec(pair, 3, 0 )),
+        Rule::Block => Expr::Block(to_vec(pair, 0, 0)),
+        _ => unreachable!("rule not implemented {}", pair.to_string())
     }
 }
 
-fn macro_call(operator: String, pair: Pair<Rule>) -> Expr {
-    let mut args: Vec<Expr> = pair.into_inner().into_iter().map(|p| parse_primary(p)).collect();
-    let left = args.remove(0);
-    if let Expr::Id(x) = left {
-        Expr::Call(Box::new(Expr::Symbol(x)), Box::new(Expr::Id(operator.to_string())), args)
+fn build_call(mut args: Vec<Expr>) -> Expr {
+    if let Expr::Symbol(name) = args.remove(0) {
+        Expr::Call(name, args)
     } else {
-        panic!()
+        panic!("first arg should be a symbol here")
     }
 }
 
-fn fun_call(pair: Pair<Rule>) -> Expr {
+fn to_vec(pair: Pair<Rule>, expected_len: usize, optional_pos: usize) -> Vec<Expr> {
     let mut args: Vec<Expr> = pair.into_inner().into_iter().map(|p| parse_primary(p)).collect();
-    let left = args.remove(0);
-    if let Expr::Id(_) = left {
-        Expr::ChainCall(Box::new(left), args)
-    } else {
-        panic!()
+    if expected_len > 0 && args.len() < expected_len {
+        if optional_pos > 0 {
+            args.insert(optional_pos, Expr::Nil)
+        } else {
+            args.resize(expected_len, Expr::Nil)
+        }
     }
+    args
 }
 
 fn unquote(str: &str) -> String {
     (&str[1..str.len()-1]).to_string()
 }
-
-fn remove_first(str: &str) -> String {
-    (&str[1..str.len()]).to_string()
-}
 fn operator_name(pair: Pair<Rule>) -> String {
     format!("{:?}", pair.as_rule()).to_lowercase()
 }
-
 fn to_literal(str: &str) -> Expr {
     match str {
         "true" => TRUE,
         "false" => FALSE,
         "nil" => NIL,
-        _ => panic!(),
+        _ => panic!("unsupported literal {}", str),
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use crate::Expr;
-
     use super::*;
+    fn read(str: &str) -> String { parse(str).unwrap().format() }
 
     #[test]
-    fn test_parse() {
-        assert_eq!(Expr::Int(1), parse("1"));
-        assert_eq!(Expr::Int(1234567), parse("1_234_567"));
-        assert_eq!(Expr::Int(-23_000), parse("-23_000"));
-        assert_eq!(Expr::Float(3.4), parse("3.4"));
-        assert_eq!(Expr::Float(12000.0), parse("1.2e4"));
-        assert_eq!(Expr::Float(0.12), parse("1.2e-1"));
-        assert_eq!(TRUE, parse("true"));
-        assert_eq!(FALSE, parse("false"));
-        assert_eq!(NIL, parse("nil"));
-        assert_eq!(Expr::Str("abc".to_string()), parse("\"abc\""));
-        assert_eq!(Expr::Str("true".to_string()), parse("\"true\""));
+    fn test_literals() {
+        assert_eq!(Expr::Int(1), parse("1").unwrap());
+        assert_eq!(Expr::Int(1234567), parse("1_234_567").unwrap());
+        assert_eq!(Expr::Int(-23_000), parse("-23_000").unwrap());
+        assert_eq!(Expr::Float(3.4), parse("3.4").unwrap());
+        assert_eq!(Expr::Float(12000.0), parse("1.2e4").unwrap());
+        assert_eq!(Expr::Float(0.12), parse("1.2e-1").unwrap());
+        assert_eq!(TRUE, parse("true").unwrap());
+        assert_eq!(FALSE, parse("false").unwrap());
+        assert_eq!(NIL, parse("nil").unwrap());
+        assert_eq!(Expr::Str("abc".to_string()), parse("\"abc\"").unwrap());
+        assert_eq!(Expr::Str("true".to_string()), parse("\"true\"").unwrap());
     }
 
     #[test]
-    fn test_expressions() {
-        assert_eq!("Call(Symbol(\"a\"), Id(\"defvar\"), [Int(1)])", parse("var a = 1").format());
-        assert_eq!("Call(Symbol(\"a\"), Id(\"defvar\"), [Int(1)])", parse("'a.defvar(1)").format());
-        assert_eq!("Call(Symbol(\"f\"), Id(\"defval\"), [TypeSpec(\"Float\"), Float(1.0)])", parse("val f: Float = 1.0").format());
-        assert_eq!("Call(Symbol(\"a\"), Id(\"set\"), [Int(2)])", parse("a = 2").format());
-        assert_eq!("Call(Symbol(\"a\"), Id(\"set\"), [Int(2)])", parse("'a.set(2)").format());
-        assert_eq!("Call(Symbol(\"a\"), Id(\"eq\"), [Int(2)])", parse("'a == 2").format());
+    fn test_failure() {
+        assert_eq!(parse("=2").err(), Some("expected Symbol, Expr, or IfElse".to_owned()));
+    }
+
+    #[test]
+    fn test_declarations() {
+        assert_eq!("Call(var, [Symbol(a), Nil, Int(1)])", read("var a = 1"));
+        assert_eq!("Call(val, [Symbol(f), TypeSpec(Float), Float(1.0)])", read("val f: Float = 1.0"));
+    }
+
+    #[test]
+    fn test_assignments() {
+        assert_eq!("Call(set, [Symbol(a), Int(2)])", read("a = 2"));
+        assert_eq!("Call(set, [Symbol(a), Int(2)])", read("set(a, 2)"));
     }
 
     #[test]
     fn test_arithmetic_order() {
-        assert_eq!("Call(Int(1), Id(\"mul\"), [Int(2)])", parse("1 * 2").format());
-        assert_eq!("Call(Int(1), Id(\"add\"), [Call(Int(2), Id(\"mul\"), [Int(3)])])", parse("1 + 2 * 3").format());
-        assert_eq!("Call(Int(1), Id(\"mul\"), [Call(Int(-2), Id(\"add\"), [Int(3)])])", parse("1 * (-2 + 3)").format());
-
+        assert_eq!("Call(mul, [Int(1), Int(2)])", read("1 * 2"));
+        assert_eq!("Call(add, [Int(1), Call(mul, [Int(2), Int(3)])])", read("1 + 2 * 3"));
+        assert_eq!("Call(mul, [Int(1), Call(add, [Int(-2), Int(3)])])", read("1 * (-2 + 3)"));
     }
 
     #[test]
-    fn test_chain_calls() {
-        assert_eq!("ChainCall(Id(\"print\"), [Id(\"a\")])", parse("print(a)").format());
-        assert_eq!("Call(Int(1), Id(\"mul\"), [Int(2)])", parse("1.mul(2)]").format());
-        assert_eq!("Call(Int(1), Id(\"mul\"), [Call(Int(-2), Id(\"add\"), [Int(3)])])", parse("1.mul(-2.add(3))").format());
+    fn test_boolean_expressions() {
+        assert_eq!("Call(and, [Call(or, [Call(eq, [Symbol(x), Int(2)]), Call(eq, [Symbol(y), Int(1)])]), Symbol(z)])",
+            read("(x == 2) || (y == 1) && z"));
+    }
+
+    #[test]
+    fn test_calls() {
+        assert_eq!("Call(print, [Symbol(a)])", read("print(a)"));
+        assert_eq!("Call(mul, [Int(1), Int(2)])", read("1.mul(2)]"));
+        assert_eq!("Call(mul, [Int(1), Call(add, [Int(-2), Int(3)])])", read("1.mul(-2.add(3))"));
+    }
+
+    #[test]
+    fn test_if() {
+        assert_eq!("Call(if, [Call(eq, [Symbol(a), Int(1)]), Block([Int(2)]), Block([Int(3)])])", read("if (a == 1) { 2 } else { 3 }"));
+        assert_eq!("Call(if, [Bool(true), Block([Int(1)]), Nil])", read("if (true) { 1 } "));
     }
 }
 
