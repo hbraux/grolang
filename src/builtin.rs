@@ -51,14 +51,14 @@ impl BuiltIn {
             BuiltIn::Var => store(scope, args, Some(true)),
             BuiltIn::Val => store(scope, args, Some(false)),
             BuiltIn::Set => store(scope, args, None),
-            _ => panic!("operator {} not yet implemented", self),
+            _ => panic!("operator {:?} not yet implemented", self),
         }
     }
 
     fn unitary_op(&self, expr: Expr) -> Result<Expr, Fail> {
         match self {
             BuiltIn::ToStr => Ok(Str(expr.print())),
-            _ => panic!("unexpected operator {}", self),
+            _ => panic!("unexpected operator {:?}", self),
         }
     }
 
@@ -78,7 +78,7 @@ impl BuiltIn {
             BuiltIn::Mul => Ok(Int(a * b)),
             BuiltIn::Mod => Ok(Int(a % b)),
             BuiltIn::Div => if b != 0 { Ok(Int(a / b)) } else { Err(Fail::DivisionByZero) }
-            _ => panic!("unexpected operator {}", self),
+            _ => panic!("unexpected operator {:?}", self),
         }
     }
     fn arithmetic_float(&self, a: f64, b: f64) -> Result<Expr, Fail> {
@@ -88,14 +88,14 @@ impl BuiltIn {
             BuiltIn::Mul => Ok(Float(a * b)),
             BuiltIn::Mod => Ok(Float(a % b)),
             BuiltIn::Div => if b != 0.0 { Ok(Float(a / b)) } else { Err(Fail::DivisionByZero) }
-            _ => panic!("unexpected operator {}", self),
+            _ => panic!("unexpected operator {:?}", self),
         }
     }
     fn comparison_op(&self, left: Expr, right: Expr) ->  Result<Expr, Fail> {
         match self {
             BuiltIn::Eq => Ok(Bool(left.eq(&right))),
             BuiltIn::Neq => Ok(Bool(!left.eq(&right))),
-            _ => panic!("unexpected operator {}", self),
+            _ => panic!("unexpected operator {:?}", self),
         }
     }
     fn binary_op(&self, left: Expr, right: Expr, ctx: &mut Scope) -> Result<Expr, Fail> {
@@ -104,7 +104,7 @@ impl BuiltIn {
             (BuiltIn::Or, TRUE) => Ok(TRUE),
             (BuiltIn::And, TRUE) => Ok(right.clone().eval(ctx)?.to_bool()),
             (BuiltIn::Or, FALSE) => Ok(right.clone().eval(ctx)?.to_bool()),
-            _ => panic!("unexpected operator {}", self),
+            _ => panic!("unexpected operator {:?}", self),
         }
     }
 }
