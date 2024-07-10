@@ -5,7 +5,7 @@ use strum_macros::Display;
 use crate::builtin::BuiltIn;
 use crate::exception::Exception;
 use crate::Scope;
-use crate::expr::Expr::{Bool, Call, Error, Float, Int, Nil, Str, Symbol, TypeSpec};
+use crate::expr::Expr::{Bool, Call, Failure, Float, Int, Nil, Str, Symbol, TypeSpec};
 use crate::parser::parse;
 use crate::types::Type;
 
@@ -19,7 +19,7 @@ pub enum Expr {
     TypeSpec(Type),
     Block(Vec<Expr>),
     Call(String, Vec<Expr>),
-    Error(Exception),
+    Failure(Exception),
     Nil,
 }
 
@@ -29,7 +29,7 @@ pub const NIL: Expr = Nil;
 
 impl Expr {
     pub fn read(str: &str, _ctx: &Scope) -> Expr {
-        parse(str).unwrap_or_else(|s| Error(Exception::CannotParse(s)))
+        parse(str).unwrap_or_else(|s| Failure(Exception::CannotParse(s)))
     }
     pub fn parse_type_spec(str: &str) -> Expr {
         TypeSpec(Type::new(str.replace(":", "").trim()))
@@ -49,7 +49,7 @@ impl Expr {
     // eval takes ownership!
     pub fn eval(self, scope: &mut Scope) -> Result<Expr, Exception> {
         match self {
-            Error(e) => Err(e),
+            Failure(e) => Err(e),
             Nil | Int(_) | Float(_) | Str(_) | Bool(_) | TypeSpec(_) => Ok(self),
             Symbol(name) => scope.get(&*name),
             Call(name, args) => if let Ok(op) = BuiltIn::from_str(&name) { op.apply(args, scope) } else { panic!("{} is not a built-in function", name) }
@@ -58,8 +58,8 @@ impl Expr {
     }
     pub fn eval_or_error(self, scope: &mut Scope) -> Expr {
         match self {
-            Error(_) => self,
-            expr => expr.eval(scope).unwrap_or_else(|ex| Error(ex))
+            Failure(_) => self,
+            expr => expr.eval(scope).unwrap_or_else(|ex| Failure(ex))
         }
     }
 
@@ -69,11 +69,9 @@ impl Expr {
             Int(x) => x.to_string(),
             Str(x) => format!("\"{}\"", x),
             Nil => "nil".to_string(),
-            Float(x) => {
-                let str = x.to_string();
-                if str.contains('.') { str } else { format!("{}.0", str) }
-            }
+            Float(x) => format_float(x),
             Symbol(x) => x.to_string(),
+            Failure(x) => x.format(),
             _ => format!("{:?}", self),
         }
     }
@@ -84,11 +82,11 @@ impl Expr {
         }
     }
 
-    fn failed(&self) -> bool { matches!(self, Error(_)) }
+    fn failed(&self) -> bool { matches!(self, Failure(_)) }
     fn ensure(self, spec: Option<Type>) -> Expr {
         if let Some(expected) = spec {
             if !self.failed() && self.get_type() != expected {
-                return Error(Exception::InconsistentType(expected.to_string()));
+                return Failure(Exception::InconsistentType(expected.to_string()));
             }
         }
         self
@@ -96,5 +94,12 @@ impl Expr {
 
 }
 
-
+fn format_float(x: &f64) -> String  {
+    let str = x.to_string();
+    if str.contains('.') {
+        str
+    } else {
+        format!("{}.0", str)
+    }
+}
 

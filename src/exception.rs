@@ -16,3 +16,8 @@ pub enum Exception {
     WrongArgumentsNumber(usize,usize)
 }
 
+impl Exception {
+    // TODO: replace with Display
+    pub fn format(&self) -> String { format!("{:?}", self).replace("\"","") }
+}
+

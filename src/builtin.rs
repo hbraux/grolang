@@ -52,6 +52,7 @@ impl BuiltIn {
             BuiltIn::Var => assign(args, scope, Some(true)),
             BuiltIn::Val => assign(args, scope, Some(false)),
             BuiltIn::Set => assign(args, scope, None),
+            BuiltIn::If => if_else(args, scope),
             _ => panic!("operator {:?} not yet implemented", self),
         }
     }
@@ -103,8 +104,8 @@ impl BuiltIn {
         match (self, left) {
             (BuiltIn::And, FALSE) => Ok(FALSE),
             (BuiltIn::Or, TRUE) => Ok(TRUE),
-            (BuiltIn::And, TRUE) => Ok(right.clone().eval(scope)?.to_bool()?),
-            (BuiltIn::Or, FALSE) => Ok(right.clone().eval(scope)?.to_bool()?),
+            (BuiltIn::And, _) => Ok(right.clone().eval(scope)?.to_bool()?),
+            (BuiltIn::Or, _) => Ok(right.clone().eval(scope)?.to_bool()?),
             _ => panic!("unexpected operator {:?}", self),
         }
     }
@@ -124,3 +125,14 @@ fn assign(args: Vec<Expr>, scope: &mut Scope, is_mutable: Option<bool>) -> Resul
     }
 }
 
+fn if_else(args: Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
+    if let Bool(bool) = (&args[0].clone().eval(scope)) {
+        if bool {
+            args[1].clone().eval(scope)
+        } else {
+            args[2].clone().eval(scope)
+        }
+    } else {
+        Err(Exception::NotBoolean(args[0].to_string()))
+    }
+}
