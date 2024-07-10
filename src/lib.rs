@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::string::ToString;
 
-use crate::errors::Exception;
+use crate::fail::Fail;
 use crate::expr::Expr;
 
 use crate::types::Type;
@@ -9,7 +9,7 @@ use crate::types::Type;
 mod expr;
 mod parser;
 mod types;
-mod errors;
+mod fail;
 mod builtin;
 
 
@@ -22,10 +22,10 @@ pub struct Scope {
 impl Scope {
     pub fn new() -> Scope { Scope { values: HashMap::new(), mutables: HashSet::new() } }
 
-    pub fn get(&self, name: &str) -> Result<Expr, Exception> {
+    pub fn get(&self, name: &str) -> Result<Expr, Fail> {
         match self.values.get(name) {
             Some(expr) => Ok(expr.clone()),
-            None => Err(Exception::UndefinedSymbol(name.to_string())),
+            None => Err(Fail::UndefinedSymbol(name.to_string())),
         }
     }
     pub fn is_defined(&self, name: &str) -> bool {

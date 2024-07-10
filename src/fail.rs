@@ -1,7 +1,7 @@
 use strum_macros::Display;
 
 #[derive(Debug, Clone, PartialEq, Display)]
-pub enum Exception {
+pub enum Fail {
     CannotParse(String),
     NotSymbol(String),
     DivisionByZero,
