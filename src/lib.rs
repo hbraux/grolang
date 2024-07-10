@@ -125,6 +125,6 @@ mod tests {
     #[test]
     fn test_ifelse() {
         let mut ctx = Scope::new();
-        assert_eq!("14", ctx.exec("if (true) { 1 } else { 0 }"))
+        assert_eq!("1", ctx.exec("if (true) { 1 } else { 0 }"))
     }
 }

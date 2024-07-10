@@ -40,14 +40,14 @@ impl BuiltIn {
             _ => 2
         }
     }
-    pub fn apply(&self, args: Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
+    pub fn apply(&self, args: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
         if args.len() < self.call_args() {
             return Err(Exception::WrongArgumentsNumber(self.call_args(), args.len()))
         }
         match self {
             BuiltIn::ToStr => self.unitary_op(args[0].clone().eval(scope)?),
-            BuiltIn::Add | BuiltIn::Sub | BuiltIn::Mul | BuiltIn::Div | BuiltIn::Mod => self.arithmetic_op(args[0].clone().eval(scope)?, args[1].clone().eval(scope)?),
-            BuiltIn::Eq | BuiltIn::Neq | BuiltIn::Ge | BuiltIn::Gt | BuiltIn::Le | BuiltIn::Lt => self.comparison_op(args[0].clone().eval(scope)?, args[1].clone().eval(scope)?),
+            BuiltIn::Add | BuiltIn::Sub | BuiltIn::Mul | BuiltIn::Div | BuiltIn::Mod => self.arithmetic_op(args[0].eval(scope)?, args[1].eval(scope)?),
+            BuiltIn::Eq | BuiltIn::Neq | BuiltIn::Ge | BuiltIn::Gt | BuiltIn::Le | BuiltIn::Lt => self.comparison_op(args[0].eval(scope)?, args[1].eval(scope)?),
             BuiltIn::And | BuiltIn::Or => self.binary_op(args[0].clone(), args[1].clone(), scope),
             BuiltIn::Var => assign(args, scope, Some(true)),
             BuiltIn::Val => assign(args, scope, Some(false)),
@@ -101,17 +101,17 @@ impl BuiltIn {
         }
     }
     fn binary_op(&self, left: Expr, right: Expr, scope: &mut Scope) -> Result<Expr, Exception> {
-        match (self, left) {
+        match (self, left.eval(scope)?) {
             (BuiltIn::And, FALSE) => Ok(FALSE),
             (BuiltIn::Or, TRUE) => Ok(TRUE),
-            (BuiltIn::And, _) => Ok(right.clone().eval(scope)?.to_bool()?),
-            (BuiltIn::Or, _) => Ok(right.clone().eval(scope)?.to_bool()?),
+            (BuiltIn::And, TRUE) => Ok(right.clone().eval(scope)?.to_bool()?),
+            (BuiltIn::Or, FALSE) => Ok(right.clone().eval(scope)?.to_bool()?),
             _ => panic!("unexpected operator {:?}", self),
         }
     }
 }
 
-fn assign(args: Vec<Expr>, scope: &mut Scope, is_mutable: Option<bool>) -> Result<Expr, Exception> {
+fn assign(args: &Vec<Expr>, scope: &mut Scope, is_mutable: Option<bool>) -> Result<Expr, Exception> {
     if let Symbol(name) = &args[0] {
         let value = &args[args.len() - 1];
         if let TypeSpec(expected) = &args[1] {
@@ -125,8 +125,8 @@ fn assign(args: Vec<Expr>, scope: &mut Scope, is_mutable: Option<bool>) -> Resul
     }
 }
 
-fn if_else(args: Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
-    if let Bool(bool) = (&args[0].clone().eval(scope)) {
+fn if_else(args: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
+    if let Bool(bool) = args[0].eval(scope)? {
         if bool {
             args[1].clone().eval(scope)
         } else {

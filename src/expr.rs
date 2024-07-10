@@ -5,7 +5,7 @@ use strum_macros::Display;
 use crate::builtin::BuiltIn;
 use crate::exception::Exception;
 use crate::Scope;
-use crate::expr::Expr::{Bool, Call, Failure, Float, Int, Nil, Str, Symbol, TypeSpec};
+use crate::expr::Expr::{Block, Bool, Call, Failure, Float, Int, Nil, Str, Symbol, TypeSpec};
 use crate::parser::parse;
 use crate::types::Type;
 
@@ -46,19 +46,19 @@ impl Expr {
             _ => Type::Any,
         }
     }
-    // eval takes ownership!
-    pub fn eval(self, scope: &mut Scope) -> Result<Expr, Exception> {
+    pub fn eval(&self, scope: &mut Scope) -> Result<Expr, Exception> {
         match self {
-            Failure(e) => Err(e),
-            Nil | Int(_) | Float(_) | Str(_) | Bool(_) | TypeSpec(_) => Ok(self),
+            Failure(e) => Err(e.clone()),
+            Nil | Int(_) | Float(_) | Str(_) | Bool(_) | TypeSpec(_) => Ok(self.clone()),
             Symbol(name) => scope.get(&*name),
+            Block(args) => args.iter().map(|e| e.eval(scope)).last().unwrap(),
             Call(name, args) => if let Ok(op) = BuiltIn::from_str(&name) { op.apply(args, scope) } else { panic!("{} is not a built-in function", name) }
             _ => Err(Exception::NotImplemented(format!("{}.eval", self)))
         }
     }
-    pub fn eval_or_error(self, scope: &mut Scope) -> Expr {
+    pub fn eval_or_error(&self, scope: &mut Scope) -> Expr {
         match self {
-            Failure(_) => self,
+            Failure(_) => self.clone(),
             expr => expr.eval(scope).unwrap_or_else(|ex| Failure(ex))
         }
     }
