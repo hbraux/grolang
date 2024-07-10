@@ -10,9 +10,9 @@ pub enum Type {
     Defined(String),
     List(Box<Type>),
     Option(Box<Type>),
-    Fail(Box<Type>),
+    Try(Box<Type>),
     Map(Box<Type>, Box<Type>),
-    Method(Box<Type>, Vec<Type>)
+    Lambda(Box<Type>, Vec<Type>)
 }
 
 impl Type {
@@ -20,7 +20,7 @@ impl Type {
         if str.ends_with("?") {
             Type::Option(Box::new(Type::new(&str[0..str.len() - 1])))
         } else if str.ends_with("!") {
-            Type::Fail(Box::new(Type::new(&str[0..str.len() - 1])))
+            Type::Try(Box::new(Type::new(&str[0..str.len() - 1])))
         } else if str.starts_with("List<") {
             Type::List(Box::new(Type::new(&str[5..str.len() - 1])))
         } else if str.starts_with("List<") {
@@ -52,6 +52,6 @@ mod tests {
         assert_eq!(Type::List(Box::new(Type::Int)), Type::new("List<Int>"));
         assert_eq!(Type::Map(Box::new(Type::Int), Box::new(Type::Bool)), Type::new("Map<Int,Bool>"));
         assert_eq!(Type::Option(Box::new(Type::Int)), Type::new("Int?"));
-        assert_eq!(Type::Fail(Box::new(Type::Int)), Type::new("Int!"));
+        assert_eq!(Type::Try(Box::new(Type::Int)), Type::new("Int!"));
     }
 }

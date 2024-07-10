@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::string::ToString;
 
-use crate::errors::ErrorCode;
+use crate::errors::Exception;
 use crate::expr::Expr;
 
 use crate::types::Type;
@@ -14,17 +14,18 @@ mod builtin;
 
 
 
-pub struct Env {
+pub struct Scope {
     values: HashMap<String, Expr>,
     mutables: HashSet<String>,
 }
 
-impl Env {
-    pub fn new() -> Env { Env { values: HashMap::new(), mutables: HashSet::new() } }
-    pub fn get(&self, name: &str) -> Expr {
+impl Scope {
+    pub fn new() -> Scope { Scope { values: HashMap::new(), mutables: HashSet::new() } }
+
+    pub fn get(&self, name: &str) -> Result<Expr, Exception> {
         match self.values.get(name) {
-            Some(expr) => expr.clone(),
-            None => Expr::Error(ErrorCode::UndefinedSymbol(name.to_string())),
+            Some(expr) => Ok(expr.clone()),
+            None => Err(Exception::UndefinedSymbol(name.to_string())),
         }
     }
     pub fn is_defined(&self, name: &str) -> bool {
@@ -43,7 +44,7 @@ impl Env {
         self.values.insert(name.to_string(), expr.clone());
     }
     pub fn read(&mut self, str: &str) -> Expr { Expr::read(str, self) }
-    pub fn exec(&mut self, str: &str) -> String { self.read(str).eval(self).print() }
+    pub fn exec(&mut self, str: &str) -> String { self.read(str).eval_or_error(self).print() }
 }
 
 
@@ -53,7 +54,7 @@ mod tests {
 
     #[test]
     fn test_literals() {
-        let mut ctx = Env::new();
+        let mut ctx = Scope::new();
         assert_eq!("1", ctx.exec("1"));
         assert_eq!("9123456", ctx.exec("9_123_456"));
         assert_eq!("2.0", ctx.exec("2.0"));
@@ -67,7 +68,7 @@ mod tests {
 
     #[test]
     fn test_variables() {
-        let mut ctx = Env::new();
+        let mut ctx = Scope::new();
         assert_eq!("Error(NotDefined(\"a\"))", ctx.exec("a = 0"));
         assert_eq!("1", ctx.exec("var a = 1"));
         assert_eq!("true", ctx.exec("'z.defval(true)"));
@@ -83,7 +84,7 @@ mod tests {
 
     #[test]
     fn test_arithmetics() {
-        let mut ctx = Env::new();
+        let mut ctx = Scope::new();
         assert_eq!("14", ctx.exec("2 + 3 * 4"));
         assert_eq!("20", ctx.exec("(2 + 3) * 4"));
         assert_eq!("4", ctx.exec("4 / 1"));
@@ -95,7 +96,7 @@ mod tests {
 
     #[test]
     fn test_comparisons() {
-        let mut ctx = Env::new();
+        let mut ctx = Scope::new();
         assert_eq!("1", ctx.exec("var a = 1"));
         assert_eq!("2", ctx.exec("var b = 2"));
         assert_eq!("true", ctx.exec("a == a"));
@@ -108,7 +109,7 @@ mod tests {
 
     #[test]
     fn test_ifelse() {
-        let mut ctx = Env::new();
+        let mut ctx = Scope::new();
         assert_eq!("14", ctx.exec("if (true) { 1 } else { 0 }"))
     }
 }

@@ -1,8 +1,8 @@
 use strum_macros::Display;
 
 #[derive(Debug, Clone, PartialEq, Display)]
-pub enum ErrorCode {
-    ParseError(String),
+pub enum Exception {
+    CannotParse(String),
     NotSymbol(String),
     DivisionByZero,
     UndefinedSymbol(String),
@@ -12,6 +12,6 @@ pub enum ErrorCode {
     InconsistentType(String),
     AlreadyDefined(String),
     NotDefined(String),
-    WrongArgumentsNumber(usize,usize),
-    EvalIssue
+    WrongArgumentsNumber(usize,usize)
 }
+

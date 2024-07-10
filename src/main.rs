@@ -1,7 +1,7 @@
 use std::{env, io};
 use std::io::Write;
 
-use grolang::Env;
+use grolang::Scope;
 use grolang::Expr::Error;
 
 const LANG: &str = "GroLang";
@@ -26,7 +26,7 @@ fn main() {
 fn repl() {
     println!("{BLUE}Bienvenue sur {LANG} version {VERSION}{STD}");
     println!("Taper :q pour quitter, :h pour de l'aide");
-    let mut ctx = Env::new();
+    let mut ctx = Scope::new();
     loop {
         print!("{}", PROMPT);
         io::stdout().flush().unwrap();
@@ -50,7 +50,7 @@ fn repl() {
             continue;
         }
         println!("DEBUG: {:?}", expr);
-        let result = expr.eval(&mut ctx);
+        let result = expr.eval_or_error(&mut ctx);
         if let Error(error) = result {
             println!("{RED}Erreur d'évaluation ({:?}){STD}", error);
         } else {

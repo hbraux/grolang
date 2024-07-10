@@ -3,8 +3,8 @@ use std::str::FromStr;
 use strum_macros::Display;
 
 use crate::builtin::BuiltIn;
-use crate::Env;
-use crate::errors::ErrorCode;
+use crate::Scope;
+use crate::errors::{Exception, Exception};
 use crate::expr::Expr::{Bool, Call, Error, Float, Int, Nil, Str, Symbol, TypeSpec};
 use crate::parser::parse;
 use crate::types::Type;
@@ -19,7 +19,7 @@ pub enum Expr {
     TypeSpec(Type),
     Block(Vec<Expr>),
     Call(String, Vec<Expr>),
-    Error(ErrorCode),
+    Error(Exception),
     Nil,
 }
 
@@ -28,16 +28,15 @@ pub const FALSE: Expr = Bool(false);
 pub const NIL: Expr = Nil;
 
 impl Expr {
-    pub fn read(str: &str, _ctx: &Env) -> Expr {
-        parse(str).unwrap_or_else(|s| Error(ErrorCode::ParseError(s)))
+    pub fn read(str: &str, _ctx: &Scope) -> Expr {
+        parse(str).unwrap_or_else(|s| Error(Exception::CannotParse(s)))
     }
     pub fn parse_type_spec(str: &str) -> Expr {
         TypeSpec(Type::new(str.replace(":", "").trim()))
     }
-
     // recursive format with debug
     pub fn format(&self) -> String { format!("{:?}", self).replace("\"","") }
-    fn is_error(&self) -> bool { matches!(self, Error(_)) }
+
     pub fn get_type(&self) -> Type {
         match self {
             Bool(_) => Type::Bool,
@@ -48,16 +47,25 @@ impl Expr {
         }
     }
 
-    pub fn eval(self, ctx: &mut Env) -> Expr {
+    pub fn eval_or_error(self, scope: &mut Scope) -> Expr {
         match self {
-            Nil | Error(_) | Int(_) | Float(_) | Str(_) | Bool(_) | TypeSpec(_) => self,
-            Symbol(name) => ctx.get(&*name),
-            Call(name, args) => if let Ok(op) = BuiltIn::from_str(&name) { op.apply(args, ctx) } else { panic!("{} is not a built-in function", name) }
+            Error(_) => self,
+            expr => expr.eval(scope).unwrap_or_else(|ex| Error(ex))
+        }
+    }
+
+    pub fn eval(self, scope: &mut Scope) -> Result<Expr, Exception> {
+        match self {
+            Error(e) => Err(e),
+            Nil | Int(_) | Float(_) | Str(_) | Bool(_) | TypeSpec(_) => Ok(self),
+            Symbol(name) => scope.get(&*name),
+            Call(name, args) => if let Ok(op) = BuiltIn::from_str(&name) { op.apply(args, scope) } else { panic!("{} is not a built-in function", name) }
             _ => panic!("{}.eval() not implemented", self)
         }
     }
 
-    pub fn print(self) -> String {
+
+    pub fn print(&self) -> String {
         match self {
             Bool(x) => x.to_string(),
             Int(x) => x.to_string(),
@@ -67,15 +75,15 @@ impl Expr {
                 let str = x.to_string();
                 if str.contains('.') { str } else { format!("{}.0", str) }
             }
-            Symbol(x) => x,
+            Symbol(x) => x.to_string(),
             _ => format!("{:?}", self),
         }
     }
 
-    fn ensure(self, spec: Option<Type>) -> Expr {
+    fn ensure(&self, spec: Option<Type>) -> Expr {
         if let Some(expected) = spec {
             if !self.is_error() && self.get_type() != expected {
-                return Error(ErrorCode::InconsistentType(expected.to_string()));
+                return Error(Exception::InconsistentType(expected.to_string()));
             }
         }
         self
@@ -84,7 +92,7 @@ impl Expr {
     pub(crate) fn to_bool(self) -> Expr {
         match self {
             Bool(_) => self,
-            _ => Error(ErrorCode::NotBoolean)
+            _ => Error(Exception::NotBoolean)
         }
     }
 }
