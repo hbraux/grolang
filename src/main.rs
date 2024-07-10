@@ -2,7 +2,7 @@ use std::{env, io};
 use std::io::Write;
 
 use grolang::Scope;
-use grolang::Expr::Failure;
+use grolang::Expr::Error;
 
 const LANG: &str = "GroLang";
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -45,13 +45,13 @@ fn repl() {
             continue;
         }
         let expr = ctx.read(input);
-        if let Failure(error) = expr {
+        if let Error(error) = expr {
             println!("{RED}Erreur de syntaxe ({:?}){STD}", error);
             continue;
         }
         println!("DEBUG: {:?}", expr);
         let result = expr.eval_or_error(&mut ctx);
-        if let Failure(error) = result {
+        if let Error(error) = result {
             println!("{RED}Erreur d'évaluation ({:?}){STD}", error);
         } else {
             println!("{}", result.print())

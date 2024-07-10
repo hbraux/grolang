@@ -74,7 +74,7 @@ fn build_call(mut args: Vec<Expr>) -> Expr {
     if let Expr::Symbol(name) = args.remove(0) {
         Expr::Call(name, args)
     } else {
-        panic!("first arg should be a symbol")
+        panic!("first arg should be a symbol here")
     }
 }
 

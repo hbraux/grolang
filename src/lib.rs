@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::string::ToString;
 
-use crate::fail::Fail;
+use crate::exception::Exception;
 use crate::expr::Expr;
 
 use crate::types::Type;
@@ -9,7 +9,7 @@ use crate::types::Type;
 mod expr;
 mod parser;
 mod types;
-mod fail;
+mod exception;
 mod builtin;
 
 
@@ -22,10 +22,10 @@ pub struct Scope {
 impl Scope {
     pub fn new() -> Scope { Scope { values: HashMap::new(), mutables: HashSet::new() } }
 
-    pub fn get(&self, name: &str) -> Result<Expr, Fail> {
+    pub fn get(&self, name: &str) -> Result<Expr, Exception> {
         match self.values.get(name) {
             Some(expr) => Ok(expr.clone()),
-            None => Err(Fail::UndefinedSymbol(name.to_string())),
+            None => Err(Exception::UndefinedSymbol(name.to_string())),
         }
     }
     pub fn is_defined(&self, name: &str) -> bool {
@@ -45,6 +45,22 @@ impl Scope {
     }
     pub fn read(&mut self, str: &str) -> Expr { Expr::read(str, self) }
     pub fn exec(&mut self, str: &str) -> String { self.read(str).eval_or_error(self).print() }
+
+    pub fn store(&mut self, name: &str, value: &Expr, is_mutable: Option<bool>) -> Result<Expr, Exception> {
+        let is_defined = self.is_defined(&name);
+        if is_mutable.is_some() && is_defined {
+            Err(Exception::AlreadyDefined(name.to_owned()))
+        } else if is_mutable.is_none() && !is_defined {
+            Err(Exception::NotDefined(name.to_owned()))
+        } else if is_mutable.is_none() && self.get_type(&name) != value.get_type() {
+            Err(Exception::InconsistentType(value.get_type().to_string()))
+        } else if is_mutable.is_none() && self.is_mutable(&name) {
+            Err(Exception::NotMutable(value.get_type().to_string()))
+        } else {
+            self.set(&name, value, is_mutable);
+            Ok(value.clone())
+        }
+    }
 }
 
 
@@ -71,7 +87,7 @@ mod tests {
         let mut ctx = Scope::new();
         assert_eq!("Error(NotDefined(\"a\"))", ctx.exec("a = 0"));
         assert_eq!("1", ctx.exec("var a = 1"));
-        assert_eq!("true", ctx.exec("'z.defval(true)"));
+        assert_eq!("true", ctx.exec("z.val(true)"));
         assert_eq!("Error(AlreadyDefined(\"a\"))", ctx.exec("var a = 3"));
         assert_eq!("3", ctx.exec("a = 3"));
         assert_eq!("0", ctx.exec("'a.set(0)"));
