@@ -53,7 +53,6 @@ impl Expr {
             Symbol(name) => scope.get(&*name),
             Block(args) => args.iter().map(|e| e.eval(scope)).last().unwrap(),
             Call(name, args) => if let Ok(op) = BuiltIn::from_str(&name) { op.apply(args, scope) } else { panic!("{} is not a built-in function", name) }
-            _ => Err(Exception::NotImplemented(format!("{}.eval", self)))
         }
     }
     pub fn eval_or_error(&self, scope: &mut Scope) -> Expr {
@@ -80,16 +79,6 @@ impl Expr {
             Bool(_) => Ok(self),
             _ => Err(Exception::NotBoolean(self.format()))
         }
-    }
-
-    fn failed(&self) -> bool { matches!(self, Failure(_)) }
-    fn ensure(self, spec: Option<Type>) -> Expr {
-        if let Some(expected) = spec {
-            if !self.failed() && self.get_type() != expected {
-                return Failure(Exception::InconsistentType(expected.to_string()));
-            }
-        }
-        self
     }
 
 }
