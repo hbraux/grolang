@@ -146,7 +146,7 @@ impl BuiltIn {
 
 fn call_assign(args: &Vec<Expr>, scope: &mut Scope, is_mutable: Option<bool>) -> Result<Expr, Exception> {
     if let Symbol(name) = &args[0] {
-        let value = &args[args.len() - 1];
+        let value = &args[args.len() - 1].eval(scope)?;
         if let TypeSpec(expected) = &args[1] {
             if value.get_type() != *expected {
                 return Err(Exception::InconsistentType(value.get_type().to_string()))
