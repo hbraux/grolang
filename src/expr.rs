@@ -1,13 +1,12 @@
 use std::str::FromStr;
-
 use strum_macros::Display;
-
 use crate::builtin::BuiltIn;
 use crate::exception::Exception;
 use crate::Scope;
-use crate::expr::Expr::{Block, Bool, Call, Failure, Float, Int, Nil, Str, Symbol, TypeSpec};
 use crate::parser::parse;
 use crate::types::Type;
+
+use self::Expr::{Block, Bool, Call, Failure, Float, Int, Nil, Str, Symbol, TypeSpec};
 
 #[derive(Debug, Clone, PartialEq, Display)]
 pub enum Expr {

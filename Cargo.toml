@@ -3,8 +3,6 @@ name = "grolang"
 version = "0.0.1"
 edition = "2021"
 
-[build-dependencies]
-lalrpop = "0.20.2"
 
 [dependencies]
 assert_approx_eq = "1.1.0"

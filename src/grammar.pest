@@ -42,7 +42,8 @@ Assignment = { Symbol ~ "=" ~ Expr }
 
 Block = { "{" ~ NEWLINE* ~ Statement ~ ( NEWLINE ~ Statement)* ~ NEWLINE* ~ "}" }
 IfElse = { "if" ~ "(" ~ Expr ~ ")" ~ Block ~ ( "else" ~ Block)? }
-Statement = _{ Declaration | Assignment | IfElse | Expr }
+While = { "while" ~ "(" ~ Expr ~ ")" ~ Block  }
+Statement = _{ Declaration | Assignment | IfElse | While | Expr }
 
 equation = _{ SOI ~ Expr ~ EOI }
 WHITESPACE = _{ " " }

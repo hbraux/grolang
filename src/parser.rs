@@ -1,3 +1,4 @@
+use std::borrow::ToOwned;
 use std::string::ToString;
 use lazy_static::lazy_static;
 use pest::iterators::{Pair, Pairs};
@@ -5,7 +6,6 @@ use pest::Parser;
 use pest::pratt_parser::{Op, PrattParser};
 use pest::pratt_parser::Assoc::Left;
 use pest_derive::Parser;
-
 
 use crate::expr::{Expr, FALSE, NIL, TRUE};
 
@@ -64,11 +64,14 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
         Rule::CallExpr => build_call(to_vec(pair, 0, 0)),
         Rule::Declaration => build_call(to_vec(pair, 4, 2)),
         Rule::Assignment => Expr::Call("set".to_owned(), to_vec(pair, 0, 0)),
-        Rule::IfElse =>  Expr::Call("if".to_owned(),to_vec(pair, 3, 0 )),
+        Rule::IfElse =>  Expr::Call("if".to_owned(), to_vec(pair, 3, 0 )),
+        Rule::While => Expr::Call("while".to_owned(), to_vec(pair, 0, 0)),
         Rule::Block => Expr::Block(to_vec(pair, 0, 0)),
-        _ => unreachable!("rule not implemented {}", pair.to_string())
+        _ => panic!("rule {} not implemented", operator_name(pair))
     }
 }
+
+
 
 fn build_call(mut args: Vec<Expr>) -> Expr {
     if let Expr::Symbol(name) = args.remove(0) {
@@ -127,7 +130,7 @@ mod tests {
 
     #[test]
     fn test_failure() {
-        assert_eq!(parse("=2").err(), Some("expected Symbol, Expr, or IfElse".to_owned()));
+        assert_eq!(parse("=2").err(), Some("expected Symbol, Expr, IfElse, or While".to_owned()));
     }
 
     #[test]
@@ -163,9 +166,10 @@ mod tests {
     }
 
     #[test]
-    fn test_if() {
+    fn test_builtins() {
         assert_eq!("Call(if, [Call(eq, [Symbol(a), Int(1)]), Block([Int(2)]), Block([Int(3)])])", read("if (a == 1) { 2 } else { 3 }"));
         assert_eq!("Call(if, [Bool(true), Block([Int(1)]), Nil])", read("if (true) { 1 } "));
+        assert_eq!("Call(while, [Call(le, [Symbol(a), Int(10)]), Block([Call(set, [Symbol(a), Call(add, [Symbol(a), Int(1)])])])])", read("while (a < 10) { a = a + 1 }"));
     }
 }
 

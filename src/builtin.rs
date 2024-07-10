@@ -1,14 +1,12 @@
 use std::cmp::PartialEq;
-
 use strum_macros::{Display, EnumString};
-
 use crate::{Expr, Scope};
 use crate::exception::Exception;
 use crate::Expr::{Bool, Float, Int};
 use crate::expr::{FALSE, TRUE};
 use crate::expr::Expr::{Nil, Str, Symbol, TypeSpec};
 
-pub use self::BuiltIn::{Add, And, Mul, Div, Eq, If, Mod, Neq, Gt, Ge, Lt, Le, Or, Print, Set, Sub, ToStr, Val, Var, While};
+use self::BuiltIn::{Add, And, Mul, Div, Eq, If, Mod, Neq, Gt, Ge, Lt, Le, Or, Print, Set, Sub, ToStr, Val, Var, While};
 
 #[derive(Debug, Clone, PartialEq, EnumString, Display)]
 #[strum(serialize_all = "lowercase")]
@@ -103,12 +101,38 @@ impl BuiltIn {
         }
     }
     fn comparison_op(&self, left: Expr, right: Expr) ->  Result<Expr, Exception> {
-        match self {
-            Eq => Ok(Bool(left.eq(&right))),
-            Neq => Ok(Bool(!left.eq(&right))),
-            _ => panic!("unexpected operator {:?}", self),
+        if matches!(left, Int(_)) || matches!(left, Float(_)) {
+           self.compare_numbers(left, right)
+        } else {
+            match self {
+                Eq => Ok(Bool(left.eq(&right))),
+                Neq => Ok(Bool(!left.eq(&right))),
+                _ => panic!("unexpected operator {:?}", self),
+            }
         }
     }
+    fn compare_numbers(&self, left: Expr, right: Expr) ->  Result<Expr, Exception> {
+        match (left, right) {
+            (Int(a), Int(b))    =>  self.compare_floats(a as f64, b as f64),
+            (Float(a), Float(b)) => self.compare_floats(a, b),
+            (Int(a), Float(b))  => self.compare_floats(a as f64, b),
+            (Float(a), Int(b))  => self.compare_floats(a, b as f64),
+            _ => Err(Exception::NotNumber),
+        }
+    }
+    fn compare_floats(&self, a: f64, b: f64) -> Result<Expr, Exception> {
+        let b = match self {
+            Eq => a == b,
+            Neq => a != b,
+            Ge => a >= b,
+            Gt => a > b,
+            Le => a <= b,
+            Lt => a < b,
+            _ => panic!("unexpected operator {:?}", self),
+        };
+        Ok(Bool(b))
+    }
+
     fn binary_op(&self, left: Expr, right: Expr, scope: &mut Scope) -> Result<Expr, Exception> {
         match (self, left.eval(scope)?) {
             (And, FALSE) => Ok(FALSE),
@@ -155,8 +179,13 @@ fn call_print(args: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
 }
 
 fn call_while(args: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
+    let mut count = 0;
     let mut result = Ok(Nil);
     loop {
+        count += 1;
+        if count >= 1000000 {
+           break Err(Exception::InfiniteLoop)
+        }
         if let Bool(bool) = args[0].eval(scope)? {
             if bool {
                 result = args[1].eval(scope)
@@ -177,6 +206,6 @@ mod tests {
     #[test]
     fn test_call() {
         let mut scope = Scope::new();
-        assert_eq!(Err(Exception::WrongArgumentsNumber(2, 1)), Add.call(&vec!(Nil), &mut scope))
+        assert_eq!(Err(Exception::WrongArgumentsNumber(2, 1)), Lt.call(&vec!(Nil), &mut scope))
     }
 }
