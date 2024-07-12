@@ -27,7 +27,7 @@ fn main() {
 fn repl() {
     println!("{BLUE}Bienvenue sur {LANG} version {VERSION}{STD}");
     println!("Taper :q pour quitter, :h pour de l'aide");
-    let mut ctx = Scope::new();
+    let mut scope = Scope::new();
     loop {
         print!("{}", PROMPT);
         io::stdout().flush().unwrap();
@@ -45,13 +45,13 @@ fn repl() {
             }
             continue;
         }
-        let expr = ctx.read(input);
+        let expr = scope.read(input);
         if let Expr::Failure(error) = expr {
             println!("{RED}Erreur de syntaxe ({:?}){STD}", error);
             continue;
         }
         println!("DEBUG: {:?}", expr);
-        let result = expr.eval_or_error(&mut ctx);
+        let result = expr.eval_or_error(&mut scope);
         if let Expr::Failure(error) = result {
             println!("{RED}Erreur d'évaluation ({:?}){STD}", error);
         } else {

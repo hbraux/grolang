@@ -1,13 +1,17 @@
 use std::cmp::PartialEq;
+
 use strum_macros::{Display, EnumString};
+
 use crate::{Expr, Scope};
 use crate::exception::Exception;
 use crate::Expr::{Bool, Float, Int};
-use crate::expr::{FALSE, Lambda, TRUE};
-use crate::expr::Expr::{Nil, Str, Symbol, TypeSpec};
+use crate::expr::{FALSE, TRUE};
+use crate::expr::Expr::{Fun, Nil, Str, Symbol, TypeSpec};
+use crate::lambda::Lambda;
 use crate::types::Type;
+use crate::types::Type::Number;
 
-use self::BuiltIn::{Add, And, Mul, Div, Eq, If, Mod, Neq, Gt, Ge, Lt, Le, Or, Print, Set, Sub, ToStr, Val, Var, While};
+use self::BuiltIn::{Add, And, Div, Eq, Ge, Gt, If, Le, Lt, Mod, Mul, Neq, Or, Print, Set, Sub, ToStr, Val, Var, While};
 
 #[derive(Debug, Clone, PartialEq, EnumString, Display)]
 #[strum(serialize_all = "lowercase")]
@@ -36,13 +40,16 @@ pub enum BuiltIn {
     Val
 }
 
-fn load(scope: &mut Scope) {
-    let arithmetic = "(Number,Number)->Number";
-    scope.add_fun("add", Type::new(arithmetic), Expr::Fun(|args| Add.arithmetic_op(&args[0], &args[1])));
+
+
+pub fn load_builtins(scope: &mut Scope) {
+    let sign = Type::Fun(vec!(Number, Number), Box::new(Number));
+    scope.add(Add.to_string(), Fun(sign.clone(), Lambda::new(|args| Add.arithmetic_op(&args[0], &args[1]))));
+    scope.add(Sub.to_string(), Fun(sign.clone(), Lambda::new(|args| Sub.arithmetic_op(&args[0], &args[1]))));
+
 }
 
 impl BuiltIn {
-
     fn call_args(&self) -> usize {
         match self {
             Print => 0,
@@ -57,7 +64,7 @@ impl BuiltIn {
         }
         match self {
             ToStr => self.unitary_op(args[0].clone().eval(scope)?),
-            Add | Sub | Mul | Div | Mod => self.arithmetic_op(&args[0].eval(scope)?, args[1].eval(scope)?),
+            Add | Sub | Mul | Div | Mod => self.arithmetic_op(&args[0].eval(scope)?, &args[1].eval(scope)?),
             Eq | Neq | Ge | Gt | Le | Lt => self.comparison_op(args[0].eval(scope)?, args[1].eval(scope)?),
             And | Or => self.binary_op(args[0].clone(), args[1].clone(), scope),
             Var => call_assign(args, scope, Some(true)),
@@ -152,13 +159,13 @@ impl BuiltIn {
 
 fn call_assign(args: &Vec<Expr>, scope: &mut Scope, is_mutable: Option<bool>) -> Result<Expr, Exception> {
     if let Symbol(name) = &args[0] {
-        let value = &args[args.len() - 1].eval(scope)?;
+        let value = (&args[args.len() - 1]).eval(scope)?;
         if let TypeSpec(expected) = &args[1] {
             if value.get_type() != *expected {
                 return Err(Exception::InconsistentType(value.get_type().to_string()))
             }
         }
-        scope.store(&name, value, is_mutable)
+        scope.store(name.to_owned(), value, is_mutable)
     } else {
         Err(Exception::NotSymbol(args[0].to_string()))
     }

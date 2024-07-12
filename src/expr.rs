@@ -1,9 +1,13 @@
+use std::fmt::{Debug, Formatter};
 use std::str::FromStr;
+
 use strum_macros::Display;
+
 use crate::builtin::BuiltIn;
 use crate::exception::Exception;
-use crate::Scope;
+use crate::lambda::Lambda;
 use crate::parser::parse;
+use crate::Scope;
 use crate::types::Type;
 
 use self::Expr::{Block, Bool, Call, Failure, Float, Int, Nil, Str, Symbol, TypeSpec};
@@ -19,11 +23,10 @@ pub enum Expr {
     Block(Vec<Expr>),
     Call(String, Vec<Expr>),
     Failure(Exception),
-    Fun(Lambda),
+    Fun(Type, Lambda),
     Nil,
 }
 
-pub type Lambda = fn(args: Vec<Expr>) -> Result<Expr, Exception>;
 
 pub const TRUE: Expr = Bool(true);
 pub const FALSE: Expr = Bool(false);
@@ -33,7 +36,7 @@ impl Expr {
     pub fn read(str: &str, _ctx: &Scope) -> Expr {
         parse(str).unwrap_or_else(|s| Failure(Exception::CannotParse(s)))
     }
-    pub fn parse_type_spec(str: &str) -> Expr {
+    pub fn read_type(str: &str) -> Expr {
         TypeSpec(Type::new(str.replace(":", "").trim()))
     }
     // recursive format with debug
