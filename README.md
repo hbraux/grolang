@@ -15,7 +15,6 @@ Les fonctionnalités principales :
 * une programmation fonctionnelle  
 * une gestion simplifiée des optionnels et des exceptions
 
-
 ## Installation
 
 ***Ce projet est en cours de développement et n'a pas encore été releasé***
