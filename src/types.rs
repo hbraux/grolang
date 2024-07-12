@@ -1,6 +1,6 @@
 use strum_macros::Display;
 
-use self::Type::{Number, Fun, Option, Try, List, Map, Any, Bool, Int};
+use self::Type::{Fun, Option, Try, List, Map, Any, Bool, Int};
 
 #[derive(Debug, Eq, PartialEq, Clone, Display)]
 pub enum Type {
@@ -9,7 +9,6 @@ pub enum Type {
     Bool,
     Str,
     Float,
-    Number,
     Defined(String),
     List(Box<Type>),
     Option(Box<Type>),
@@ -44,7 +43,6 @@ impl Type {
                 "Int" => Type::Int,
                 "Bool" => Type::Bool,
                 "Str" => Type::Str,
-                "Number" => Number,
                 "Float" => Type::Float,
                 _ => Type::Defined(str.to_owned()),
             }
@@ -66,10 +64,10 @@ mod tests {
         assert_eq!(Any, Type::new("Any"));
         assert_eq!(Int, Type::new("Int"));
         assert_eq!(Bool, Type::new("Bool"));
-        assert_eq!(List(Box::new(Type::Int)), Type::new("List<Int>"));
-        assert_eq!(Map(Box::new(Type::Int), Box::new(Type::Bool)), Type::new("Map<Int,Bool>"));
-        assert_eq!(Option(Box::new(Type::Int)), Type::new("Int?"));
-        assert_eq!(Try(Box::new(Type::Int)), Type::new("Int!"));
-        assert_eq!(Fun(vec!(Type::Int, Type::Float), Box::new(Type::Number)), Type::new("(Int,Float)->Number"));
+        assert_eq!(List(Box::new(Int)), Type::new("List<Int>"));
+        assert_eq!(Map(Box::new(Int), Box::new(Type::Bool)), Type::new("Map<Int,Bool>"));
+        assert_eq!(Option(Box::new(Int)), Type::new("Int?"));
+        assert_eq!(Try(Box::new(Int)), Type::new("Int!"));
+        assert_eq!(Fun(vec!(Int, Type::Float), Box::new(Type::Float)), Type::new("(Int,Float)->Float"));
     }
 }

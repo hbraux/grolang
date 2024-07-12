@@ -1,10 +1,10 @@
 use std::collections::{HashMap, HashSet};
 use std::string::ToString;
 
-use crate::builtin::load_builtins;
 use crate::exception::Exception;
 use crate::expr::Expr;
 use crate::expr::Expr::Symbol;
+use crate::lambda::load_functions;
 use crate::types::Type;
 
 pub mod expr;
@@ -23,7 +23,7 @@ impl Scope {
     pub fn new() -> Scope { Scope { values: HashMap::new(), mutables: HashSet::new() } }
 
     pub fn init(&mut self) {
-        load_builtins(self);
+        load_functions(self);
     }
 
     pub fn get(&self, name: &str) -> Result<Expr, Exception> {
@@ -34,6 +34,11 @@ impl Scope {
     }
     pub fn add(&mut self, name: String, value: Expr) {
         self.values.insert(name, value);
+    }
+    pub fn add_fun(&mut self, value: Expr) {
+        if let  Expr::Fun(_type, lambda) = &value {
+            self.values.insert(lambda.name(), value);
+        } else { panic!() }
     }
 
     pub fn is_defined(&self, name: &str) -> bool {

@@ -6,10 +6,7 @@ use crate::{Expr, Scope};
 use crate::exception::Exception;
 use crate::Expr::{Bool, Float, Int};
 use crate::expr::{FALSE, TRUE};
-use crate::expr::Expr::{Fun, Nil, Str, Symbol, TypeSpec};
-use crate::lambda::Lambda;
-use crate::types::Type;
-use crate::types::Type::Number;
+use crate::expr::Expr::{Nil, Str, Symbol, TypeSpec};
 
 use self::BuiltIn::{Add, And, Div, Eq, Ge, Gt, If, Le, Lt, Mod, Mul, Neq, Or, Print, Set, Sub, ToStr, Val, Var, While};
 
@@ -42,12 +39,6 @@ pub enum BuiltIn {
 
 
 
-pub fn load_builtins(scope: &mut Scope) {
-    let sign = Type::Fun(vec!(Number, Number), Box::new(Number));
-    scope.add(Add.to_string(), Fun(sign.clone(), Lambda::new(|args| Add.arithmetic_op(&args[0], &args[1]))));
-    scope.add(Sub.to_string(), Fun(sign.clone(), Lambda::new(|args| Sub.arithmetic_op(&args[0], &args[1]))));
-
-}
 
 impl BuiltIn {
     fn call_args(&self) -> usize {

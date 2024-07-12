@@ -9,6 +9,8 @@ pub enum Exception {
     UndefinedSymbol(String),
     InfiniteLoop,
     NotNumber,
+    NotInt(String),
+    NotFloat(String),
     NotBoolean(String),
     NotMutable(String),
     InconsistentType(String),

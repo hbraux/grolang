@@ -1,4 +1,4 @@
-use std::fmt::{Debug, Formatter};
+use std::fmt::Debug;
 use std::str::FromStr;
 
 use strum_macros::Display;
@@ -49,6 +49,18 @@ impl Expr {
             Float(_) => Type::Float,
             Str(_) => Type::Str,
             _ => Type::Any,
+        }
+    }
+    pub fn int(&self) -> Result<&i64, Exception> {
+        match self {
+            Int(x) => Ok(x),
+            _ => Err(Exception::NotInt(self.print()))
+        }
+    }
+    pub fn to_float(&self) -> Result<&f64, Exception> {
+        match self {
+            Float(x) => Ok(x),
+            _ => Err(Exception::NotFloat(self.print()))
         }
     }
     pub fn eval(&self, scope: &mut Scope) -> Result<Expr, Exception> {
