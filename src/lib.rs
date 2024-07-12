@@ -1,7 +1,9 @@
 use std::collections::{HashMap, HashSet};
 use std::string::ToString;
+use crate::builtin::BuiltIn;
 use crate::exception::Exception;
-use crate::expr::Expr;
+use crate::expr::{Expr};
+use crate::expr::Expr::Symbol;
 use crate::types::Type;
 
 pub mod expr;
@@ -13,11 +15,17 @@ mod builtin;
 
 pub struct Scope {
     values: HashMap<String, Expr>,
+    types: HashMap<String, Type>,
     mutables: HashSet<String>,
 }
 
 impl Scope {
-    pub fn new() -> Scope { Scope { values: HashMap::new(), mutables: HashSet::new() } }
+    pub fn new() -> Scope {
+        Scope {
+            values: HashMap::new(),
+            types: HashMap::new(),
+            mutables: HashSet::new(),
+        } }
 
     pub fn get(&self, name: &str) -> Result<Expr, Exception> {
         match self.values.get(name) {
@@ -25,6 +33,11 @@ impl Scope {
             None => Err(Exception::UndefinedSymbol(name.to_string())),
         }
     }
+    pub fn add(&mut self, name: &str, lambda: Type, value: Expr) {
+        self.values.insert(name.to_string(), value);
+        self.types.insert(name.to_string(), lambda);
+    }
+
     pub fn is_defined(&self, name: &str) -> bool {
         self.values.contains_key(name)
     }
@@ -34,23 +47,23 @@ impl Scope {
     pub fn get_type(&self, name: &str) -> Type {
         self.values.get(name).unwrap().get_type()
     }
-    pub fn set(&mut self, name: &str, expr: &Expr, is_mutable: Option<bool>) -> Expr {
+
+    pub fn set(&mut self, name: &str, value: Expr, is_mutable: Option<bool>) {
         if is_mutable == Some(true) {
             self.mutables.insert(name.to_string());
         }
-        self.values.insert(name.to_string(), expr.clone());
-        expr.clone()
+        self.add_fun(&name, value)
     }
     pub fn read(&mut self, str: &str) -> Expr { Expr::read(str, self) }
     pub fn exec(&mut self, str: &str) -> String { self.read(str).eval_or_error(self).print() }
 
-    pub fn store(&mut self, name: &str, value: &Expr, is_mutable: Option<bool>) -> Result<Expr, Exception> {
+    pub fn store(&mut self, name: &str, value: Expr, is_mutable: Option<bool>) -> Result<Expr, Exception> {
         match (self.is_defined(&name), is_mutable) {
             (true, Some(_)) => Err(Exception::AlreadyDefined(name.to_owned())),
             (false, None) => Err(Exception::NotDefined(name.to_owned())),
-            (true, None) if !self.is_mutable(&name) => Err(Exception::NotMutable(name.to_string())),
+            (true, None) if !self.is_mutable(&name) => Err(Exception::NotMutable(name.to_owned())),
             (true, None) if self.is_mutable(&name) && self.get_type(&name) != value.get_type() => Err(Exception::InconsistentType(value.get_type().to_string())),
-            _ => Ok(self.set(&name, value, is_mutable))
+            _ => { self.set(&name, value, is_mutable); Ok(Symbol(name.to_owned())) }
         }
     }
 }

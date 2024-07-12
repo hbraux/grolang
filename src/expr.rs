@@ -19,8 +19,11 @@ pub enum Expr {
     Block(Vec<Expr>),
     Call(String, Vec<Expr>),
     Failure(Exception),
+    Fun(Lambda),
     Nil,
 }
+
+pub type Lambda = fn(args: Vec<Expr>) -> Result<Expr, Exception>;
 
 pub const TRUE: Expr = Bool(true);
 pub const FALSE: Expr = Bool(false);
@@ -51,7 +54,8 @@ impl Expr {
             Nil | Int(_) | Float(_) | Str(_) | Bool(_) | TypeSpec(_) => Ok(self.clone()),
             Symbol(name) => scope.get(&*name),
             Block(args) => args.iter().map(|e| e.eval(scope)).last().unwrap(),
-            Call(name, args) => if let Ok(op) = BuiltIn::from_str(&name) { op.call(args, scope) } else { panic!("{} is not a built-in function", name) }
+            Call(name, args) => BuiltIn::from_str(&name).unwrap().call(args, scope),
+            _ => Err(Exception::NotImplemented(format!("{}", self))),
         }
     }
     pub fn eval_or_error(&self, scope: &mut Scope) -> Expr {
@@ -66,9 +70,9 @@ impl Expr {
             Bool(x) => x.to_string(),
             Int(x) => x.to_string(),
             Str(x) => format!("\"{}\"", x),
-            Nil => "nil".to_string(),
+            Nil => "nil".to_owned(),
             Float(x) => format_float(x),
-            Symbol(x) => x.to_string(),
+            Symbol(x) => x.to_owned(),
             Failure(x) => x.format(),
             _ => format!("{:?}", self),
         }

@@ -2,11 +2,18 @@ var line: String
 var expr: Expr!
 print("Welcome to groLang 0.1)
 print(":q to quit")
-while true {
+var loop = true
+while (loop) {
   print("> ")
   line = readLine()
-  if (line == ":q") break
-  expr = input.read()!.eval()
-  if (expr.failed) print("Error: ", expr)
-  else print(expr)
+  if (line == ":q") {
+    loop = false
+  } else {
+    expr = input.read()!.eval()
+    if (expr.failed()) {
+      print("Error: ", expr)
+    } else {
+      print(expr)
+    }
+  }
 }

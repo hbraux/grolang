@@ -57,9 +57,9 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
         Rule::Float => Expr::Float(pair.as_str().parse::<f64>().unwrap()),
         Rule::Special => to_literal(pair.as_str()),
         Rule::String => Expr::Str(unquote(pair.as_str())),
-        Rule::Symbol => Expr::Symbol(pair.as_str().to_string()),
+        Rule::Symbol => Expr::Symbol(pair.as_str().to_owned()),
         Rule::TypeSpec => Expr::parse_type_spec(pair.as_str()),
-        Rule::Operator => Expr::Symbol(pair.as_str().to_string()),
+        Rule::Operator => Expr::Symbol(pair.as_str().to_owned()),
         Rule::Expr =>  parse_pairs(pair.into_inner()),
         Rule::CallExpr => build_call(to_vec(pair, 0, 0)),
         Rule::Declaration => build_call(to_vec(pair, 4, 2)),
@@ -94,7 +94,7 @@ fn to_vec(pair: Pair<Rule>, expected_len: usize, optional_pos: usize) -> Vec<Exp
 }
 
 fn unquote(str: &str) -> String {
-    (&str[1..str.len()-1]).to_string()
+    (&str[1..str.len()-1]).to_owned()
 }
 fn operator_name(pair: Pair<Rule>) -> String {
     format!("{:?}", pair.as_rule()).to_lowercase()
@@ -124,8 +124,8 @@ mod tests {
         assert_eq!(TRUE, parse("true").unwrap());
         assert_eq!(FALSE, parse("false").unwrap());
         assert_eq!(NIL, parse("nil").unwrap());
-        assert_eq!(Expr::Str("abc".to_string()), parse("\"abc\"").unwrap());
-        assert_eq!(Expr::Str("true".to_string()), parse("\"true\"").unwrap());
+        assert_eq!(Expr::Str("abc".to_owned()), parse("\"abc\"").unwrap());
+        assert_eq!(Expr::Str("true".to_owned()), parse("\"true\"").unwrap());
     }
 
     #[test]

@@ -3,8 +3,9 @@ use strum_macros::{Display, EnumString};
 use crate::{Expr, Scope};
 use crate::exception::Exception;
 use crate::Expr::{Bool, Float, Int};
-use crate::expr::{FALSE, TRUE};
+use crate::expr::{FALSE, Lambda, TRUE};
 use crate::expr::Expr::{Nil, Str, Symbol, TypeSpec};
+use crate::types::Type;
 
 use self::BuiltIn::{Add, And, Mul, Div, Eq, If, Mod, Neq, Gt, Ge, Lt, Le, Or, Print, Set, Sub, ToStr, Val, Var, While};
 
@@ -35,8 +36,13 @@ pub enum BuiltIn {
     Val
 }
 
+fn load(scope: &mut Scope) {
+    let arithmetic = "(Number,Number)->Number";
+    scope.add_fun("add", Type::new(arithmetic), Expr::Fun(|args| Add.arithmetic_op(&args[0], &args[1])));
+}
 
 impl BuiltIn {
+
     fn call_args(&self) -> usize {
         match self {
             Print => 0,
@@ -51,7 +57,7 @@ impl BuiltIn {
         }
         match self {
             ToStr => self.unitary_op(args[0].clone().eval(scope)?),
-            Add | Sub | Mul | Div | Mod => self.arithmetic_op(args[0].eval(scope)?, args[1].eval(scope)?),
+            Add | Sub | Mul | Div | Mod => self.arithmetic_op(&args[0].eval(scope)?, args[1].eval(scope)?),
             Eq | Neq | Ge | Gt | Le | Lt => self.comparison_op(args[0].eval(scope)?, args[1].eval(scope)?),
             And | Or => self.binary_op(args[0].clone(), args[1].clone(), scope),
             Var => call_assign(args, scope, Some(true)),
@@ -71,12 +77,12 @@ impl BuiltIn {
         }
     }
 
-    fn arithmetic_op(&self, left: Expr, right: Expr) -> Result<Expr, Exception> {
+    fn arithmetic_op(&self, left: &Expr, right: &Expr) -> Result<Expr, Exception> {
         match (left, right) {
-            (Int(a), Int(b))    =>  self.arithmetic_int(a, b),
-            (Float(a), Float(b)) => self.arithmetic_float(a, b),
-            (Int(a), Float(b))  => self.arithmetic_float(a as f64, b),
-            (Float(a), Int(b))  => self.arithmetic_float(a, b as f64),
+            (Int(a), Int(b))    =>  self.arithmetic_int(*a, *b),
+            (Float(a), Float(b)) => self.arithmetic_float(*a, *b),
+            (Int(a), Float(b))  => self.arithmetic_float(*a as f64, *b),
+            (Float(a), Int(b))  => self.arithmetic_float(*a, *b as f64),
             _ => Err(Exception::NotNumber),
         }
     }
