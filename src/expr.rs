@@ -3,7 +3,8 @@ use std::fmt::Debug;
 use strum_macros::Display;
 
 use crate::exception::Exception;
-use crate::lambda::Lambda;
+use crate::functions::Function;
+use crate::macros::Macro;
 use crate::parser::parse;
 use crate::Scope;
 use crate::types::Type;
@@ -20,7 +21,8 @@ pub enum Expr {
     TypeSpec(Type),
     Call(String, Vec<Expr>),
     Failure(Exception),
-    Fun(String, Type, Lambda),
+    Fun(String, Type, Function),
+    Mac(String, Macro),
     Nil,
 }
 
@@ -59,6 +61,18 @@ impl Expr {
         match self {
             Float(x) => Ok(x),
             _ => Err(Exception::NotFloat(self.print()))
+        }
+    }
+    pub fn symbol(&self) -> Result<&str, Exception> {
+        match self {
+            Symbol(x) => Ok(x),
+            _ => Err(Exception::NotSymbol(self.print()))
+        }
+    }
+    pub fn to_type(&self) -> Result<&Type, Exception> {
+        match self {
+            TypeSpec(x) => Ok(x),
+            _ => Err(Exception::NotSymbol(self.print()))
         }
     }
     pub fn eval(&self, scope: &mut Scope) -> Result<Expr, Exception> {
@@ -112,8 +126,8 @@ fn handle_symbol(name: &str, scope: &Scope) -> Result<Expr, Exception> {
 }
 
 fn handle_call(name: &str, args: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
-    if let Some(macro_def) = scope.get_macro(name) {
-        macro_def.apply(args) // do not evaluate arguments for macros!
+    if let Some(lambda) = scope.get_macro(name) {
+        lambda.apply(args, scope) // do not evaluate arguments for macros
     } else {
         args.iter().map(|e| e.eval(scope)).collect::<Result<Vec<Expr>, Exception>>().and_then(|values|
             match scope.get_fun(name, values.get(0).map(|e| e.get_type())) {
@@ -123,7 +137,7 @@ fn handle_call(name: &str, args: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, 
     }
 }
 
-fn apply_lambda(name: &str, specs: &Type, values: &Vec<Expr>, lambda: &Lambda) ->  Result<Expr, Exception> {
+fn apply_lambda(name: &str, specs: &Type, values: &Vec<Expr>, lambda: &Function) ->  Result<Expr, Exception> {
     if let Type::Fun(input, output) = specs {
         if input.len() != values.len() {
             Err(Exception::WrongArgumentsNumber(name.to_owned(), input.len(), values.len()))

@@ -83,9 +83,6 @@ fn build_call(mut args: Vec<Expr>) -> Expr {
 
 fn to_vec(pair: Pair<Rule>, expected_len: usize, optional_pos: usize) -> Vec<Expr> {
     let mut args: Vec<Expr> = pair.into_inner().into_iter().map(|p| parse_primary(p)).collect();
-    if args.is_empty() {
-        panic!("args should not be empty")
-    }
     if expected_len > 0 && args.len() < expected_len {
         if optional_pos > 0 {
             args.insert(optional_pos, Expr::Nil)

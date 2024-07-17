@@ -14,7 +14,7 @@ pub enum Exception {
     NotFloat(String),
     NotBoolean(String),
     NotMutable(String),
-    InconsistentType(String),
+    UnexpectedType(String),
     AlreadyDefined(String),
     NotDefined(String),
     WrongArgumentsNumber(String, usize,usize),

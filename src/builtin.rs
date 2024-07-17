@@ -6,9 +6,9 @@ use crate::{Expr, Scope};
 use crate::exception::Exception;
 use crate::Expr::{Bool, Float, Int};
 use crate::expr::{FALSE, TRUE};
-use crate::expr::Expr::{Nil, Str, Symbol, TypeSpec};
+use crate::expr::Expr::{Nil, Str};
 
-use self::BuiltIn::{Add, And, Div, Eq, Ge, Gt, If, Le, Lt, Mod, Mul, Neq, Or, Print, Set, Sub, ToStr, Val, Var, While};
+use self::BuiltIn::{Add, And, Div, Eq, Ge, Gt, If, Le, Lt, Mod, Mul, Neq, Or, Print, Sub, ToStr, Val, Var, While};
 
 #[derive(Debug, Clone, PartialEq, EnumString, Display)]
 #[strum(serialize_all = "lowercase")]
@@ -58,9 +58,6 @@ impl BuiltIn {
             Add | Sub | Mul | Div | Mod => self.arithmetic_op(&args[0].eval(scope)?, &args[1].eval(scope)?),
             Eq | Neq | Ge | Gt | Le | Lt => self.comparison_op(args[0].eval(scope)?, args[1].eval(scope)?),
             And | Or => self.binary_op(args[0].clone(), args[1].clone(), scope),
-            Var => call_assign(args, scope, Some(true)),
-            Val => call_assign(args, scope, Some(false)),
-            Set => call_assign(args, scope, None),
             Print => call_print(args, scope),
             If => call_if(args, scope),
             While => call_while(args, scope),
@@ -148,19 +145,6 @@ impl BuiltIn {
     }
 }
 
-fn call_assign(args: &Vec<Expr>, scope: &mut Scope, is_mutable: Option<bool>) -> Result<Expr, Exception> {
-    if let Symbol(name) = &args[0] {
-        let value = (&args[args.len() - 1]).eval(scope)?;
-        if let TypeSpec(expected) = &args[1] {
-            if value.get_type() != *expected {
-                return Err(Exception::InconsistentType(value.get_type().to_string()))
-            }
-        }
-        scope.store(name.to_owned(), value, is_mutable)
-    } else {
-        Err(Exception::NotSymbol(args[0].to_string()))
-    }
-}
 
 fn call_if(args: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
     if let Bool(bool) = args[0].eval(scope)? {

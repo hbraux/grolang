@@ -1,11 +1,10 @@
-
 use std::collections::{HashMap, HashSet};
 use std::string::ToString;
 
-use crate::exception::Exception;
 use crate::expr::Expr;
-use crate::expr::Expr::{Fun, Symbol};
-use crate::lambda::{Lambda, load_functions};
+use crate::expr::Expr::{Fun, Mac};
+use crate::functions::{Function, load_functions};
+use crate::macros::{load_macros, Macro};
 use crate::types::Type;
 
 pub mod expr;
@@ -13,7 +12,8 @@ mod parser;
 mod types;
 mod exception;
 mod builtin;
-mod lambda;
+mod functions;
+mod macros;
 
 pub struct Scope {
     values: HashMap<String, Expr>,
@@ -25,6 +25,7 @@ impl Scope {
 
     fn init(mut self) -> Scope {
         load_functions(&mut self);
+        load_macros(&mut self);
         self
     }
 
@@ -32,13 +33,13 @@ impl Scope {
         self.values.get(name).map(|e| e.clone())
     }
 
-    pub fn get_macro(&self, name: &str) -> Option<&Lambda> {
+    pub fn get_macro(&self, name: &str) -> Option<&Macro> {
         match self.values.get(name) {
-            Some(Fun(_name, specs, lambda)) if *specs == Type::Macro => Some(lambda),
+            Some(Mac(_name, lambda)) => Some(lambda),
             _ => None,
         }
     }
-    pub fn get_fun(&self, name: &str, obj_type: Option<Type>) -> Option<(&Type, &Lambda)> {
+    pub fn get_fun(&self, name: &str, obj_type: Option<Type>) -> Option<(&Type, &Function)> {
         match self.values.get(name) {
             Some(Fun(_name, specs, lambda)) => Some((specs, lambda)),
             None if obj_type.is_some() => self.get_fun(&(obj_type.unwrap().method_name(name)), None),
@@ -55,8 +56,10 @@ impl Scope {
     pub fn is_defined(&self, name: &str) -> bool {
         self.values.contains_key(name)
     }
-    pub fn is_mutable(&self, name: &str) -> bool {
-        self.mutables.contains(name)
+    pub fn is_mutable(&self, name: &str) -> Option<bool> {
+        if self.is_defined(name) {
+            Some(self.mutables.contains(name))
+        } else { None }
     }
     pub fn get_type(&self, name: &str) -> Type {
         self.values.get(name).unwrap().get_type()
@@ -71,15 +74,6 @@ impl Scope {
     pub fn read(&mut self, str: &str) -> Expr { Expr::read(str, self) }
     pub fn exec(&mut self, str: &str) -> String { self.read(str).eval_or_failed(self).print() }
 
-    pub fn store(&mut self, name: String, value: Expr, is_mutable: Option<bool>) -> Result<Expr, Exception> {
-        match (self.is_defined(&name), is_mutable) {
-            (true, Some(_)) => Err(Exception::AlreadyDefined(name.to_owned())),
-            (false, None) => Err(Exception::NotDefined(name.to_owned())),
-            (true, None) if !self.is_mutable(&name) => Err(Exception::NotMutable(name.to_owned())),
-            (true, None) if self.is_mutable(&name) && self.get_type(&name) != value.get_type() => Err(Exception::InconsistentType(value.get_type().to_string())),
-            _ => { self.set(name.clone(), value, is_mutable); Ok(Symbol(name.to_owned())) }
-        }
-    }
 }
 
 
@@ -104,7 +98,7 @@ mod tests {
     #[test]
     fn test_variables() {
         let mut scope = Scope::new();
-        assert_eq!("NotDefined(a)", scope.exec("a = 0"));
+        assert_eq!("UndefinedSymbol(a)", scope.exec("a = 0"));
         assert_eq!("1", scope.exec("var a = 1"));
         assert_eq!("true", scope.exec("z.val(nil, true)"));
         assert_eq!("AlreadyDefined(a)", scope.exec("var a = 3"));
