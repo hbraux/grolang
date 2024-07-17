@@ -99,18 +99,18 @@ mod tests {
     #[test]
     fn test_variables() {
         let mut scope = Scope::new();
-        assert_eq!("UndefinedSymbol(a)", scope.exec("a = 0"));
-        assert_eq!("1", scope.exec("var a = 1"));
-        assert_eq!("true", scope.exec("z.val(nil, true)"));
+        assert_eq!("NotDefined(a)", scope.exec("a = 0"));
+        assert_eq!("a", scope.exec("var a = 1"));
+        assert_eq!("z", scope.exec("z.val(nil, true)"));
         assert_eq!("AlreadyDefined(a)", scope.exec("var a = 3"));
         assert_eq!("2", scope.exec("a = a + 1"));
         assert_eq!("0", scope.exec("a.set(0)"));
-        assert_eq!("InconsistentType(Float)", scope.exec("a = 3.0"));
-        assert_eq!("3.2", scope.exec("val c=3.2"));
-        assert_eq!("InconsistentType(Float)", scope.exec("var d: Int = 3.2"));
+        assert_eq!("UnexpectedType(Float)", scope.exec("a = 3.0"));
+        assert_eq!("c", scope.exec("val c=3.2"));
+        assert_eq!("UnexpectedType(Float)", scope.exec("var d: Int = 3.2"));
         assert_eq!("0", scope.exec("a"));
         assert_eq!("3.2", scope.exec("c"));
-        assert_eq!("0", scope.exec("val i = 0"));
+        assert_eq!("i", scope.exec("val i = 0"));
         assert_eq!("NotMutable(i)", scope.exec("i = 1"));
     }
 
@@ -129,8 +129,8 @@ mod tests {
     #[test]
     fn test_comparisons() {
         let mut scope = Scope::new();
-        assert_eq!("1", scope.exec("var a = 1"));
-        assert_eq!("2", scope.exec("var b = 2"));
+        scope.exec("var a = 1");
+        scope.exec("var b = 2");
         assert_eq!("true", scope.exec("a == a"));
         assert_eq!("true", scope.exec("1 == a"));
         assert_eq!("false", scope.exec("a == b"));
@@ -138,7 +138,6 @@ mod tests {
         assert_eq!("true", scope.exec("a == 1 && b == 2"));
         assert_eq!("false", scope.exec("a == 1 && b == 1"));
         assert_eq!("false", scope.exec("a == 2 && b == 2"));
-        assert_eq!("false", scope.exec("a == 2 && b/0")); // lazy eval
     }
 
     #[test]

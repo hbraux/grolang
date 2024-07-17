@@ -39,6 +39,7 @@ fn assign(name: &str, value: Expr, scope: &mut Scope) -> Result<Expr, Exception>
     match scope.is_mutable(&name) {
         None  => Err(Exception::NotDefined(name.to_owned())),
         Some(false) => Err(Exception::NotMutable(name.to_owned())),
+        _ if scope.get_type(name) != value.get_type() => Err(Exception::UnexpectedType(value.get_type().to_string())),
         _ => {
             scope.set(name.to_owned(), value.clone(), None);
             Ok(value)

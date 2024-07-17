@@ -78,6 +78,7 @@ impl Expr {
     pub fn to_type(&self) -> Result<&Type, Exception> {
         match self {
             TypeSpec(x) => Ok(x),
+            Nil => Ok(&Type::Any),
             _ => Err(Exception::NotSymbol(self.print()))
         }
     }
