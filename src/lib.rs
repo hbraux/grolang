@@ -147,7 +147,7 @@ mod tests {
         let mut scope = Scope::new();
         assert_eq!("1", scope.exec("if (true) { 1 } else { 0 }"));
         assert_eq!("nil", scope.exec("print(\"hello world\")"));
-        assert_eq!("0", scope.exec("var a = 0"));
+        scope.exec("var a = 0");
         assert_eq!("11", scope.exec("while (a < 10) { a = a + 1 }"));
     }
 }

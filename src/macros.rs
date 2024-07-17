@@ -27,6 +27,9 @@ pub fn load_macros(scope: &mut Scope) {
     scope.add(Mac("var".to_owned(), Macro::new(|args, scope| declare(args[0].symbol()?, args[1].to_type()?, args[2].eval(scope)?, scope, true))));
     scope.add(Mac("val".to_owned(), Macro::new(|args, scope| declare(args[0].symbol()?, args[1].to_type()?, args[2].eval(scope)?, scope, false))));
     scope.add(Mac("set".to_owned(), Macro::new(|args, scope| assign(args[0].symbol()?, args[1].eval(scope)?, scope))));
+    scope.add(Mac("block".to_owned(), Macro::new(|args, scope| block(args, scope))));
+    scope.add(Mac("print".to_owned(), Macro::new(|args, scope| print(args, scope))));
+    scope.add(Mac("while".to_owned(), Macro::new(|args, scope| run_while(args, scope))));
     scope.add(Mac("if".to_owned(), Macro::new(|args, scope| if_else!(args[0].eval(scope)?.bool()? => args[1].eval(scope) ; args[2].eval(scope)))));
 }
 
@@ -54,14 +57,25 @@ fn assign(name: &str, value: Expr, scope: &mut Scope) -> Result<Expr, Exception>
     }
 }
 
-fn _call_print(args: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
+fn block(args: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
+    let mut result = Ok(Nil);
+    for arg in args {
+        result = arg.eval(scope);
+        if result.is_err() {
+            break;
+        }
+    }
+    result
+}
+
+fn print(args: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
     for x in args {
         print!("{:?}", x.eval(scope)?)
     }
     Ok(Nil)
 }
 
-fn _call_while(args: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
+fn run_while(args: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
     let mut count = 0;
     let mut result = Ok(Nil);
     loop {
