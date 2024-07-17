@@ -1,10 +1,11 @@
 use std::collections::{HashMap, HashSet};
 use std::string::ToString;
 
+use crate::exception::Exception;
 use crate::expr::Expr;
 use crate::expr::Expr::{Fun, Mac};
 use crate::functions::{Function, load_functions};
-use crate::macros::{load_macros, Macro};
+use crate::macros::load_macros;
 use crate::types::Type;
 
 pub mod expr;
@@ -33,9 +34,9 @@ impl Scope {
         self.values.get(name).map(|e| e.clone())
     }
 
-    pub fn get_macro(&self, name: &str) -> Option<&Macro> {
+    pub fn try_macro(&mut self, name: &str, args: &Vec<Expr>) -> Option<Result<Expr, Exception>> {
         match self.values.get(name) {
-            Some(Mac(_name, lambda)) => Some(lambda),
+            Some(Mac(_name, lambda)) => Some(lambda.apply(args, self)),
             _ => None,
         }
     }

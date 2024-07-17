@@ -80,7 +80,7 @@ impl Expr {
             Failure(e) => Err(e.clone()),
             Nil | Int(_) | Float(_) | Str(_) | Bool(_) | TypeSpec(_) => Ok(self.clone()),
             Symbol(name) => handle_symbol(name, scope),
-            Call(name, args) => handle_call(name, args, scope),
+            Call(name, args) => scope.try_macro(name, args).unwrap_or(handle_call(name, args, scope)),
             _ => Err(Exception::NotImplemented(format!("{}", self))),
         }
     }
@@ -126,15 +126,11 @@ fn handle_symbol(name: &str, scope: &Scope) -> Result<Expr, Exception> {
 }
 
 fn handle_call(name: &str, args: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
-    if let Some(lambda) = scope.get_macro(name) {
-        lambda.apply(args, scope) // do not evaluate arguments for macros
-    } else {
-        args.iter().map(|e| e.eval(scope)).collect::<Result<Vec<Expr>, Exception>>().and_then(|values|
-            match scope.get_fun(name, values.get(0).map(|e| e.get_type())) {
-                Some((types, lambda)) => apply_lambda(name, types, &values, lambda),
-                _ => Err(Exception::UndefinedFunction(name.to_string())),
-            })
-    }
+    args.iter().map(|e| e.eval(scope)).collect::<Result<Vec<Expr>, Exception>>().and_then(|values|
+    match scope.get_fun(name, values.get(0).map(|e| e.get_type())) {
+        Some((types, lambda)) => apply_lambda(name, types, &values, lambda),
+        _ => Err(Exception::UndefinedFunction(name.to_string())),
+    })
 }
 
 fn apply_lambda(name: &str, specs: &Type, values: &Vec<Expr>, lambda: &Function) ->  Result<Expr, Exception> {
