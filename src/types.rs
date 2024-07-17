@@ -1,6 +1,10 @@
 use strum_macros::Display;
 
-use self::Type::{Fun, Option, Try, List, Map, Any, Bool, Int};
+use self::Type::{Fun, Option, Try, List, Map, Any, Bool, Int, Str, Float};
+
+macro_rules! box_type {
+    ($val:expr) => { Box::new(Type::new($val)) };
+}
 
 #[derive(Debug, Eq, PartialEq, Clone, Display)]
 pub enum Type {
@@ -26,36 +30,33 @@ impl Type {
         if str.starts_with("(") {
             let args: Vec<&str>  = str[1..str.len()].split(")->").collect();
             let v: Vec<&str> = args[0].split(",").collect();
-            Fun(v.iter().map(|s| Type::new(s)).collect(), to_box(args[1]))
+            Fun(v.iter().map(|s| Type::new(s)).collect(), box_type!(args[1]))
         } else if str.ends_with("?") {
-            Option(to_box(&str[0..str.len() - 1]))
+            Option(box_type!(&str[0..str.len() - 1]))
         } else if str.ends_with("!") {
-            Try(to_box(&str[0..str.len() - 1]))
+            Try(box_type!(&str[0..str.len() - 1]))
         } else if str.starts_with("List<") {
-            List(to_box(&str[5..str.len() - 1]))
+            List(box_type!(&str[5..str.len() - 1]))
         } else if str.starts_with("List<") {
-            List(to_box(&str[5..str.len() - 1]))
+            List(box_type!(&str[5..str.len() - 1]))
         } else if str.starts_with("Map<") {
             let v: Vec<&str> = (&str[4..str.len() - 1]).split(',').collect();
-            Map(to_box(v[0]), to_box(v[1]))
+            Map(box_type!(v[0]), box_type!(v[1]))
         } else {
             match str {
-                "Any" => Type::Any,
-                "Int" => Type::Int,
-                "Bool" => Type::Bool,
-                "Str" => Type::Str,
-                "Float" => Type::Float,
+                "Any" => Any,
+                "Int" => Int,
+                "Bool" => Bool,
+                "Str" => Str,
+                "Float" => Float,
                 _ => Type::Defined(str.to_owned()),
             }
         }
     }
-
     pub fn method_name(&self, name: &str) -> String {
         self.to_string().to_owned() + "." + name
     }
 }
-// TODO: make a macro
-fn to_box(str: &str) -> Box<Type> { Box::new(Type::new(str)) }
 
 #[cfg(test)]
 mod tests {
