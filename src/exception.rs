@@ -7,6 +7,7 @@ pub enum Exception {
     NotSymbol(String),
     DivisionByZero,
     UndefinedSymbol(String),
+    UndefinedFunction(String),
     InfiniteLoop,
     NotNumber,
     NotInt(String),

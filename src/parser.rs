@@ -170,9 +170,10 @@ mod tests {
 
     #[test]
     fn test_builtins() {
-        assert_eq!("Call(if, [Call(eq, [Symbol(a), Int(1)]), Block([Int(2)]), Block([Int(3)])])", read("if (a == 1) { 2 } else { 3 }"));
-        assert_eq!("Call(if, [Bool(true), Block([Int(1)]), Nil])", read("if (true) { 1 } "));
-        assert_eq!("Call(while, [Call(le, [Symbol(a), Int(10)]), Block([Call(set, [Symbol(a), Call(add, [Symbol(a), Int(1)])])])])", read("while (a < 10) { a = a + 1 }"));
+        assert_eq!("Call(if, [Call(eq, [Symbol(a), Int(1)]), Call(block, [Int(2)]), Call(block, [Int(3)])])", read("if (a == 1) { 2 } else { 3 }"));
+        assert_eq!("Call(if, [Bool(true), Call(block, [Int(1)]), Nil])", read("if (true) { 1 } "));
+        assert_eq!("Call(while, [Call(le, [Symbol(a), Int(10)]), Call(block, [Call(set, [Symbol(a), Call(add, [Symbol(a), Int(1)])])])])",
+                   read("while (a < 10) { a = a + 1 }"));
     }
 }
 

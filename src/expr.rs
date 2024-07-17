@@ -55,7 +55,7 @@ impl Expr {
             _ => Err(Exception::NotInt(self.print()))
         }
     }
-    pub fn to_float(&self) -> Result<&f64, Exception> {
+    pub fn float(&self) -> Result<&f64, Exception> {
         match self {
             Float(x) => Ok(x),
             _ => Err(Exception::NotFloat(self.print()))
@@ -65,19 +65,12 @@ impl Expr {
         match self {
             Failure(e) => Err(e.clone()),
             Nil | Int(_) | Float(_) | Str(_) | Bool(_) | TypeSpec(_) => Ok(self.clone()),
-            Symbol(name) => scope.get(name).ok_or(Exception::UndefinedSymbol(name.to_string())),
-            Call(name, args) if scope.get_macro(name).is_some() => scope.get_macro(name).unwrap().apply(args),
-            Call(name, args) => match args.iter().map(|e| e.eval(scope)).collect::<Result<Vec<Expr>, Exception>>() {
-                Err(e) => Err(e),
-                Ok(values) => match scope.get_fun(name, values.get(0).map(|e| e.get_type())) {
-                    Some((types, lambda)) => apply_lambda(name, types, &values, lambda),
-                    _ => Err(Exception::UndefinedSymbol(name.to_string())),
-                }
-            }
+            Symbol(name) => handle_symbol(name, scope),
+            Call(name, args) => handle_call(name, args, scope),
             _ => Err(Exception::NotImplemented(format!("{}", self))),
         }
     }
-    pub fn eval_or_error(&self, scope: &mut Scope) -> Expr {
+    pub fn eval_or_failed(&self, scope: &mut Scope) -> Expr {
         match self {
             Failure(_) => self.clone(),
             expr => expr.eval(scope).unwrap_or_else(|ex| Failure(ex))
@@ -111,6 +104,22 @@ fn format_float(x: &f64) -> String  {
         str
     } else {
         format!("{}.0", str)
+    }
+}
+
+fn handle_symbol(name: &str, scope: &Scope) -> Result<Expr, Exception> {
+    scope.get(name).ok_or_else(|| Exception::UndefinedSymbol(name.to_string()))
+}
+
+fn handle_call(name: &str, args: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
+    if let Some(macro_def) = scope.get_macro(name) {
+        macro_def.apply(args) // do not evaluate arguments for macros!
+    } else {
+        args.iter().map(|e| e.eval(scope)).collect::<Result<Vec<Expr>, Exception>>().and_then(|values|
+            match scope.get_fun(name, values.get(0).map(|e| e.get_type())) {
+                Some((types, lambda)) => apply_lambda(name, types, &values, lambda),
+                _ => Err(Exception::UndefinedFunction(name.to_string())),
+            })
     }
 }
 

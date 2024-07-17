@@ -21,10 +21,11 @@ pub struct Scope {
 }
 
 impl Scope {
-    pub fn new() -> Scope { Scope { values: HashMap::new(), mutables: HashSet::new() } }
+    pub fn new() -> Scope { Scope { values: HashMap::new(), mutables: HashSet::new() }.init() }
 
-    pub fn init(&mut self) {
-        load_functions(self);
+    fn init(mut self) -> Scope {
+        load_functions(&mut self);
+        self
     }
 
     pub fn get(&self, name: &str) -> Option<Expr> {
@@ -68,7 +69,7 @@ impl Scope {
         self.values.insert(name, value);
     }
     pub fn read(&mut self, str: &str) -> Expr { Expr::read(str, self) }
-    pub fn exec(&mut self, str: &str) -> String { self.read(str).eval_or_error(self).print() }
+    pub fn exec(&mut self, str: &str) -> String { self.read(str).eval_or_failed(self).print() }
 
     pub fn store(&mut self, name: String, value: Expr, is_mutable: Option<bool>) -> Result<Expr, Exception> {
         match (self.is_defined(&name), is_mutable) {
@@ -126,8 +127,8 @@ mod tests {
         assert_eq!("4", scope.exec("4 / 1"));
         assert_eq!("2", scope.exec("22%10"));
         assert_eq!("2", scope.exec("-2 * -1"));
-        assert_eq!("3.3", scope.exec("1 + 2.3"));
-        assert_eq!("DivisionByZero", scope.exec("1 / 0")); // lazy evaluation
+        assert_eq!("3.3", scope.exec("1.0 + 2.3"));
+        assert_eq!("DivisionByZero", scope.exec("1 / 0"));
     }
 
     #[test]

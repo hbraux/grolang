@@ -51,7 +51,7 @@ fn repl() {
             continue;
         }
         println!("DEBUG: {:?}", expr);
-        let result = expr.eval_or_error(&mut scope);
+        let result = expr.eval_or_failed(&mut scope);
         if let Expr::Failure(error) = result {
             println!("{RED}Erreur d'évaluation ({:?}){STD}", error);
         } else {
