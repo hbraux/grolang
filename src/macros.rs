@@ -6,6 +6,12 @@ use crate::expr::Expr::{Bool, Mac, Nil, Symbol};
 use crate::Scope;
 use crate::types::Type;
 
+macro_rules! if_else {
+    ($condition:expr => $true_branch:expr ; $false_branch:expr) => {
+        if $condition { $true_branch } else { $false_branch }
+    };
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Macro {
     inner: fn(&Vec<Expr>, &mut Scope) -> Result<Expr, Exception>,
@@ -21,6 +27,7 @@ pub fn load_macros(scope: &mut Scope) {
     scope.add(Mac("var".to_owned(), Macro::new(|args, scope| declare(args[0].symbol()?, args[1].to_type()?, args[2].eval(scope)?, scope, true))));
     scope.add(Mac("val".to_owned(), Macro::new(|args, scope| declare(args[0].symbol()?, args[1].to_type()?, args[2].eval(scope)?, scope, false))));
     scope.add(Mac("set".to_owned(), Macro::new(|args, scope| assign(args[0].symbol()?, args[1].eval(scope)?, scope))));
+    scope.add(Mac("if".to_owned(), Macro::new(|args, scope| if_else!(args[0].eval(scope)?.bool()? => args[1].eval(scope) ; args[2].eval(scope)))));
 }
 
 
@@ -46,19 +53,6 @@ fn assign(name: &str, value: Expr, scope: &mut Scope) -> Result<Expr, Exception>
         }
     }
 }
-
-fn _call_if(args: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
-    if let Bool(bool) = args[0].eval(scope)? {
-        if bool {
-            args[1].clone().eval(scope)
-        } else {
-            args[2].clone().eval(scope)
-        }
-    } else {
-        Err(Exception::NotBool(args[0].to_string()))
-    }
-}
-
 
 fn _call_print(args: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
     for x in args {

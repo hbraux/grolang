@@ -11,6 +11,7 @@ use crate::types::Type;
 
 use self::Expr::{Bool, Call, Failure, Float, Int, Nil, Str, Symbol, TypeSpec};
 
+
 #[derive(Debug, Clone, PartialEq, Display)]
 pub enum Expr {
     Int(i64),

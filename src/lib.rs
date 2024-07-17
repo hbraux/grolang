@@ -15,6 +15,8 @@ mod exception;
 mod functions;
 mod macros;
 
+
+
 pub struct Scope {
     values: HashMap<String, Expr>,
     mutables: HashSet<String>,
