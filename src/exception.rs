@@ -12,7 +12,7 @@ pub enum Exception {
     NotNumber,
     NotInt(String),
     NotFloat(String),
-    NotBoolean(String),
+    NotBool(String),
     NotMutable(String),
     UnexpectedType(String),
     AlreadyDefined(String),

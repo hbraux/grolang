@@ -63,6 +63,12 @@ impl Expr {
             _ => Err(Exception::NotFloat(self.print()))
         }
     }
+    pub fn bool(&self) -> Result<bool, Exception> {
+        match self {
+            Bool(x) => Ok(x.to_owned()),
+            _ => Err(Exception::NotBool(self.print()))
+        }
+    }
     pub fn symbol(&self) -> Result<&str, Exception> {
         match self {
             Symbol(x) => Ok(x),
@@ -106,7 +112,7 @@ impl Expr {
     pub fn to_bool(self) -> Result<Expr, Exception> {
         match self {
             Bool(_) => Ok(self),
-            _ => Err(Exception::NotBoolean(self.format()))
+            _ => Err(Exception::NotBool(self.format()))
         }
     }
 

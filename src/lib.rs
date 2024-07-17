@@ -12,7 +12,6 @@ pub mod expr;
 mod parser;
 mod types;
 mod exception;
-mod builtin;
 mod functions;
 mod macros;
 
@@ -36,7 +35,7 @@ impl Scope {
 
     pub fn try_macro(&mut self, name: &str, args: &Vec<Expr>) -> Option<Result<Expr, Exception>> {
         match self.values.get(name) {
-            Some(Mac(_name, lambda)) => Some(lambda.apply(args, self)),
+            Some(Mac(_name, lambda)) => Some(lambda.clone().apply(args, self)),
             _ => None,
         }
     }
@@ -50,7 +49,8 @@ impl Scope {
     pub fn add(&mut self, value: Expr) {
         match &value {
             Fun(name, _type, _lambda) => self.values.insert(name.to_owned(), value),
-            _ => panic!()
+            Mac(name, _lambda) => self.values.insert(name.to_owned(), value),
+            _ => panic!("cannot add {}", value)
         };
     }
 

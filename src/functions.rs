@@ -1,11 +1,12 @@
-use std::fmt::{Debug, Formatter};
+use std::fmt::Debug;
 
 use crate::exception::Exception;
 use crate::expr::Expr;
-use crate::expr::Expr::{Float, Fun, Int};
+use crate::expr::Expr::{Bool, Float, Fun, Int};
 use crate::Scope;
 use crate::types::Type;
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct Function {
     inner: fn(&Vec<Expr>) -> Result<Expr, Exception>,
 }
@@ -13,18 +14,6 @@ pub struct Function {
 impl Function {
     pub fn new(inner: fn(&Vec<Expr>) -> Result<Expr, Exception>) -> Function { Function { inner } }
     pub fn apply(&self, args: &Vec<Expr>) -> Result<Expr, Exception> { (self.inner)(args) }
-}
-
-impl Clone for Function {
-    fn clone(&self) -> Self { panic!("Function cannot be cloned") }
-}
-impl Debug for Function {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str("...")
-    }
-}
-impl PartialEq for Function {
-    fn eq(&self, _other: &Self) -> bool { true }
 }
 
 
@@ -36,12 +25,25 @@ pub fn load_functions(scope: &mut Scope) {
     scope.add(Fun("Int.mul".to_owned(), spec(), Function::new(|args| Ok(Int(args[0].int()? * args[1].int()?)))));
     scope.add(Fun("Int.div".to_owned(), spec(), Function::new(|args| divide_int(args[0].int()?, args[1].int()?))));
     scope.add(Fun("Int.mod".to_owned(), spec(), Function::new(|args| modulo_int(args[0].int()?, args[1].int()?))));
+
     // float arithmetics
     let spec = || Type::new("(Float,Float)->Float");
     scope.add(Fun("Float.add".to_owned(), spec(), Function::new(|args| Ok(Float(args[0].float()? + args[1].float()?)))));
     scope.add(Fun("Float.sub".to_owned(), spec(), Function::new(|args| Ok(Float(args[0].float()? - args[1].float()?)))));
     scope.add(Fun("Float.mul".to_owned(), spec(), Function::new(|args| Ok(Float(args[0].float()? * args[1].float()?)))));
     scope.add(Fun("Float.div".to_owned(), spec(), Function::new(|args| divide_float(args[0].float()?, args[1].float()?))));
+    // boolean logic
+    let spec = || Type::new("(Bool,Bool)->Bool");
+    scope.add(Fun("Bool.and".to_owned(), spec(), Function::new(|args| Ok(Bool(args[0].bool()? && args[1].bool()?)))));
+    scope.add(Fun("Bool.or".to_owned(), spec(), Function::new(|args| Ok(Bool(args[0].bool()? || args[1].bool()?)))));
+    // comparisons
+    let spec = || Type::new("(Int,Int)->Bool");
+    scope.add(Fun("Int.eq".to_owned(), spec(), Function::new(|args| Ok(Bool(args[0].int()? == args[1].int()?)))));
+    scope.add(Fun("Int.neq".to_owned(), spec(), Function::new(|args| Ok(Bool(args[0].int()? != args[1].int()?)))));
+    scope.add(Fun("Int.gt".to_owned(), spec(), Function::new(|args| Ok(Bool(args[0].int()? > args[1].int()?)))));
+    scope.add(Fun("Int.ge".to_owned(), spec(), Function::new(|args| Ok(Bool(args[0].int()? >= args[1].int()?)))));
+    scope.add(Fun("Int.lt".to_owned(), spec(), Function::new(|args| Ok(Bool(args[0].int()? < args[1].int()?)))));
+    scope.add(Fun("Int.le".to_owned(), spec(), Function::new(|args| Ok(Bool(args[0].int()? <= args[1].int()?)))));
 }
 
 fn divide_int(a: &i64, b: &i64) ->  Result<Expr, Exception> {

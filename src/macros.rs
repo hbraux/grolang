@@ -1,11 +1,12 @@
-use std::fmt::{Debug, Formatter};
+use std::fmt::Debug;
 
 use crate::exception::Exception;
 use crate::expr::Expr;
-use crate::expr::Expr::{Mac, Symbol};
+use crate::expr::Expr::{Bool, Mac, Nil, Symbol};
 use crate::Scope;
 use crate::types::Type;
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct Macro {
     inner: fn(&Vec<Expr>, &mut Scope) -> Result<Expr, Exception>,
 }
@@ -14,18 +15,6 @@ impl Macro {
     pub fn new(inner: fn(&Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception>) -> Macro { Macro { inner } }
     pub fn apply(&self, args: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> { (self.inner)(args, scope) }
 
-}
-
-impl Clone for Macro {
-    fn clone(&self) -> Self { panic!("Macro cannot be cloned") }
-}
-impl Debug for Macro {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str("...")
-    }
-}
-impl PartialEq for Macro {
-    fn eq(&self, _other: &Self) -> bool { true }
 }
 
 pub fn load_macros(scope: &mut Scope) {
@@ -57,3 +46,42 @@ fn assign(name: &str, value: Expr, scope: &mut Scope) -> Result<Expr, Exception>
     }
 }
 
+fn _call_if(args: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
+    if let Bool(bool) = args[0].eval(scope)? {
+        if bool {
+            args[1].clone().eval(scope)
+        } else {
+            args[2].clone().eval(scope)
+        }
+    } else {
+        Err(Exception::NotBool(args[0].to_string()))
+    }
+}
+
+
+fn _call_print(args: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
+    for x in args {
+        print!("{:?}", x.eval(scope)?)
+    }
+    Ok(Nil)
+}
+
+fn _call_while(args: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
+    let mut count = 0;
+    let mut result = Ok(Nil);
+    loop {
+        count += 1;
+        if count >= 1000000 {
+            break Err(Exception::InfiniteLoop)
+        }
+        if let Bool(bool) = args[0].eval(scope)? {
+            if bool {
+                result = args[1].eval(scope)
+            } else {
+                break result;
+            }
+        } else {
+            break Err(Exception::NotBool(args[0].to_string()))
+        }
+    }
+}
