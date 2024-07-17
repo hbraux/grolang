@@ -1,10 +1,11 @@
+
 use std::collections::{HashMap, HashSet};
 use std::string::ToString;
 
 use crate::exception::Exception;
 use crate::expr::Expr;
-use crate::expr::Expr::Symbol;
-use crate::lambda::load_functions;
+use crate::expr::Expr::{Fun, Symbol};
+use crate::lambda::{Lambda, load_functions};
 use crate::types::Type;
 
 pub mod expr;
@@ -26,19 +27,28 @@ impl Scope {
         load_functions(self);
     }
 
-    pub fn get(&self, name: &str) -> Result<Expr, Exception> {
+    pub fn get(&self, name: &str) -> Option<Expr> {
+        self.values.get(name).map(|e| e.clone())
+    }
+
+    pub fn get_macro(&self, name: &str) -> Option<&Lambda> {
         match self.values.get(name) {
-            Some(expr) => Ok(expr.clone()),
-            None => Err(Exception::UndefinedSymbol(name.to_string())),
+            Some(Fun(_name, specs, lambda)) if *specs == Type::Macro => Some(lambda),
+            _ => None,
         }
     }
-    pub fn add(&mut self, name: String, value: Expr) {
-        self.values.insert(name, value);
+    pub fn get_fun(&self, name: &str, obj_type: Option<Type>) -> Option<(&Type, &Lambda)> {
+        match self.values.get(name) {
+            Some(Fun(_name, specs, lambda)) => Some((specs, lambda)),
+            None if obj_type.is_some() => self.get_fun(&(obj_type.unwrap().method_name(name)), None),
+            _ => None,
+        }
     }
-    pub fn add_fun(&mut self, value: Expr) {
-        if let  Expr::Fun(_type, lambda) = &value {
-            self.values.insert(lambda.name(), value);
-        } else { panic!() }
+    pub fn add(&mut self, value: Expr) {
+        match &value {
+            Fun(name, _type, _lambda) => self.values.insert(name.to_owned(), value),
+            _ => panic!()
+        };
     }
 
     pub fn is_defined(&self, name: &str) -> bool {
@@ -55,7 +65,7 @@ impl Scope {
         if is_mutable == Some(true) {
             self.mutables.insert(name.to_string());
         }
-        self.add(name, value)
+        self.values.insert(name, value);
     }
     pub fn read(&mut self, str: &str) -> Expr { Expr::read(str, self) }
     pub fn exec(&mut self, str: &str) -> String { self.read(str).eval_or_error(self).print() }

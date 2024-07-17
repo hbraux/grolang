@@ -14,7 +14,8 @@ pub enum Type {
     Option(Box<Type>),
     Try(Box<Type>),
     Map(Box<Type>, Box<Type>),
-    Fun(Vec<Type>, Box<Type>)
+    Fun(Vec<Type>, Box<Type>),
+    Macro
 }
 
 
@@ -48,8 +49,9 @@ impl Type {
             }
         }
     }
-    pub fn to_box(self) -> Box<Type> {
-        Box::new(self)
+
+    pub fn method_name(&self, name: &str) -> String {
+        self.to_string().to_owned() + "." + name
     }
 }
 // TODO: make a macro

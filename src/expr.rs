@@ -1,16 +1,14 @@
 use std::fmt::Debug;
-use std::str::FromStr;
 
 use strum_macros::Display;
 
-use crate::builtin::BuiltIn;
 use crate::exception::Exception;
 use crate::lambda::Lambda;
 use crate::parser::parse;
 use crate::Scope;
 use crate::types::Type;
 
-use self::Expr::{Block, Bool, Call, Failure, Float, Int, Nil, Str, Symbol, TypeSpec};
+use self::Expr::{Bool, Call, Failure, Float, Int, Nil, Str, Symbol, TypeSpec};
 
 #[derive(Debug, Clone, PartialEq, Display)]
 pub enum Expr {
@@ -20,10 +18,9 @@ pub enum Expr {
     Bool(bool),
     Symbol(String),
     TypeSpec(Type),
-    Block(Vec<Expr>),
     Call(String, Vec<Expr>),
     Failure(Exception),
-    Fun(Type, Lambda),
+    Fun(String, Type, Lambda),
     Nil,
 }
 
@@ -51,6 +48,7 @@ impl Expr {
             _ => Type::Any,
         }
     }
+
     pub fn int(&self) -> Result<&i64, Exception> {
         match self {
             Int(x) => Ok(x),
@@ -67,9 +65,15 @@ impl Expr {
         match self {
             Failure(e) => Err(e.clone()),
             Nil | Int(_) | Float(_) | Str(_) | Bool(_) | TypeSpec(_) => Ok(self.clone()),
-            Symbol(name) => scope.get(&*name),
-            Block(args) => args.iter().map(|e| e.eval(scope)).last().unwrap(),
-            Call(name, args) => BuiltIn::from_str(&name).unwrap().call(args, scope),
+            Symbol(name) => scope.get(name).ok_or(Exception::UndefinedSymbol(name.to_string())),
+            Call(name, args) if scope.get_macro(name).is_some() => scope.get_macro(name).unwrap().apply(args),
+            Call(name, args) => match args.iter().map(|e| e.eval(scope)).collect::<Result<Vec<Expr>, Exception>>() {
+                Err(e) => Err(e),
+                Ok(values) => match scope.get_fun(name, values.get(0).map(|e| e.get_type())) {
+                    Some((types, lambda)) => apply_lambda(name, types, &values, lambda),
+                    _ => Err(Exception::UndefinedSymbol(name.to_string())),
+                }
+            }
             _ => Err(Exception::NotImplemented(format!("{}", self))),
         }
     }
@@ -110,3 +114,22 @@ fn format_float(x: &f64) -> String  {
     }
 }
 
+fn apply_lambda(name: &str, specs: &Type, values: &Vec<Expr>, lambda: &Lambda) ->  Result<Expr, Exception> {
+    if let Type::Fun(input, output) = specs {
+        if input.len() != values.len() {
+            Err(Exception::WrongArgumentsNumber(name.to_owned(), input.len(), values.len()))
+       // TODO
+       // } else if input.len() != input.iter().zip(&values).filter(|&(a, b)| a == b.get_type()).count() {
+       //     Err(Exception::UnexpectedInputTypes(name.to_owned(), "todo".to_owned()))
+        } else {
+            let result = lambda.apply(values);
+            if result.is_ok() && result.as_ref().unwrap().get_type() != **output {
+                Err(Exception::UnexpectedOutputType(name.to_owned(), "".to_owned()))
+            } else {
+                result
+            }
+        }
+    } else {
+        panic!("")
+    }
+}

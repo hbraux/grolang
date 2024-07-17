@@ -16,7 +16,9 @@ pub enum Exception {
     InconsistentType(String),
     AlreadyDefined(String),
     NotDefined(String),
-    WrongArgumentsNumber(usize,usize)
+    WrongArgumentsNumber(String, usize,usize),
+    UnexpectedInputTypes(String, String),
+    UnexpectedOutputType(String, String)
 }
 
 impl Exception {

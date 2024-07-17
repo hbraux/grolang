@@ -51,7 +51,7 @@ impl BuiltIn {
     }
     pub fn call(&self, args: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
         if self.call_args() > 0 && self.call_args() != args.len() {
-            return Err(Exception::WrongArgumentsNumber(self.call_args(), args.len()))
+            return Err(Exception::WrongArgumentsNumber("call".to_owned(), self.call_args(), args.len()))
         }
         match self {
             ToStr => self.unitary_op(args[0].clone().eval(scope)?),
@@ -210,6 +210,6 @@ mod tests {
     #[test]
     fn test_call() {
         let mut scope = Scope::new();
-        assert_eq!(Err(Exception::WrongArgumentsNumber(2, 1)), Lt.call(&vec!(Nil), &mut scope))
+        assert_eq!(Err(Exception::WrongArgumentsNumber("call".to_owned(), 2, 1)), Lt.call(&vec!(Nil), &mut scope))
     }
 }
