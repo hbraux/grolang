@@ -57,16 +57,16 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
         Rule::Float => Expr::Float(pair.as_str().parse::<f64>().unwrap()),
         Rule::Special => to_literal(pair.as_str()),
         Rule::String => Expr::Str(unquote(pair.as_str())),
-        Rule::Symbol => Expr::Symbol(pair.as_str().to_string()),
-        Rule::TypeSpec => Expr::parse_type_spec(pair.as_str()),
-        Rule::Operator => Expr::Symbol(pair.as_str().to_string()),
+        Rule::Symbol => Expr::Symbol(pair.as_str().to_owned()),
+        Rule::TypeSpec => Expr::read_type(pair.as_str()),
+        Rule::Operator => Expr::Symbol(pair.as_str().to_owned()),
         Rule::Expr =>  parse_pairs(pair.into_inner()),
         Rule::CallExpr => build_call(to_vec(pair, 0, 0)),
         Rule::Declaration => build_call(to_vec(pair, 4, 2)),
         Rule::Assignment => Expr::Call("set".to_owned(), to_vec(pair, 0, 0)),
         Rule::IfElse =>  Expr::Call("if".to_owned(), to_vec(pair, 3, 0 )),
         Rule::While => Expr::Call("while".to_owned(), to_vec(pair, 0, 0)),
-        Rule::Block => Expr::Block(to_vec(pair, 0, 0)),
+        Rule::Block => Expr::Call("block".to_owned(), to_vec(pair, 0, 0)),
         _ => panic!("rule {} not implemented", operator_name(pair))
     }
 }
@@ -94,7 +94,7 @@ fn to_vec(pair: Pair<Rule>, expected_len: usize, optional_pos: usize) -> Vec<Exp
 }
 
 fn unquote(str: &str) -> String {
-    (&str[1..str.len()-1]).to_string()
+    (&str[1..str.len()-1]).to_owned()
 }
 fn operator_name(pair: Pair<Rule>) -> String {
     format!("{:?}", pair.as_rule()).to_lowercase()
@@ -124,8 +124,8 @@ mod tests {
         assert_eq!(TRUE, parse("true").unwrap());
         assert_eq!(FALSE, parse("false").unwrap());
         assert_eq!(NIL, parse("nil").unwrap());
-        assert_eq!(Expr::Str("abc".to_string()), parse("\"abc\"").unwrap());
-        assert_eq!(Expr::Str("true".to_string()), parse("\"true\"").unwrap());
+        assert_eq!(Expr::Str("abc".to_owned()), parse("\"abc\"").unwrap());
+        assert_eq!(Expr::Str("true".to_owned()), parse("\"true\"").unwrap());
     }
 
     #[test]
@@ -167,9 +167,10 @@ mod tests {
 
     #[test]
     fn test_builtins() {
-        assert_eq!("Call(if, [Call(eq, [Symbol(a), Int(1)]), Block([Int(2)]), Block([Int(3)])])", read("if (a == 1) { 2 } else { 3 }"));
-        assert_eq!("Call(if, [Bool(true), Block([Int(1)]), Nil])", read("if (true) { 1 } "));
-        assert_eq!("Call(while, [Call(le, [Symbol(a), Int(10)]), Block([Call(set, [Symbol(a), Call(add, [Symbol(a), Int(1)])])])])", read("while (a < 10) { a = a + 1 }"));
+        assert_eq!("Call(if, [Call(eq, [Symbol(a), Int(1)]), Call(block, [Int(2)]), Call(block, [Int(3)])])", read("if (a == 1) { 2 } else { 3 }"));
+        assert_eq!("Call(if, [Bool(true), Call(block, [Int(1)]), Nil])", read("if (true) { 1 } "));
+        assert_eq!("Call(while, [Call(le, [Symbol(a), Int(10)]), Call(block, [Call(set, [Symbol(a), Call(add, [Symbol(a), Int(1)])])])])",
+                   read("while (a < 10) { a = a + 1 }"));
     }
 }
 

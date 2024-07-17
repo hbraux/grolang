@@ -7,14 +7,19 @@ pub enum Exception {
     NotSymbol(String),
     DivisionByZero,
     UndefinedSymbol(String),
+    UndefinedFunction(String),
     InfiniteLoop,
     NotNumber,
-    NotBoolean(String),
+    NotInt(String),
+    NotFloat(String),
+    NotBool(String),
     NotMutable(String),
-    InconsistentType(String),
+    UnexpectedType(String),
     AlreadyDefined(String),
     NotDefined(String),
-    WrongArgumentsNumber(usize,usize)
+    WrongArgumentsNumber(String, usize,usize),
+    UnexpectedInputTypes(String, String),
+    UnexpectedOutputType(String, String)
 }
 
 impl Exception {

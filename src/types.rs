@@ -1,5 +1,11 @@
 use strum_macros::Display;
 
+use self::Type::{Fun, Option, Try, List, Map, Any, Bool, Int, Str, Float};
+
+macro_rules! box_type {
+    ($val:expr) => { Box::new(Type::new($val)) };
+}
+
 #[derive(Debug, Eq, PartialEq, Clone, Display)]
 pub enum Type {
     Any,
@@ -12,32 +18,42 @@ pub enum Type {
     Option(Box<Type>),
     Try(Box<Type>),
     Map(Box<Type>, Box<Type>),
-    Lambda(Box<Type>, Vec<Type>)
+    Fun(Vec<Type>, Box<Type>)
 }
 
+
+
 impl Type {
+
     pub fn new(str: &str) -> Type {
-        if str.ends_with("?") {
-            Type::Option(Box::new(Type::new(&str[0..str.len() - 1])))
+        if str.starts_with("(") {
+            let args: Vec<&str>  = str[1..str.len()].split(")->").collect();
+            let v: Vec<&str> = args[0].split(",").collect();
+            Fun(v.iter().map(|s| Type::new(s)).collect(), box_type!(args[1]))
+        } else if str.ends_with("?") {
+            Option(box_type!(&str[0..str.len() - 1]))
         } else if str.ends_with("!") {
-            Type::Try(Box::new(Type::new(&str[0..str.len() - 1])))
+            Try(box_type!(&str[0..str.len() - 1]))
         } else if str.starts_with("List<") {
-            Type::List(Box::new(Type::new(&str[5..str.len() - 1])))
+            List(box_type!(&str[5..str.len() - 1]))
         } else if str.starts_with("List<") {
-            Type::List(Box::new(Type::new(&str[5..str.len() - 1])))
+            List(box_type!(&str[5..str.len() - 1]))
         } else if str.starts_with("Map<") {
-            let s: Vec<&str> = (&str[4..str.len() - 1]).split(',').collect();
-            Type::Map(Box::new(Type::new(s[0])), Box::new(Type::new(s[1])))
+            let v: Vec<&str> = (&str[4..str.len() - 1]).split(',').collect();
+            Map(box_type!(v[0]), box_type!(v[1]))
         } else {
             match str {
-                "Any" => Type::Any,
-                "Int" => Type::Int,
-                "Bool" => Type::Bool,
-                "Str" => Type::Str,
-                "Float" => Type::Float,
-                _ => Type::Defined(str.to_string()),
+                "Any" => Any,
+                "Int" => Int,
+                "Bool" => Bool,
+                "Str" => Str,
+                "Float" => Float,
+                _ => Type::Defined(str.to_owned()),
             }
         }
+    }
+    pub fn method_name(&self, name: &str) -> String {
+        self.to_string().to_owned() + "." + name
     }
 }
 
@@ -47,11 +63,13 @@ mod tests {
 
     #[test]
     fn test_types() {
-        assert_eq!(Type::Any, Type::new("Any"));
-        assert_eq!(Type::Int, Type::new("Int"));
-        assert_eq!(Type::List(Box::new(Type::Int)), Type::new("List<Int>"));
-        assert_eq!(Type::Map(Box::new(Type::Int), Box::new(Type::Bool)), Type::new("Map<Int,Bool>"));
-        assert_eq!(Type::Option(Box::new(Type::Int)), Type::new("Int?"));
-        assert_eq!(Type::Try(Box::new(Type::Int)), Type::new("Int!"));
+        assert_eq!(Any, Type::new("Any"));
+        assert_eq!(Int, Type::new("Int"));
+        assert_eq!(Bool, Type::new("Bool"));
+        assert_eq!(List(Box::new(Int)), Type::new("List<Int>"));
+        assert_eq!(Map(Box::new(Int), Box::new(Type::Bool)), Type::new("Map<Int,Bool>"));
+        assert_eq!(Option(Box::new(Int)), Type::new("Int?"));
+        assert_eq!(Try(Box::new(Int)), Type::new("Int!"));
+        assert_eq!(Fun(vec!(Int, Type::Float), Box::new(Type::Float)), Type::new("(Int,Float)->Float"));
     }
 }
