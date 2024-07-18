@@ -185,8 +185,8 @@ mod tests {
 
     #[test]
     fn test_fun() {
-        assert_eq!("Call(fun, [Symbol(pi), Arguments([]), TypeOf(Float), Float(3.14)])", read("fun pi(): Float = 3.14"));
-        assert_eq!("Call(fun, [Symbol(inc), Arguments([(x, Int)]), TypeOf(Int), Call(block, [Call(add, [Symbol(x), Int(1)])])])",
+        assert_eq!("Call(fun, [Symbol(pi), Parameters([]), TypeOf(Float), Float(3.14)])", read("fun pi(): Float = 3.14"));
+        assert_eq!("Call(fun, [Symbol(inc), Parameters([(x, Int)]), TypeOf(Int), Call(block, [Call(add, [Symbol(x), Int(1)])])])",
                    read("fun inc(x: Int): Int = { x + 1 }"));
     }
 }

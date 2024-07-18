@@ -66,7 +66,7 @@ pub fn load_functions(scope: &mut Scope) {
     // lazy functions
     scope.add(LazyFun("var".to_owned(), LazyFunction::new(|args, scope| declare(args[0].symbol()?, args[1].to_type()?, args[2].eval(scope)?, scope, true))));
     scope.add(LazyFun("val".to_owned(), LazyFunction::new(|args, scope| declare(args[0].symbol()?, args[1].to_type()?, args[2].eval(scope)?, scope, false))));
-    scope.add(LazyFun("fun".to_owned(), LazyFunction::new(|args, scope| define(args[0].symbol()?, args[2].to_type()?, scope))));
+    scope.add(LazyFun("fun".to_owned(), LazyFunction::new(|args, scope| define(args[0].symbol()?, args[1].to_parameters()?, args[2].to_type()?, &args[3], scope))));
     scope.add(LazyFun("set".to_owned(), LazyFunction::new(|args, scope| assign(args[0].symbol()?, args[1].eval(scope)?, scope))));
     scope.add(LazyFun("block".to_owned(), LazyFunction::new(|args, scope| block(args, scope))));
     scope.add(LazyFun("print".to_owned(), LazyFunction::new(|args, scope| print(args, scope))));
@@ -96,8 +96,14 @@ fn declare(name: &str, expected: &Type, value: Expr, scope: &mut Scope, is_mutab
     }
 }
 
-fn define(name: &str, expected: &Type,  scope: &mut Scope) -> Result<Expr, Exception> {
-    todo!()
+fn define(name: &str, params: &Vec<(String,Type)>, output: &Type, expr: &Expr, scope: &mut Scope) -> Result<Expr, Exception> {
+    if scope.is_defined(&name) {
+        Err(Exception::AlreadyDefined(name.to_owned()))
+    } else {
+        let spec = Type::Fun(params.iter().map(|e| e.1.clone()).collect(), Box::new(output.clone()));
+        scope.add(Fun(name.to_owned(), spec, Function::new(|args| todo!())));
+        Ok(Symbol(name.to_owned()))
+    }
 }
 
 fn assign(name: &str, value: Expr, scope: &mut Scope) -> Result<Expr, Exception> {
@@ -146,7 +152,7 @@ fn run_while(args: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
                 break result;
             }
         } else {
-            break Err(Exception::NotBool(args[0].to_string()))
+            break Err(Exception::NotA(Type::Bool.to_string(), args[0].to_string()))
         }
     }
 }
@@ -154,7 +160,6 @@ fn run_while(args: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
 
 #[cfg(test)]
 mod tests {
-    use crate::exception::Exception::NotInt;
     use crate::expr::Expr::{Float, Int};
 
     use super::*;
@@ -163,7 +168,7 @@ mod tests {
     fn test_apply() {
         let fun = Function::new(|args| divide_int(args[0].int()?, args[1].int()?));
         assert_eq!(Ok(Int(3)), fun.apply(&vec!(Int(6), Int(2))));
-        assert_eq!(Err(NotInt("1.1".to_owned())), fun.apply(&vec!(Int(1), Float(1.1))));
+        assert_eq!(Err(Exception::NotA("Int".to_owned(), "1.1".to_owned())), fun.apply(&vec!(Int(1), Float(1.1))));
         assert_eq!(Err(Exception::DivisionByZero), fun.apply(&vec!(Int(1), Int(0))));
     }
 }

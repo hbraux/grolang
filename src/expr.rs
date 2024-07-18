@@ -3,6 +3,7 @@ use std::fmt::Debug;
 use strum_macros::Display;
 
 use crate::exception::Exception;
+use crate::expr::Expr::Parameters;
 use crate::functions::{Function, LazyFunction};
 use crate::parser::parse;
 use crate::Scope;
@@ -55,32 +56,38 @@ impl Expr {
     pub fn int(&self) -> Result<&i64, Exception> {
         match self {
             Int(x) => Ok(x),
-            _ => Err(Exception::NotInt(self.print()))
+            _ => Err(Exception::NotA(Type::Int.to_string(), self.print()))
         }
     }
     pub fn float(&self) -> Result<&f64, Exception> {
         match self {
             Float(x) => Ok(x),
-            _ => Err(Exception::NotFloat(self.print()))
+            _ => Err(Exception::NotA(Type::Float.to_string(), self.print()))
         }
     }
     pub fn bool(&self) -> Result<bool, Exception> {
         match self {
             Bool(x) => Ok(x.to_owned()),
-            _ => Err(Exception::NotBool(self.print()))
+            _ => Err(Exception::NotA(Type::Bool.to_string(), self.print()))
         }
     }
     pub fn symbol(&self) -> Result<&str, Exception> {
         match self {
             Symbol(x) => Ok(x),
-            _ => Err(Exception::NotSymbol(self.print()))
+            _ => Err(Exception::UndefinedSymbol(self.print()))
         }
     }
     pub fn to_type(&self) -> Result<&Type, Exception> {
         match self {
             TypeOf(x) => Ok(x),
             Nil => Ok(&Type::Any),
-            _ => Err(Exception::NotSymbol(self.print()))
+            _ => Err(Exception::NotA("Type".to_owned(), self.print()))
+        }
+    }
+    pub fn to_parameters(&self) -> Result<&Vec<(String,Type)>, Exception> {
+        match self {
+            Parameters(x) => Ok(x),
+            _ => Err(Exception::NotA("Parameter".to_owned(), self.print()))
         }
     }
     pub fn eval(&self, scope: &mut Scope) -> Result<Expr, Exception> {
@@ -109,12 +116,6 @@ impl Expr {
             Symbol(x) => x.to_owned(),
             Failure(x) => x.format(),
             _ => format!("{:?}", self),
-        }
-    }
-    pub fn to_bool(self) -> Result<Expr, Exception> {
-        match self {
-            Bool(_) => Ok(self),
-            _ => Err(Exception::NotBool(self.format()))
         }
     }
 
