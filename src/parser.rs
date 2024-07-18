@@ -1,5 +1,6 @@
 use std::borrow::ToOwned;
 use std::string::ToString;
+
 use lazy_static::lazy_static;
 use pest::iterators::{Pair, Pairs};
 use pest::Parser;
@@ -8,7 +9,7 @@ use pest::pratt_parser::Assoc::Left;
 use pest_derive::Parser;
 
 use crate::expr::{Expr, FALSE, NIL, TRUE};
-use crate::types::Type;
+use crate::expr::Expr::Params;
 
 #[derive(Parser)]
 #[grammar = "grammar.pest"]
@@ -69,7 +70,7 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
         Rule::While => Expr::Call("while".to_owned(), to_vec(pair, 0, 0)),
         Rule::Block => Expr::Call("block".to_owned(), to_vec(pair, 0, 0)),
         Rule::Definition => Expr::Call("fun".to_owned(), to_vec(pair, 0, 0)),
-        Rule::Parameters => Expr::Parameters(build_arguments(to_vec(pair, 0, 0))),
+        Rule::Parameters => build_params(to_vec(pair, 0, 0)),
         _ => panic!("Rule '{}' not implemented", operator_name(pair))
     }
 }
@@ -83,11 +84,11 @@ fn build_call(mut args: Vec<Expr>) -> Expr {
     }
 }
 
-fn build_arguments(args: Vec<Expr>) -> Vec<(String, Type)> {
-    args.chunks(2).map(|pair| match (&pair[0], &pair[1]) {
+fn build_params(args: Vec<Expr>) -> Expr {
+    Params(args.chunks(2).map(|pair| match (&pair[0], &pair[1]) {
         (Expr::Symbol(name), Expr::TypeOf(typ)) => (name.to_string(), typ.clone()),
         _ => panic!("expecting a pair symbol/type"),
-    }).collect()
+    }).collect())
 }
 
 fn to_vec(pair: Pair<Rule>, expected_len: usize, optional_pos: usize) -> Vec<Expr> {
@@ -121,6 +122,7 @@ fn to_literal(str: &str) -> Expr {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     fn read(str: &str) -> String { parse(str).unwrap().format() }
 
     #[test]
@@ -185,8 +187,8 @@ mod tests {
 
     #[test]
     fn test_fun() {
-        assert_eq!("Call(fun, [Symbol(pi), Parameters([]), TypeOf(Float), Float(3.14)])", read("fun pi(): Float = 3.14"));
-        assert_eq!("Call(fun, [Symbol(inc), Parameters([(x, Int)]), TypeOf(Int), Call(block, [Call(add, [Symbol(x), Int(1)])])])",
+        assert_eq!("Call(fun, [Symbol(pi), Params([]), TypeOf(Float), Float(3.14)])", read("fun pi(): Float = 3.14"));
+        assert_eq!("Call(fun, [Symbol(inc), Params([(x, Int)]), TypeOf(Int), Call(block, [Call(add, [Symbol(x), Int(1)])])])",
                    read("fun inc(x: Int): Int = { x + 1 }"));
     }
 }

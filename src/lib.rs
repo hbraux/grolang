@@ -3,7 +3,7 @@ use std::string::ToString;
 
 use crate::exception::Exception;
 use crate::expr::Expr;
-use crate::expr::Expr::{Fun, LazyFun};
+use crate::expr::Expr::{Fun, Lambda};
 use crate::functions::{Function, load_functions};
 use crate::types::Type;
 
@@ -14,19 +14,24 @@ mod exception;
 mod functions;
 
 
-pub struct Scope {
+pub struct Scope<'a> {
     values: HashMap<String, Expr>,
     mutables: HashSet<String>,
+    parent: Option<&'a Scope<'a>>,
 }
 
-impl Scope {
-    pub fn new() -> Scope { Scope { values: HashMap::new(), mutables: HashSet::new() }}
+impl Scope<'_> {
+    pub fn new<'a>(parent: Option<&'a Scope<'_>>) -> Scope<'a>  { Scope { values: HashMap::new(), mutables: HashSet::new(), parent }}
 
-    pub fn init() -> Scope {
-        let mut scope = Scope::new();
+    pub fn init<'a>() -> Scope<'a>  {
+        let mut scope = Scope::new(None);
         load_functions(&mut scope);
         scope
     }
+    pub fn extend(&self) -> Scope {
+        Scope::new(Some(self))
+    }
+
 
     pub fn get(&self, name: &str) -> Option<Expr> {
         self.values.get(name).map(|e| e.clone())
@@ -34,10 +39,11 @@ impl Scope {
 
     pub fn try_lazy(&mut self, name: &str, args: &Vec<Expr>) -> Option<Result<Expr, Exception>> {
         match self.values.get(name) {
-            Some(LazyFun(_name, lambda)) => Some(lambda.clone().apply(args, self)),
+            Some(Fun(_name, spec, lambda)) if spec.is_lazy() => Some(lambda.clone().apply(args, self)),
             _ => None,
         }
     }
+
     pub fn get_fun(&self, name: &str, obj_type: Option<Type>) -> Option<(&Type, &Function)> {
         match self.values.get(name) {
             Some(Fun(_name, specs, lambda)) => Some((specs, lambda)),
@@ -47,10 +53,16 @@ impl Scope {
     }
     pub fn add(&mut self, value: Expr) {
         match &value {
-            Fun(name, _type, _lambda) => self.values.insert(name.to_owned(), value),
-            LazyFun(name, _lambda) => self.values.insert(name.to_owned(), value),
+            Fun(name, _type, _) => self.values.insert(name.to_owned(), value),
+            Lambda(name, _, _, _) => self.values.insert(name.to_owned(), value),
             _ => panic!("cannot add {}", value)
         };
+    }
+
+    pub fn with(&mut self, vars: Vec<String>, values: Vec<Expr>) -> &Scope {
+        // TODO: extend scope
+        values.iter().zip(vars.iter()).for_each(|(v ,n)| { self.values.insert(n.to_string(), v.clone()); });
+        self
     }
 
     pub fn is_defined(&self, name: &str) -> bool {

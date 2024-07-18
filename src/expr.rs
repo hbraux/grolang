@@ -3,14 +3,13 @@ use std::fmt::Debug;
 use strum_macros::Display;
 
 use crate::exception::Exception;
-use crate::expr::Expr::Parameters;
-use crate::functions::{Function, LazyFunction};
+use crate::expr::Expr::Params;
+use crate::functions::{Function};
 use crate::parser::parse;
 use crate::Scope;
 use crate::types::Type;
 
 use self::Expr::{Bool, Call, Failure, Float, Int, Nil, Str, Symbol, TypeOf};
-
 
 #[derive(Debug, Clone, PartialEq, Display)]
 pub enum Expr {
@@ -20,11 +19,11 @@ pub enum Expr {
     Bool(bool),
     Symbol(String),
     TypeOf(Type),
-    Parameters(Vec<(String, Type)>),
+    Params(Vec<(String, Type)>),  // only required by the parser
     Call(String, Vec<Expr>),
     Failure(Exception),
     Fun(String, Type, Function),
-    LazyFun(String, LazyFunction),
+    Lambda(String, Type, Vec<String>, Box<Expr>),
     Nil,
 }
 
@@ -84,10 +83,10 @@ impl Expr {
             _ => Err(Exception::NotA("Type".to_owned(), self.print()))
         }
     }
-    pub fn to_parameters(&self) -> Result<&Vec<(String,Type)>, Exception> {
+    pub fn to_params(&self) -> Result<&Vec<(String, Type)>, Exception> {
         match self {
-            Parameters(x) => Ok(x),
-            _ => Err(Exception::NotA("Parameter".to_owned(), self.print()))
+            Params(p) => Ok(p),
+            _ => Err(Exception::NotA("Parameters".to_owned(), self.print()))
         }
     }
     pub fn eval(&self, scope: &mut Scope) -> Result<Expr, Exception> {
@@ -135,29 +134,29 @@ fn handle_symbol(name: &str, scope: &Scope) -> Result<Expr, Exception> {
 }
 
 fn handle_call(name: &str, args: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
-    args.iter().map(|e| e.eval(scope)).collect::<Result<Vec<Expr>, Exception>>().and_then(|values|
-    match scope.get_fun(name, values.get(0).map(|e| e.get_type())) {
-        Some((types, lambda)) => apply_lambda(name, types, &values, lambda),
-        _ => Err(Exception::UndefinedFunction(name.to_string())),
-    })
+    args.iter().map(|e| e.eval(scope)).collect::<Result<Vec<Expr>, Exception>>().and_then(|values| {
+        match scope.get_fun(name, values.get(0).map(|e| e.get_type())) {
+            Some((types, fun)) => apply_fun(name, types, &values, fun, &mut scope.extend()),
+            _ => Err(Exception::UndefinedFunction(name.to_string())),
+    }})
 }
 
-fn apply_lambda(name: &str, specs: &Type, values: &Vec<Expr>, lambda: &Function) ->  Result<Expr, Exception> {
-    if let Type::Fun(input, output) = specs {
-        if input.len() != values.len() {
-            Err(Exception::WrongArgumentsNumber(name.to_owned(), input.len(), values.len()))
-       // TODO
-       // } else if input.len() != input.iter().zip(&values).filter(|&(a, b)| a == b.get_type()).count() {
-       //     Err(Exception::UnexpectedInputTypes(name.to_owned(), "todo".to_owned()))
-        } else {
-            let result = lambda.apply(values);
-            if result.is_ok() && result.as_ref().unwrap().get_type() != **output {
-                Err(Exception::UnexpectedOutputType(name.to_owned(), "".to_owned()))
-            } else {
-                result
-            }
+fn apply_fun(name: &str, specs: &Type, values: &Vec<Expr>, lambda: &Function, scope: &mut Scope) ->  Result<Expr, Exception> {
+    if let Type::Fun(input, _output) = specs {
+        match check_arguments(name, input, values) {
+            Some(ex) => Err(ex),
+            _ => lambda.apply(values, scope)
         }
     } else {
-        panic!("")
+        Err(Exception::NotA("Fun".to_owned(), specs.to_string()))
     }
+}
+
+fn check_arguments(name: &str, expected: &Vec<Type>, values: &Vec<Expr>) -> Option<Exception> {
+    if expected.len() != values.len() {
+        return Some(Exception::WrongArgumentsNumber(name.to_owned(), expected.len(), values.len()))
+    }
+    expected.iter().zip(values.iter()).find(|(e, v)| **e != v.get_type()).and_then(|p|
+        Some(Exception::UnexpectedArgumentType(name.to_owned(), p.0.to_string()))
+    )
 }

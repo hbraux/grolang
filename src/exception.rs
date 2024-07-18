@@ -14,7 +14,7 @@ pub enum Exception {
     AlreadyDefined(String),
     NotDefined(String),
     WrongArgumentsNumber(String, usize,usize),
-    UnexpectedInputTypes(String, String),
+    UnexpectedArgumentType(String, String),
     UnexpectedOutputType(String, String)
 }
 
