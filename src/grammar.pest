@@ -39,9 +39,9 @@ Term = _{ Literal |  "(" ~ Expr ~ ")" }
 
 VarType = { "var" | "val" }
 Declaration = { VarType ~ Symbol ~ TypeSpec? ~ "=" ~ Expr }
-ArgSpec = _{ Symbol ~  TypeSpec }
-Arguments = { "(" ~ ArgSpec? ~ ( "," ~ ArgSpec )* ~ ")" }
-Definition = { "fun" ~ Symbol ~ Arguments ~ TypeSpec ~ "=" ~ ( Expr | Block) }
+Param = _{ Symbol ~  TypeSpec }
+Parameters = { "(" ~ Param? ~ ( "," ~ Param )* ~ ")" }
+Definition = { "fun" ~ Symbol ~ Parameters ~ TypeSpec ~ "=" ~ ( Expr | Block) }
 Assignment = { Symbol ~ "=" ~ Expr }
 
 Block = { "{" ~ NEWLINE* ~ Statement ~ ( NEWLINE ~ Statement)* ~ NEWLINE* ~ "}" }

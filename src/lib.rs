@@ -162,4 +162,11 @@ mod tests {
         scope.exec("var a = 0");
         assert_eq!("11", scope.exec("while (a < 10) { a = a + 1 }"));
     }
+
+    #[test]
+    fn test_fun() {
+        let mut scope = Scope::init();
+        assert_eq!("pi",  scope.exec("fun pi(): Float = 3.14"));
+        assert_eq!("3.14", scope.exec("pi()"));
+    }
 }

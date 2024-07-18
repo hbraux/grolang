@@ -69,7 +69,7 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
         Rule::While => Expr::Call("while".to_owned(), to_vec(pair, 0, 0)),
         Rule::Block => Expr::Call("block".to_owned(), to_vec(pair, 0, 0)),
         Rule::Definition => Expr::Call("fun".to_owned(), to_vec(pair, 0, 0)),
-        Rule::Arguments => Expr::Arguments(build_arguments(to_vec(pair, 0, 0))),
+        Rule::Parameters => Expr::Parameters(build_arguments(to_vec(pair, 0, 0))),
         _ => panic!("Rule '{}' not implemented", operator_name(pair))
     }
 }
@@ -83,8 +83,11 @@ fn build_call(mut args: Vec<Expr>) -> Expr {
     }
 }
 
-fn build_arguments(mut args: Vec<Expr>) -> Vec<(String, Type)> {
-    todo!()
+fn build_arguments(args: Vec<Expr>) -> Vec<(String, Type)> {
+    args.chunks(2).map(|pair| match (&pair[0], &pair[1]) {
+        (Expr::Symbol(name), Expr::TypeOf(typ)) => (name.to_string(), typ.clone()),
+        _ => panic!("expecting a pair symbol/type"),
+    }).collect()
 }
 
 fn to_vec(pair: Pair<Rule>, expected_len: usize, optional_pos: usize) -> Vec<Expr> {
@@ -143,7 +146,7 @@ mod tests {
     #[test]
     fn test_declarations() {
         assert_eq!("Call(var, [Symbol(a), Nil, Int(1)])", read("var a = 1"));
-        assert_eq!("Call(val, [Symbol(f), TypeSpec(Float), Float(1.0)])", read("val f: Float = 1.0"));
+        assert_eq!("Call(val, [Symbol(f), TypeOf(Float), Float(1.0)])", read("val f: Float = 1.0"));
     }
 
     #[test]
@@ -182,7 +185,9 @@ mod tests {
 
     #[test]
     fn test_fun() {
-        assert_eq!("Call(print, [Symbol(a)])", read("fun inc(x: Int): Int = { x + 1 }"));
+        assert_eq!("Call(fun, [Symbol(pi), Arguments([]), TypeOf(Float), Float(3.14)])", read("fun pi(): Float = 3.14"));
+        assert_eq!("Call(fun, [Symbol(inc), Arguments([(x, Int)]), TypeOf(Int), Call(block, [Call(add, [Symbol(x), Int(1)])])])",
+                   read("fun inc(x: Int): Int = { x + 1 }"));
     }
 }
 

@@ -8,7 +8,7 @@ use crate::parser::parse;
 use crate::Scope;
 use crate::types::Type;
 
-use self::Expr::{Bool, Call, Failure, Float, Int, Nil, Str, Symbol, TypeSpec};
+use self::Expr::{Bool, Call, Failure, Float, Int, Nil, Str, Symbol, TypeOf};
 
 
 #[derive(Debug, Clone, PartialEq, Display)]
@@ -18,8 +18,8 @@ pub enum Expr {
     Str(String),
     Bool(bool),
     Symbol(String),
-    TypeSpec(Type),
-    Arguments(Vec<(String, Type)>),
+    TypeOf(Type),
+    Parameters(Vec<(String, Type)>),
     Call(String, Vec<Expr>),
     Failure(Exception),
     Fun(String, Type, Function),
@@ -37,7 +37,7 @@ impl Expr {
         parse(str).unwrap_or_else(|s| Failure(Exception::CannotParse(s)))
     }
     pub fn read_type(str: &str) -> Expr {
-        TypeSpec(Type::new(str.replace(":", "").trim()))
+        TypeOf(Type::new(str.replace(":", "").trim()))
     }
     // recursive format with debug
     pub fn format(&self) -> String { format!("{:?}", self).replace("\"","") }
@@ -78,7 +78,7 @@ impl Expr {
     }
     pub fn to_type(&self) -> Result<&Type, Exception> {
         match self {
-            TypeSpec(x) => Ok(x),
+            TypeOf(x) => Ok(x),
             Nil => Ok(&Type::Any),
             _ => Err(Exception::NotSymbol(self.print()))
         }
@@ -86,7 +86,7 @@ impl Expr {
     pub fn eval(&self, scope: &mut Scope) -> Result<Expr, Exception> {
         match self {
             Failure(e) => Err(e.clone()),
-            Nil | Int(_) | Float(_) | Str(_) | Bool(_) | TypeSpec(_) => Ok(self.clone()),
+            Nil | Int(_) | Float(_) | Str(_) | Bool(_) | TypeOf(_) => Ok(self.clone()),
             Symbol(name) => handle_symbol(name, scope),
             Call(name, args) => scope.try_lazy(name, args).unwrap_or(handle_call(name, args, scope)),
             _ => Err(Exception::NotImplemented(format!("{}", self))),
