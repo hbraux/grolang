@@ -26,7 +26,7 @@ impl Function {
     pub fn apply(&self, args: &Vec<Expr>, scope:  &mut  Scope) -> Result<Expr, Exception> {
         match self {
             BuiltIn(inner) => inner(args, scope),
-            Defined(_params,body) => body.eval(scope),
+            Defined(params,body) => { scope.add_args(params, args); body.eval(scope) },
         }
     }
 }

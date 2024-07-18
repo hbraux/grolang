@@ -127,7 +127,7 @@ fn format_float(x: &f64) -> String  {
 }
 
 fn handle_symbol(name: &str, scope: &Scope) -> Result<Expr, Exception> {
-    scope.get(name).ok_or_else(|| Exception::UndefinedSymbol(name.to_string()))
+    scope.get_value(name).ok_or_else(|| Exception::UndefinedSymbol(name.to_string()))
 }
 
 fn eval_call(name: &str, args: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
@@ -138,11 +138,11 @@ fn eval_call(name: &str, args: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Ex
     }})
 }
 
-fn apply_fun(name: &str, specs: &Type, values: &Vec<Expr>, lambda: &Function, scope: &mut Scope) ->  Result<Expr, Exception> {
+fn apply_fun(name: &str, specs: &Type, values: &Vec<Expr>, fun: &Function, scope: &mut Scope) ->  Result<Expr, Exception> {
     if let Type::Fun(input, _output) = specs {
         match check_arguments(name, input, values) {
             Some(ex) => Err(ex),
-            _ => lambda.apply(values, scope)
+            _ => fun.apply(values, scope)
         }
     } else {
         Err(Exception::NotA("Fun".to_owned(), specs.to_string()))
@@ -156,4 +156,15 @@ fn check_arguments(name: &str, expected: &Vec<Type>, values: &Vec<Expr>) -> Opti
     expected.iter().zip(values.iter()).find(|(e, v)| **e != v.get_type()).and_then(|p|
         Some(Exception::UnexpectedArgumentType(name.to_owned(), p.0.to_string()))
     )
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_format() {
+        assert_eq!("Nil", Nil.format())
+    }
 }

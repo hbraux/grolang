@@ -26,21 +26,32 @@ impl Scope<'_> {
         Scope::new(Some(self))
     }
 
-    pub fn get(&self, name: &str) -> Option<Expr> {
+    pub fn get_value(&self, name: &str) -> Option<Expr> {
         self.values.get(name).map(|e| e.clone())
     }
 
+    fn get(&self, name: &str) -> Option<&Expr> {
+        self.values.get(name).or(self.parent.map(|e| e.get(name)).flatten())
+    }
+    fn get_global(&self, name: &str) -> Option<&Expr> {
+        if self.parent.is_some() {
+            self.parent.unwrap().get_global(name)
+        } else {
+            self.values.get(name)
+        }
+    }
+
+
     pub fn try_lazy(&mut self, name: &str, args: &Vec<Expr>) -> Option<Result<Expr, Exception>> {
-        match self.values.get(name) {
-            Some(Fun(_name, types, lambda)) if types.is_lazy() => Some(lambda.clone().apply(args, self)),
+        match self.get_global(name) {
+            Some(Fun(_name, types, fun)) if types.is_lazy() => Some(fun.clone().apply(args, self)),
             _ => None,
         }
     }
 
     pub fn get_fun(&self, name: &str, obj_type: Option<Type>) -> Option<(&Type, &Function)> {
-        match self.values.get(name) {
-            Some(Fun(_name, specs, lambda)) => Some((specs, lambda)),
-           // Some(Lambda(_name, specs, args, body)) => Some((specs, lambda)),
+        match self.get(name) {
+            Some(Fun(_name, specs, fun)) => Some((specs, fun)),
             None if obj_type.is_some() => self.get_fun(&(obj_type.unwrap().method_name(name)), None),
             _ => None,
         }
@@ -52,10 +63,10 @@ impl Scope<'_> {
         };
     }
 
-    pub fn with(&mut self, vars: Vec<String>, values: Vec<Expr>) -> &Scope {
-        // TODO: extend scope
-        values.iter().zip(vars.iter()).for_each(|(v ,n)| { self.values.insert(n.to_string(), v.clone()); });
-        self
+    pub fn add_args(&mut self, vars: &Vec<String>, values: &Vec<Expr>) {
+        values.iter().zip(vars.iter()).for_each(|(v ,n)| {
+            self.values.insert(n.to_string(), v.clone());
+        });
     }
 
     pub fn is_defined(&self, name: &str) -> bool {
@@ -77,6 +88,7 @@ impl Scope<'_> {
         self.values.insert(name, value);
     }
     pub fn read(&mut self, str: &str) -> Expr { Expr::read(str, self) }
+
     pub fn exec(&mut self, str: &str) -> String { self.read(str).eval_or_failed(self).print() }
 
 }

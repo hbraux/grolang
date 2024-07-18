@@ -153,5 +153,8 @@ mod tests {
         let mut scope = Scope::init();
         assert_eq!("pi",  scope.exec("fun pi(): Float = 3.14"));
         assert_eq!("3.14", scope.exec("pi()"));
+
+        assert_eq!("inc",  scope.exec("fun inc(a: Int): Int = { a + 1 }"));
+        assert_eq!("3", scope.exec("inc(2)"));
     }
 }
