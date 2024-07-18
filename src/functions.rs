@@ -119,8 +119,9 @@ fn block(args: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
 
 fn print(args: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
     for x in args {
-        print!("{:?}", x.eval(scope)?)
+        print!("{}", x.eval(scope)?)
     }
+    println!();
     Ok(Nil)
 }
 
