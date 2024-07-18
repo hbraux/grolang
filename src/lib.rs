@@ -3,7 +3,7 @@ use std::string::ToString;
 
 use crate::exception::Exception;
 use crate::expr::Expr;
-use crate::expr::Expr::{Fun, Lambda};
+use crate::expr::Expr::{Fun};
 use crate::functions::{Function, load_functions};
 use crate::types::Type;
 
@@ -32,14 +32,13 @@ impl Scope<'_> {
         Scope::new(Some(self))
     }
 
-
     pub fn get(&self, name: &str) -> Option<Expr> {
         self.values.get(name).map(|e| e.clone())
     }
 
     pub fn try_lazy(&mut self, name: &str, args: &Vec<Expr>) -> Option<Result<Expr, Exception>> {
         match self.values.get(name) {
-            Some(Fun(_name, spec, lambda)) if spec.is_lazy() => Some(lambda.clone().apply(args, self)),
+            Some(Fun(_name, types, lambda)) if types.is_lazy() => Some(lambda.clone().apply(args, self)),
             _ => None,
         }
     }
@@ -47,6 +46,7 @@ impl Scope<'_> {
     pub fn get_fun(&self, name: &str, obj_type: Option<Type>) -> Option<(&Type, &Function)> {
         match self.values.get(name) {
             Some(Fun(_name, specs, lambda)) => Some((specs, lambda)),
+           // Some(Lambda(_name, specs, args, body)) => Some((specs, lambda)),
             None if obj_type.is_some() => self.get_fun(&(obj_type.unwrap().method_name(name)), None),
             _ => None,
         }
@@ -54,7 +54,6 @@ impl Scope<'_> {
     pub fn add(&mut self, value: Expr) {
         match &value {
             Fun(name, _type, _) => self.values.insert(name.to_owned(), value),
-            Lambda(name, _, _, _) => self.values.insert(name.to_owned(), value),
             _ => panic!("cannot add {}", value)
         };
     }

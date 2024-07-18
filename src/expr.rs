@@ -23,7 +23,6 @@ pub enum Expr {
     Call(String, Vec<Expr>),
     Failure(Exception),
     Fun(String, Type, Function),
-    Lambda(String, Type, Vec<String>, Box<Expr>),
     Nil,
 }
 
@@ -94,7 +93,7 @@ impl Expr {
             Failure(e) => Err(e.clone()),
             Nil | Int(_) | Float(_) | Str(_) | Bool(_) | TypeOf(_) => Ok(self.clone()),
             Symbol(name) => handle_symbol(name, scope),
-            Call(name, args) => scope.try_lazy(name, args).unwrap_or(handle_call(name, args, scope)),
+            Call(name, args) => scope.try_lazy(name, args).unwrap_or(eval_call(name, args, scope)),
             _ => Err(Exception::NotImplemented(format!("{}", self))),
         }
     }
@@ -133,7 +132,7 @@ fn handle_symbol(name: &str, scope: &Scope) -> Result<Expr, Exception> {
     scope.get(name).ok_or_else(|| Exception::UndefinedSymbol(name.to_string()))
 }
 
-fn handle_call(name: &str, args: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
+fn eval_call(name: &str, args: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
     args.iter().map(|e| e.eval(scope)).collect::<Result<Vec<Expr>, Exception>>().and_then(|values| {
         match scope.get_fun(name, values.get(0).map(|e| e.get_type())) {
             Some((types, fun)) => apply_fun(name, types, &values, fun, &mut scope.extend()),
