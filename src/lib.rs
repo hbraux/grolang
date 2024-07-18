@@ -20,11 +20,12 @@ pub struct Scope {
 }
 
 impl Scope {
-    pub fn new() -> Scope { Scope { values: HashMap::new(), mutables: HashSet::new() }.init() }
+    pub fn new() -> Scope { Scope { values: HashMap::new(), mutables: HashSet::new() }}
 
-    fn init(mut self) -> Scope {
-        load_functions(&mut self);
-        self
+    pub fn init() -> Scope {
+        let mut scope = Scope::new();
+        load_functions(&mut scope);
+        scope
     }
 
     pub fn get(&self, name: &str) -> Option<Expr> {
@@ -82,7 +83,7 @@ mod tests {
 
     #[test]
     fn test_literals() {
-        let mut scope = Scope::new();
+        let mut scope = Scope::init();
         assert_eq!("1", scope.exec("1"));
         assert_eq!("9123456", scope.exec("9_123_456"));
         assert_eq!("2.0", scope.exec("2.0"));
@@ -96,7 +97,7 @@ mod tests {
 
     #[test]
     fn test_variables() {
-        let mut scope = Scope::new();
+        let mut scope = Scope::init();
         assert_eq!("NotDefined(a)", scope.exec("a = 0"));
         assert_eq!("a", scope.exec("var a = 1"));
         assert_eq!("z", scope.exec("z.val(nil, true)"));
@@ -114,7 +115,7 @@ mod tests {
 
     #[test]
     fn test_arithmetics() {
-        let mut scope = Scope::new();
+        let mut scope = Scope::init();
         assert_eq!("14", scope.exec("2 + 3 * 4"));
         assert_eq!("20", scope.exec("(2 + 3) * 4"));
         assert_eq!("4", scope.exec("4 / 1"));
@@ -126,7 +127,7 @@ mod tests {
 
     #[test]
     fn test_comparisons() {
-        let mut scope = Scope::new();
+        let mut scope = Scope::init();
         scope.exec("var a = 1");
         scope.exec("var b = 2");
         assert_eq!("true", scope.exec("a == a"));
@@ -139,10 +140,20 @@ mod tests {
     }
 
     #[test]
-    fn test_others() {
-        let mut scope = Scope::new();
+    fn test_if_else() {
+        let mut scope = Scope::init();
         assert_eq!("1", scope.exec("if (true) { 1 } else { 0 }"));
+    }
+
+    #[test]
+    fn test_print() {
+        let mut scope = Scope::init();
         assert_eq!("nil", scope.exec("print(\"hello world\")"));
+    }
+
+    #[test]
+    fn test_while() {
+        let mut scope = Scope::init();
         scope.exec("var a = 0");
         assert_eq!("11", scope.exec("while (a < 10) { a = a + 1 }"));
     }

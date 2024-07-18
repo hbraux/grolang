@@ -27,7 +27,7 @@ fn main() {
 fn repl() {
     println!("{BLUE}Bienvenue sur {LANG} version {VERSION}{STD}");
     println!("Taper :q pour quitter, :h pour de l'aide");
-    let mut scope = Scope::new();
+    let mut scope = Scope::init();
     loop {
         print!("{}", PROMPT);
         io::stdout().flush().unwrap();
