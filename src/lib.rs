@@ -142,7 +142,12 @@ mod tests {
     #[test]
     fn test_if_else() {
         let mut scope = Scope::init();
+        assert_eq!("1", scope.exec("if (true) 1 else 0"));
+        assert_eq!("0", scope.exec("if (false) 1 else 0"));
         assert_eq!("1", scope.exec("if (true) { 1 } else { 0 }"));
+        assert_eq!("0", scope.exec("if (false) { 1 }  else { 0 }"));
+        assert_eq!("1", scope.exec("if (true) 1"));
+        assert_eq!("nil", scope.exec("if (false) 1"));
     }
 
     #[test]

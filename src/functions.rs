@@ -66,6 +66,7 @@ pub fn load_functions(scope: &mut Scope) {
     // lazy functions
     scope.add(LazyFun("var".to_owned(), LazyFunction::new(|args, scope| declare(args[0].symbol()?, args[1].to_type()?, args[2].eval(scope)?, scope, true))));
     scope.add(LazyFun("val".to_owned(), LazyFunction::new(|args, scope| declare(args[0].symbol()?, args[1].to_type()?, args[2].eval(scope)?, scope, false))));
+    scope.add(LazyFun("fun".to_owned(), LazyFunction::new(|args, scope| define(args[0].symbol()?, args[2].to_type()?, scope))));
     scope.add(LazyFun("set".to_owned(), LazyFunction::new(|args, scope| assign(args[0].symbol()?, args[1].eval(scope)?, scope))));
     scope.add(LazyFun("block".to_owned(), LazyFunction::new(|args, scope| block(args, scope))));
     scope.add(LazyFun("print".to_owned(), LazyFunction::new(|args, scope| print(args, scope))));
@@ -83,6 +84,7 @@ fn divide_float(a: &f64, b: &f64) ->  Result<Expr, Exception> {
     if *b != 0.0 { Ok(Float(a/b)) } else { Err(Exception::DivisionByZero)}
 }
 
+
 fn declare(name: &str, expected: &Type, value: Expr, scope: &mut Scope, is_mutable: bool) -> Result<Expr, Exception> {
     if *expected != Type::Any && *expected != value.get_type()  {
         Err(Exception::UnexpectedType(value.get_type().to_string()))
@@ -92,6 +94,10 @@ fn declare(name: &str, expected: &Type, value: Expr, scope: &mut Scope, is_mutab
         scope.set(name.to_owned(), value, Some(is_mutable));
         Ok(Symbol(name.to_owned()))
     }
+}
+
+fn define(name: &str, expected: &Type,  scope: &mut Scope) -> Result<Expr, Exception> {
+    todo!()
 }
 
 fn assign(name: &str, value: Expr, scope: &mut Scope) -> Result<Expr, Exception> {

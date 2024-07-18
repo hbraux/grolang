@@ -19,6 +19,7 @@ pub enum Expr {
     Bool(bool),
     Symbol(String),
     TypeSpec(Type),
+    Arguments(Vec<(String, Type)>),
     Call(String, Vec<Expr>),
     Failure(Exception),
     Fun(String, Type, Function),

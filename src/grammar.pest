@@ -13,6 +13,7 @@ Literal = _{ Special | Float | Int | Symbol | String }
 
 TypeSpec = @{ ":" ~ WHITESPACE* ~ Symbol ~ ( "<" ~ Symbol ~( "," ~ Symbol )? ~ ">")? }
 
+
 Operator = _{ Add | Sub | Mul | Div | Mod | Exp | Eq | Neq | Le | Lt | Ge | Gt | And | Or }
     Add = { "+" }
     Sub = { "-" }
@@ -36,14 +37,17 @@ BinaryExpr = _{ Term ~ ( Operator ~ Term ) + }
 CallExpr = { Symbol ~ "(" ~ Expr? ~ ( "," ~ Expr )* ~ ")" }
 Term = _{ Literal |  "(" ~ Expr ~ ")" }
 
-VarType = _{ "var" | "val" }
-Declaration = { Symbol ~ Symbol ~ TypeSpec? ~ "=" ~ Expr }
+VarType = { "var" | "val" }
+Declaration = { VarType ~ Symbol ~ TypeSpec? ~ "=" ~ Expr }
+ArgSpec = _{ Symbol ~  TypeSpec }
+Arguments = { "(" ~ ArgSpec? ~ ( "," ~ ArgSpec )* ~ ")" }
+Definition = { "fun" ~ Symbol ~ Arguments ~ TypeSpec ~ "=" ~ ( Expr | Block) }
 Assignment = { Symbol ~ "=" ~ Expr }
 
 Block = { "{" ~ NEWLINE* ~ Statement ~ ( NEWLINE ~ Statement)* ~ NEWLINE* ~ "}" }
-IfElse = { "if" ~ "(" ~ Expr ~ ")" ~ Block ~ ( "else" ~ Block)? }
+IfElse = { "if" ~ "(" ~ Expr ~ ")" ~ ( Expr | Block) ~ ( "else" ~ ( Expr | Block))? }
 While = { "while" ~ "(" ~ Expr ~ ")" ~ Block  }
-Statement = _{ Declaration | Assignment | IfElse | While | Expr }
+Statement = _{ Declaration | Definition | Assignment | IfElse | While | Expr }
 
 equation = _{ SOI ~ Expr ~ EOI }
 WHITESPACE = _{ " " }
