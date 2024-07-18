@@ -1,15 +1,13 @@
 use std::fmt::Debug;
-
 use strum_macros::Display;
 
 use crate::exception::Exception;
-use crate::expr::Expr::Params;
 use crate::functions::{Function};
 use crate::parser::parse;
-use crate::Scope;
+use crate::scope::Scope;
 use crate::types::Type;
+use self::Expr::{Bool, Call, Failure, Float, Int, Nil, Str, Symbol, TypeOf, Params};
 
-use self::Expr::{Bool, Call, Failure, Float, Int, Nil, Str, Symbol, TypeOf};
 
 #[derive(Debug, Clone, PartialEq, Display)]
 pub enum Expr {
@@ -19,7 +17,7 @@ pub enum Expr {
     Bool(bool),
     Symbol(String),
     TypeOf(Type),
-    Params(Vec<(String, Type)>),  // only required by the parser
+    Params(Vec<(String, Type)>),  // used by the parser to simplify function parsing
     Call(String, Vec<Expr>),
     Failure(Exception),
     Fun(String, Type, Function),

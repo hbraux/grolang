@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use crate::exception::Exception;
 use crate::expr::Expr;
 use crate::expr::Expr::{Bool, Float, Fun, Int, Nil, Symbol};
-use crate::Scope;
+use crate::scope::Scope;
 use crate::types::Type;
 use crate::types::Type::Lazy;
 use self::Function::{BuiltIn, Defined};
