@@ -4,22 +4,17 @@ use strum_macros::Display;
 pub enum Exception {
     CannotParse(String),
     NotImplemented(String),
-    NotSymbol(String),
     DivisionByZero,
     UndefinedSymbol(String),
     UndefinedFunction(String),
     InfiniteLoop,
-    NotNumber,
-    NotInt(String),
-    NotFloat(String),
-    NotBool(String),
+    NotA(String, String),
     NotMutable(String),
     UnexpectedType(String),
     AlreadyDefined(String),
     NotDefined(String),
     WrongArgumentsNumber(String, usize,usize),
-    UnexpectedInputTypes(String, String),
-    UnexpectedOutputType(String, String)
+    UnexpectedArgumentType(String, String)
 }
 
 impl Exception {

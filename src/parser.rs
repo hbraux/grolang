@@ -1,13 +1,15 @@
 use std::borrow::ToOwned;
 use std::string::ToString;
+
 use lazy_static::lazy_static;
 use pest::iterators::{Pair, Pairs};
 use pest::Parser;
 use pest::pratt_parser::{Op, PrattParser};
 use pest::pratt_parser::Assoc::Left;
 use pest_derive::Parser;
-
 use crate::expr::{Expr, FALSE, NIL, TRUE};
+use crate::expr::Expr::Params;
+
 
 #[derive(Parser)]
 #[grammar = "grammar.pest"]
@@ -29,7 +31,7 @@ lazy_static! {
 pub fn parse(str: &str) -> Result<Expr, String> {
     match GroParser::parse(Rule::Statement, str) {
         Ok(pairs) => Ok(parse_pairs(pairs)),
-        Err(e)    => Err(e.variant.message().to_string()),
+        Err(e)    => Err(e.variant.to_string()),
     }
 }
 
@@ -57,7 +59,7 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
         Rule::Float => Expr::Float(pair.as_str().parse::<f64>().unwrap()),
         Rule::Special => to_literal(pair.as_str()),
         Rule::String => Expr::Str(unquote(pair.as_str())),
-        Rule::Symbol => Expr::Symbol(pair.as_str().to_owned()),
+        Rule::Symbol | Rule::VarType => Expr::Symbol(pair.as_str().to_owned()),
         Rule::TypeSpec => Expr::read_type(pair.as_str()),
         Rule::Operator => Expr::Symbol(pair.as_str().to_owned()),
         Rule::Expr =>  parse_pairs(pair.into_inner()),
@@ -67,18 +69,26 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
         Rule::IfElse =>  Expr::Call("if".to_owned(), to_vec(pair, 3, 0 )),
         Rule::While => Expr::Call("while".to_owned(), to_vec(pair, 0, 0)),
         Rule::Block => Expr::Call("block".to_owned(), to_vec(pair, 0, 0)),
-        _ => panic!("rule {} not implemented", operator_name(pair))
+        Rule::Definition => Expr::Call("fun".to_owned(), to_vec(pair, 0, 0)),
+        Rule::Parameters => build_params(to_vec(pair, 0, 0)),
+        _ => panic!("Rule '{}' not implemented", operator_name(pair))
     }
 }
-
 
 
 fn build_call(mut args: Vec<Expr>) -> Expr {
     if let Expr::Symbol(name) = args.remove(0) {
         Expr::Call(name, args)
     } else {
-        panic!("first arg should be a symbol here")
+        panic!("first arg should be a symbol")
     }
+}
+
+fn build_params(args: Vec<Expr>) -> Expr {
+    Params(args.chunks(2).map(|pair| match (&pair[0], &pair[1]) {
+        (Expr::Symbol(name), Expr::TypeOf(typ)) => (name.to_string(), typ.clone()),
+        _ => panic!("expecting a pair symbol/type"),
+    }).collect())
 }
 
 fn to_vec(pair: Pair<Rule>, expected_len: usize, optional_pos: usize) -> Vec<Expr> {
@@ -93,6 +103,7 @@ fn to_vec(pair: Pair<Rule>, expected_len: usize, optional_pos: usize) -> Vec<Exp
     args
 }
 
+
 fn unquote(str: &str) -> String {
     (&str[1..str.len()-1]).to_owned()
 }
@@ -104,13 +115,14 @@ fn to_literal(str: &str) -> Expr {
         "true" => TRUE,
         "false" => FALSE,
         "nil" => NIL,
-        _ => panic!("unsupported literal {}", str),
+        _ => panic!("unsupported literal '{}'", str),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
     fn read(str: &str) -> String { parse(str).unwrap().format() }
 
     #[test]
@@ -130,13 +142,13 @@ mod tests {
 
     #[test]
     fn test_failure() {
-        assert_eq!(parse("=2").err(), Some("expected Symbol, Expr, IfElse, or While".to_owned()));
+        assert!(parse("=2").err().is_some())
     }
 
     #[test]
     fn test_declarations() {
         assert_eq!("Call(var, [Symbol(a), Nil, Int(1)])", read("var a = 1"));
-        assert_eq!("Call(val, [Symbol(f), TypeSpec(Float), Float(1.0)])", read("val f: Float = 1.0"));
+        assert_eq!("Call(val, [Symbol(f), TypeOf(Float), Float(1.0)])", read("val f: Float = 1.0"));
     }
 
     #[test]
@@ -153,9 +165,9 @@ mod tests {
     }
 
     #[test]
-    fn test_boolean_expressions() {
-        assert_eq!("Call(and, [Call(or, [Call(eq, [Symbol(x), Int(2)]), Call(eq, [Symbol(y), Int(1)])]), Symbol(z)])",
-            read("(x == 2) || (y == 1) && z"));
+    fn test_boolean_expr() {
+        assert_eq!("Call(and, [Call(or, [Call(eq, [Symbol(x), Int(2)]), Call(ge, [Symbol(y), Int(1)])]), Symbol(z)])",
+            read("(x == 2) || (y >= 1) && z"));
     }
 
     #[test]
@@ -166,11 +178,18 @@ mod tests {
     }
 
     #[test]
-    fn test_builtins() {
+    fn test_if_while() {
         assert_eq!("Call(if, [Call(eq, [Symbol(a), Int(1)]), Call(block, [Int(2)]), Call(block, [Int(3)])])", read("if (a == 1) { 2 } else { 3 }"));
         assert_eq!("Call(if, [Bool(true), Call(block, [Int(1)]), Nil])", read("if (true) { 1 } "));
         assert_eq!("Call(while, [Call(le, [Symbol(a), Int(10)]), Call(block, [Call(set, [Symbol(a), Call(add, [Symbol(a), Int(1)])])])])",
                    read("while (a < 10) { a = a + 1 }"));
+    }
+
+    #[test]
+    fn test_fun() {
+        assert_eq!("Call(fun, [Symbol(pi), Params([]), TypeOf(Float), Float(3.14)])", read("fun pi(): Float = 3.14"));
+        assert_eq!("Call(fun, [Symbol(inc), Params([(x, Int)]), TypeOf(Int), Call(block, [Call(add, [Symbol(x), Int(1)])])])",
+                   read("fun inc(x: Int): Int = { x + 1 }"));
     }
 }
 

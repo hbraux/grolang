@@ -1,6 +1,6 @@
 use strum_macros::Display;
 
-use self::Type::{Fun, Option, Try, List, Map, Any, Bool, Int, Str, Float};
+use self::Type::{Fun, Option, Try, List, Map, Any, Bool, Int, Str, Float, Lazy};
 
 macro_rules! box_type {
     ($val:expr) => { Box::new(Type::new($val)) };
@@ -18,7 +18,8 @@ pub enum Type {
     Option(Box<Type>),
     Try(Box<Type>),
     Map(Box<Type>, Box<Type>),
-    Fun(Vec<Type>, Box<Type>)
+    Fun(Vec<Type>, Box<Type>),
+    Lazy
 }
 
 
@@ -55,6 +56,7 @@ impl Type {
     pub fn method_name(&self, name: &str) -> String {
         self.to_string().to_owned() + "." + name
     }
+    pub fn is_lazy(&self) -> bool { *self == Lazy }
 }
 
 #[cfg(test)]

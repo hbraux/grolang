@@ -1,82 +1,64 @@
-use std::collections::{HashMap, HashSet};
-use std::string::ToString;
-
-use crate::exception::Exception;
+use std::io;
+use std::io::Write;
 use crate::expr::Expr;
-use crate::expr::Expr::{Fun, Mac};
-use crate::functions::{Function, load_functions};
-use crate::macros::load_macros;
-use crate::types::Type;
+use crate::scope::Scope;
 
-pub mod expr;
+
 mod parser;
 mod types;
 mod exception;
 mod functions;
-mod macros;
+mod expr;
+mod scope;
+
+pub const LANG: &str = "GroLang";
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+const PROMPT: &str = "> ";
+const RED: &str = "\x1b[1;31m";
+const BLUE: &str = "\x1b[1;34m";
+const STD: &str = "\x1b[0m";
 
 
-
-pub struct Scope {
-    values: HashMap<String, Expr>,
-    mutables: HashSet<String>,
+fn help() {
+    println!("Pas disponible pour le moment")
 }
 
-impl Scope {
-    pub fn new() -> Scope { Scope { values: HashMap::new(), mutables: HashSet::new() }.init() }
 
-    fn init(mut self) -> Scope {
-        load_functions(&mut self);
-        load_macros(&mut self);
-        self
-    }
-
-    pub fn get(&self, name: &str) -> Option<Expr> {
-        self.values.get(name).map(|e| e.clone())
-    }
-
-    pub fn try_macro(&mut self, name: &str, args: &Vec<Expr>) -> Option<Result<Expr, Exception>> {
-        match self.values.get(name) {
-            Some(Mac(_name, lambda)) => Some(lambda.clone().apply(args, self)),
-            _ => None,
+pub fn repl() {
+    println!("{BLUE}Bienvenue sur {LANG} version {VERSION}{STD}");
+    println!("Taper :q pour quitter, :h pour de l'aide");
+    let mut scope = Scope::init();
+    loop {
+        print!("{}", PROMPT);
+        io::stdout().flush().unwrap();
+        let mut line = String::new();
+        match io::stdin().read_line(&mut line) {
+            Err(_) => break,
+            _ => {}
+        }
+        let input = line.trim();
+        if input.starts_with(':') {
+            match input {
+                ":q" => break,
+                ":h" => help(),
+                _ => println!("{RED}Commande inconnue {input}{STD}"),
+            }
+            continue;
+        }
+        let expr = scope.read(input);
+        if let Expr::Failure(error) = expr {
+            println!("{RED}Erreur de syntaxe ({:?}){STD}", error);
+            continue;
+        }
+        println!("DEBUG: {:?}", expr);
+        let result = expr.eval_or_failed(&mut scope);
+        if let Expr::Failure(error) = result {
+            println!("{RED}Erreur d'évaluation ({:?}){STD}", error);
+        } else {
+            println!("{}", result.print())
         }
     }
-    pub fn get_fun(&self, name: &str, obj_type: Option<Type>) -> Option<(&Type, &Function)> {
-        match self.values.get(name) {
-            Some(Fun(_name, specs, lambda)) => Some((specs, lambda)),
-            None if obj_type.is_some() => self.get_fun(&(obj_type.unwrap().method_name(name)), None),
-            _ => None,
-        }
-    }
-    pub fn add(&mut self, value: Expr) {
-        match &value {
-            Fun(name, _type, _lambda) => self.values.insert(name.to_owned(), value),
-            Mac(name, _lambda) => self.values.insert(name.to_owned(), value),
-            _ => panic!("cannot add {}", value)
-        };
-    }
-
-    pub fn is_defined(&self, name: &str) -> bool {
-        self.values.contains_key(name)
-    }
-    pub fn is_mutable(&self, name: &str) -> Option<bool> {
-        if self.is_defined(name) {
-            Some(self.mutables.contains(name))
-        } else { None }
-    }
-    pub fn get_type(&self, name: &str) -> Type {
-        self.values.get(name).unwrap().get_type()
-    }
-
-    pub fn set(&mut self, name: String, value: Expr, is_mutable: Option<bool>) {
-        if is_mutable == Some(true) {
-            self.mutables.insert(name.to_string());
-        }
-        self.values.insert(name, value);
-    }
-    pub fn read(&mut self, str: &str) -> Expr { Expr::read(str, self) }
-    pub fn exec(&mut self, str: &str) -> String { self.read(str).eval_or_failed(self).print() }
-
+    println!(".")
 }
 
 
@@ -86,7 +68,7 @@ mod tests {
 
     #[test]
     fn test_literals() {
-        let mut scope = Scope::new();
+        let mut scope = Scope::init();
         assert_eq!("1", scope.exec("1"));
         assert_eq!("9123456", scope.exec("9_123_456"));
         assert_eq!("2.0", scope.exec("2.0"));
@@ -100,7 +82,7 @@ mod tests {
 
     #[test]
     fn test_variables() {
-        let mut scope = Scope::new();
+        let mut scope = Scope::init();
         assert_eq!("NotDefined(a)", scope.exec("a = 0"));
         assert_eq!("a", scope.exec("var a = 1"));
         assert_eq!("z", scope.exec("z.val(nil, true)"));
@@ -118,7 +100,7 @@ mod tests {
 
     #[test]
     fn test_arithmetics() {
-        let mut scope = Scope::new();
+        let mut scope = Scope::init();
         assert_eq!("14", scope.exec("2 + 3 * 4"));
         assert_eq!("20", scope.exec("(2 + 3) * 4"));
         assert_eq!("4", scope.exec("4 / 1"));
@@ -126,13 +108,16 @@ mod tests {
         assert_eq!("2", scope.exec("-2 * -1"));
         assert_eq!("3.3", scope.exec("1.0 + 2.3"));
         assert_eq!("DivisionByZero", scope.exec("1 / 0"));
+        assert_eq!("UnexpectedArgumentType(Int.add, Bool)", scope.exec("2 + true"));
+        // to be supported later
+        assert_eq!("UnexpectedArgumentType(Int.mul, Float)", scope.exec("2 * 0.1"));
     }
 
     #[test]
-    fn test_comparisons() {
-        let mut scope = Scope::new();
-        scope.exec("var a = 1");
-        scope.exec("var b = 2");
+    fn test_binaries() {
+        let mut scope = Scope::init();
+        scope.exec("val a = 1");
+        scope.exec("val b = 2");
         assert_eq!("true", scope.exec("a == a"));
         assert_eq!("true", scope.exec("1 == a"));
         assert_eq!("false", scope.exec("a == b"));
@@ -140,14 +125,41 @@ mod tests {
         assert_eq!("true", scope.exec("a == 1 && b == 2"));
         assert_eq!("false", scope.exec("a == 1 && b == 1"));
         assert_eq!("false", scope.exec("a == 2 && b == 2"));
+        assert_eq!("true", scope.exec("a < b"));
+        assert_eq!("false", scope.exec("a >= b"));
     }
 
     #[test]
-    fn test_others() {
-        let mut scope = Scope::new();
+    fn test_if_else() {
+        let mut scope = Scope::init();
+        assert_eq!("1", scope.exec("if (true) 1 else 0"));
+        assert_eq!("0", scope.exec("if (false) 1 else 0"));
         assert_eq!("1", scope.exec("if (true) { 1 } else { 0 }"));
+        assert_eq!("0", scope.exec("if (false) { 1 }  else { 0 }"));
+        assert_eq!("1", scope.exec("if (true) 1"));
+        assert_eq!("nil", scope.exec("if (false) 1"));
+    }
+
+    #[test]
+    fn test_print() {
+        let mut scope = Scope::init();
         assert_eq!("nil", scope.exec("print(\"hello world\")"));
+    }
+
+    #[test]
+    fn test_while() {
+        let mut scope = Scope::init();
         scope.exec("var a = 0");
         assert_eq!("11", scope.exec("while (a < 10) { a = a + 1 }"));
+    }
+
+    #[test]
+    fn test_fun() {
+        let mut scope = Scope::init();
+        assert_eq!("pi",  scope.exec("fun pi(): Float = 3.14"));
+        assert_eq!("3.14", scope.exec("pi()"));
+
+        assert_eq!("inc",  scope.exec("fun inc(a: Int): Int = { a + 1 }"));
+        assert_eq!("3", scope.exec("inc(2)"));
     }
 }

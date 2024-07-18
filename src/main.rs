@@ -1,16 +1,6 @@
-use std::{env, io};
-use std::io::Write;
+use std::{env};
+use grolang::{LANG, repl, VERSION};
 
-use grolang::Scope;
-use grolang::expr::Expr;
-
-
-const LANG: &str = "GroLang";
-const VERSION: &str = env!("CARGO_PKG_VERSION");
-const PROMPT: &str = "> ";
-const RED: &str = "\x1b[1;31m";
-const BLUE: &str = "\x1b[1;34m";
-const STD: &str = "\x1b[0m";
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -24,43 +14,4 @@ fn main() {
     }
 }
 
-fn repl() {
-    println!("{BLUE}Bienvenue sur {LANG} version {VERSION}{STD}");
-    println!("Taper :q pour quitter, :h pour de l'aide");
-    let mut scope = Scope::new();
-    loop {
-        print!("{}", PROMPT);
-        io::stdout().flush().unwrap();
-        let mut line = String::new();
-        match io::stdin().read_line(&mut line) {
-            Err(_) => break,
-            _ => {}
-        }
-        let input = line.trim();
-        if input.starts_with(':') {
-            match input {
-                ":q" => break,
-                ":h" => help(),
-                _ => println!("{RED}Commande inconnue {input}{STD}"),
-            }
-            continue;
-        }
-        let expr = scope.read(input);
-        if let Expr::Failure(error) = expr {
-            println!("{RED}Erreur de syntaxe ({:?}){STD}", error);
-            continue;
-        }
-        println!("DEBUG: {:?}", expr);
-        let result = expr.eval_or_failed(&mut scope);
-        if let Expr::Failure(error) = result {
-            println!("{RED}Erreur d'évaluation ({:?}){STD}", error);
-        } else {
-            println!("{}", result.print())
-        }
-    }
-    println!(".")
-}
 
-fn help() {
-    println!("Pas disponible pour le moment")
-}
