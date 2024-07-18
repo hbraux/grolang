@@ -165,9 +165,9 @@ mod tests {
     }
 
     #[test]
-    fn test_boolean_expressions() {
-        assert_eq!("Call(and, [Call(or, [Call(eq, [Symbol(x), Int(2)]), Call(eq, [Symbol(y), Int(1)])]), Symbol(z)])",
-            read("(x == 2) || (y == 1) && z"));
+    fn test_boolean_expr() {
+        assert_eq!("Call(and, [Call(or, [Call(eq, [Symbol(x), Int(2)]), Call(ge, [Symbol(y), Int(1)])]), Symbol(z)])",
+            read("(x == 2) || (y >= 1) && z"));
     }
 
     #[test]

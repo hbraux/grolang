@@ -108,13 +108,16 @@ mod tests {
         assert_eq!("2", scope.exec("-2 * -1"));
         assert_eq!("3.3", scope.exec("1.0 + 2.3"));
         assert_eq!("DivisionByZero", scope.exec("1 / 0"));
+        assert_eq!("UnexpectedArgumentType(Int.add, Bool)", scope.exec("2 + true"));
+        // to be supported later
+        assert_eq!("UnexpectedArgumentType(Int.mul, Float)", scope.exec("2 * 0.1"));
     }
 
     #[test]
-    fn test_comparisons() {
+    fn test_binaries() {
         let mut scope = Scope::init();
-        scope.exec("var a = 1");
-        scope.exec("var b = 2");
+        scope.exec("val a = 1");
+        scope.exec("val b = 2");
         assert_eq!("true", scope.exec("a == a"));
         assert_eq!("true", scope.exec("1 == a"));
         assert_eq!("false", scope.exec("a == b"));
@@ -122,6 +125,8 @@ mod tests {
         assert_eq!("true", scope.exec("a == 1 && b == 2"));
         assert_eq!("false", scope.exec("a == 1 && b == 1"));
         assert_eq!("false", scope.exec("a == 2 && b == 2"));
+        assert_eq!("true", scope.exec("a < b"));
+        assert_eq!("false", scope.exec("a >= b"));
     }
 
     #[test]

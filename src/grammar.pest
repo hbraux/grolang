@@ -26,7 +26,7 @@ Operator = _{ Add | Sub | Mul | Div | Mod | Exp | Eq | Neq | Le | Lt | Ge | Gt |
     Lt = { "<=" }
     Le = { "<" }
     Gt = { ">" }
-    Ge = { "=>" }
+    Ge = { ">=" }
     And = { "&&" }
     Or = { "||" }
 Dot = { "." }

@@ -133,7 +133,7 @@ fn handle_symbol(name: &str, scope: &Scope) -> Result<Expr, Exception> {
 fn eval_call(name: &str, args: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
     args.iter().map(|e| e.eval(scope)).collect::<Result<Vec<Expr>, Exception>>().and_then(|values| {
         match scope.get_fun(name, values.get(0).map(|e| e.get_type())) {
-            Some((types, fun)) => apply_fun(name, types, &values, fun, &mut scope.extend()),
+            Some((full_name, types, fun)) => apply_fun(full_name, types, &values, fun, &mut scope.extend()),
             _ => Err(Exception::UndefinedFunction(name.to_string())),
     }})
 }
@@ -154,7 +154,7 @@ fn check_arguments(name: &str, expected: &Vec<Type>, values: &Vec<Expr>) -> Opti
         return Some(Exception::WrongArgumentsNumber(name.to_owned(), expected.len(), values.len()))
     }
     expected.iter().zip(values.iter()).find(|(e, v)| **e != v.get_type()).and_then(|p|
-        Some(Exception::UnexpectedArgumentType(name.to_owned(), p.0.to_string()))
+        Some(Exception::UnexpectedArgumentType(name.to_owned(), p.1.to_string()))
     )
 }
 

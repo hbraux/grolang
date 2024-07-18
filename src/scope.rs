@@ -49,9 +49,9 @@ impl Scope<'_> {
         }
     }
 
-    pub fn get_fun(&self, name: &str, obj_type: Option<Type>) -> Option<(&Type, &Function)> {
+    pub fn get_fun(&self, name: &str, obj_type: Option<Type>) -> Option<(&String, &Type, &Function)> {
         match self.get(name) {
-            Some(Fun(_name, specs, fun)) => Some((specs, fun)),
+            Some(Fun(name, specs, fun)) => Some((name, specs, fun)),
             None if obj_type.is_some() => self.get_fun(&(obj_type.unwrap().method_name(name)), None),
             _ => None,
         }
