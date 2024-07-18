@@ -3,9 +3,8 @@ use std::string::ToString;
 
 use crate::exception::Exception;
 use crate::expr::Expr;
-use crate::expr::Expr::{Fun, Mac};
+use crate::expr::Expr::{Fun, LazyFun};
 use crate::functions::{Function, load_functions};
-use crate::macros::load_macros;
 use crate::types::Type;
 
 pub mod expr;
@@ -13,8 +12,6 @@ mod parser;
 mod types;
 mod exception;
 mod functions;
-mod macros;
-
 
 
 pub struct Scope {
@@ -27,7 +24,6 @@ impl Scope {
 
     fn init(mut self) -> Scope {
         load_functions(&mut self);
-        load_macros(&mut self);
         self
     }
 
@@ -35,9 +31,9 @@ impl Scope {
         self.values.get(name).map(|e| e.clone())
     }
 
-    pub fn try_macro(&mut self, name: &str, args: &Vec<Expr>) -> Option<Result<Expr, Exception>> {
+    pub fn try_lazy(&mut self, name: &str, args: &Vec<Expr>) -> Option<Result<Expr, Exception>> {
         match self.values.get(name) {
-            Some(Mac(_name, lambda)) => Some(lambda.clone().apply(args, self)),
+            Some(LazyFun(_name, lambda)) => Some(lambda.clone().apply(args, self)),
             _ => None,
         }
     }
@@ -51,7 +47,7 @@ impl Scope {
     pub fn add(&mut self, value: Expr) {
         match &value {
             Fun(name, _type, _lambda) => self.values.insert(name.to_owned(), value),
-            Mac(name, _lambda) => self.values.insert(name.to_owned(), value),
+            LazyFun(name, _lambda) => self.values.insert(name.to_owned(), value),
             _ => panic!("cannot add {}", value)
         };
     }

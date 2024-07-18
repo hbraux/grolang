@@ -3,8 +3,7 @@ use std::fmt::Debug;
 use strum_macros::Display;
 
 use crate::exception::Exception;
-use crate::functions::Function;
-use crate::macros::Macro;
+use crate::functions::{Function, LazyFunction};
 use crate::parser::parse;
 use crate::Scope;
 use crate::types::Type;
@@ -23,7 +22,7 @@ pub enum Expr {
     Call(String, Vec<Expr>),
     Failure(Exception),
     Fun(String, Type, Function),
-    Mac(String, Macro),
+    LazyFun(String, LazyFunction),
     Nil,
 }
 
@@ -88,7 +87,7 @@ impl Expr {
             Failure(e) => Err(e.clone()),
             Nil | Int(_) | Float(_) | Str(_) | Bool(_) | TypeSpec(_) => Ok(self.clone()),
             Symbol(name) => handle_symbol(name, scope),
-            Call(name, args) => scope.try_macro(name, args).unwrap_or(handle_call(name, args, scope)),
+            Call(name, args) => scope.try_lazy(name, args).unwrap_or(handle_call(name, args, scope)),
             _ => Err(Exception::NotImplemented(format!("{}", self))),
         }
     }
