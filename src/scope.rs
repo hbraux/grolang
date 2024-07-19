@@ -2,10 +2,11 @@ use std::collections::{HashMap, HashSet};
 use std::string::ToString;
 
 use crate::expr::Expr;
-use crate::expr::Expr::{Fun};
+use crate::expr::Expr::Fun;
 use crate::functions::{Function, load_functions};
 use crate::types::Type;
 
+#[derive(Debug)]
 pub struct Scope<'a> {
     values: HashMap<String, Expr>,
     mutables: HashSet<String>,
@@ -20,11 +21,11 @@ impl Scope<'_> {
         load_functions(&mut scope);
         scope
     }
-    pub fn local(&self) -> Scope {
+    pub fn child(&self) -> Scope {
         Scope::new(Some(self))
     }
     pub fn get_value(&self, name: &str) -> Option<Expr> {
-        self.values.get(name).map(|e| e.clone())
+        self.get(name).map(|e| e.clone())
     }
 
     fn get(&self, name: &str) -> Option<&Expr> {
@@ -49,7 +50,7 @@ impl Scope<'_> {
             _ => None,
         }
     }
-    pub fn add(&mut self, value: Expr) {
+    pub fn add_fun(&mut self, value: Expr) {
         match &value {
             Fun(name, _, _) => self.values.insert(name.to_owned(), value),
             _ => panic!("cannot add {}", value)
@@ -74,11 +75,11 @@ impl Scope<'_> {
         self.values.get(name).unwrap().get_type()
     }
 
-    pub fn set(&mut self, name: String, value: Expr, is_mutable: Option<bool>) {
+    pub fn set(&mut self, name: &str, value: Expr, is_mutable: Option<bool>) {
         if is_mutable == Some(true) {
             self.mutables.insert(name.to_string());
         }
-        self.values.insert(name, value);
+        self.values.insert(name.to_owned(), value);
     }
     pub fn read(&mut self, str: &str) -> Expr { Expr::read(str, self) }
 
@@ -86,3 +87,29 @@ impl Scope<'_> {
 
 }
 
+#[cfg(test)]
+mod tests {
+    use crate::expr::Expr::Int;
+
+    use super::*;
+
+    #[test]
+    fn test_scope() {
+        let mut root = Scope::new(None);
+        root.set("a", Int(1), None);
+        root.set("b", Int(2), None);
+
+        assert_eq!(root.get("a"), Some(&Int(1)));
+        assert_eq!(root.get_global("b"), Some(&Int(2)));
+
+        let mut child = root.child();
+        child.set("c", Int(3), None);
+        child.set("b", Int(4), None);
+        assert_eq!(child.get("a"), Some(&Int(1)));
+        assert_eq!(child.get("c"), Some(&Int(3)));
+        assert_eq!(child.get("b"), Some(&Int(4)));
+        assert_eq!(root.get_global("b"), Some(&Int(2)));
+
+    }
+
+}

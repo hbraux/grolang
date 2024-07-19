@@ -23,19 +23,19 @@ Operator = _{ Add | Sub | Mul | Div | Mod | Exp | Eq | Neq | Le | Lt | Ge | Gt |
     Exp = { "^" }
     Eq = { "==" }
     Neq = { "!=" }
-    Lt = { "<=" }
-    Le = { "<" }
+    Lt = { "<" }
+    Le = { "<=" }
     Gt = { ">" }
     Ge = { ">=" }
     And = { "&&" }
     Or = { "||" }
 Dot = { "." }
 
-Expr = { BinaryExpr | CallExpr | ChainCall | Term }
+Expr = {  CallExpr | BinaryExpr | ChainCall | Term }
 ChainCall = _{ Term ~ ( Dot ~ CallExpr )+  }
 BinaryExpr = _{ Term ~ ( Operator ~ Term ) + }
 CallExpr = { Symbol ~ "(" ~ Expr? ~ ( "," ~ Expr )* ~ ")" }
-Term = _{ Literal |  "(" ~ Expr ~ ")" }
+Term = _{ CallExpr | Literal |  "(" ~ Expr ~ ")"  }
 
 VarType = { "var" | "val" }
 Declaration = { VarType ~ Symbol ~ TypeSpec? ~ "=" ~ Expr }
@@ -44,7 +44,7 @@ Parameters = { "(" ~ Param? ~ ( "," ~ Param )* ~ ")" }
 Definition = { "fun" ~ Symbol ~ Parameters ~ TypeSpec ~ "=" ~ ( Expr | Block) }
 Assignment = { Symbol ~ "=" ~ Expr }
 
-Block = { "{" ~ NEWLINE* ~ Statement ~ ( NEWLINE ~ Statement)* ~ NEWLINE* ~ "}" }
+Block = { "{" ~ NEWLINE* ~ Statement ~ ( (NEWLINE | ";") ~ Statement)* ~ NEWLINE* ~ "}" }
 IfElse = { "if" ~ "(" ~ Expr ~ ")" ~ ( Expr | Block) ~ ( "else" ~ ( Expr | Block))? }
 While = { "while" ~ "(" ~ Expr ~ ")" ~ Block  }
 Statement = _{ Declaration | Definition | Assignment | IfElse | While | Expr }

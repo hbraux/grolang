@@ -21,6 +21,7 @@ pub enum Expr {
     Symbol(String),
     TypeOf(Type),
     Params(Vec<(String, Type)>),
+    Block(Vec<Expr>),
     Call(String, Vec<Expr>),
     Failure(Exception),
     Fun(String, Type, Function),
@@ -143,7 +144,6 @@ fn handle_symbol(name: &str, scope: &Scope) -> Result<Expr, Exception> {
 
 fn handle_call(name: &str, args: &Vec<Expr>, scope: &Scope) -> Result<Expr, Exception> {
     let self_type = match args.get(0).map(|e| e.eval(scope)) {
-        Some(Err(e)) => return Err(e),
         Some(Ok(e)) => Some(e.get_type()),
         _ => None,
     };

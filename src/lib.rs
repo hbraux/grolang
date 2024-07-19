@@ -50,7 +50,6 @@ pub fn repl() {
             println!("{RED}Erreur de syntaxe ({:?}){STD}", error);
             continue;
         }
-        println!("DEBUG: {:?}", expr);
         let result = expr.eval_or_failed(&mut scope);
         if let Expr::Failure(error) = result {
             println!("{RED}Erreur d'évaluation ({:?}){STD}", error);
@@ -154,12 +153,24 @@ mod tests {
     }
 
     #[test]
-    fn test_fun() {
+    fn test_functions() {
         let mut scope = Scope::init();
         assert_eq!("pi",  scope.exec("fun pi(): Float = 3.14"));
         assert_eq!("3.14", scope.exec("pi()"));
 
-        assert_eq!("inc",  scope.exec("fun inc(a: Int): Int = { a + 1 }"));
+        scope.exec("fun dec(a: Int): Int = a - 1");
+        assert_eq!("1", scope.exec("dec(2)"));
+
+        scope.exec("fun inc(a: Int): Int = { a + 1 }");
         assert_eq!("3", scope.exec("inc(2)"));
+
+        scope.exec("fun zero(): Int = { val x = 0 ; x }");
+        assert_eq!("0", scope.exec("zero()"));
+
+        scope.exec("fun fact(n: Int): Int = { if (n <= 1) 1 else n*fact(n-1) }");
+        assert_eq!("1", scope.exec("fact(0)"));
+        assert_eq!("24", scope.exec("fact(4)"));
     }
+
+
 }
