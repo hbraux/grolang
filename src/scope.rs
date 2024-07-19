@@ -1,12 +1,10 @@
 use std::collections::{HashMap, HashSet};
 use std::string::ToString;
 
-use crate::exception::Exception;
 use crate::expr::Expr;
-use crate::expr::Expr::{Fun};
+use crate::expr::Expr::Fun;
 use crate::functions::{Function, load_functions};
 use crate::types::Type;
-
 
 pub struct Scope<'a> {
     values: HashMap<String, Expr>,
@@ -25,7 +23,6 @@ impl Scope<'_> {
     pub fn extend(&self) -> Scope {
         Scope::new(Some(self))
     }
-
     pub fn get_value(&self, name: &str) -> Option<Expr> {
         self.values.get(name).map(|e| e.clone())
     }
@@ -33,19 +30,11 @@ impl Scope<'_> {
     fn get(&self, name: &str) -> Option<&Expr> {
         self.values.get(name).or(self.parent.map(|e| e.get(name)).flatten())
     }
-    fn get_global(&self, name: &str) -> Option<&Expr> {
+    pub fn get_global(&self, name: &str) -> Option<&Expr> {
         if self.parent.is_some() {
             self.parent.unwrap().get_global(name)
         } else {
             self.values.get(name)
-        }
-    }
-
-
-    pub fn try_lazy(&mut self, name: &str, args: &Vec<Expr>) -> Option<Result<Expr, Exception>> {
-        match self.get_global(name) {
-            Some(Fun(_name, types, fun)) if types.is_lazy() => Some(fun.clone().apply(args, self)),
-            _ => None,
         }
     }
 

@@ -2,7 +2,8 @@ use std::fmt::Debug;
 use strum_macros::Display;
 
 use crate::exception::Exception;
-use crate::functions::{Function};
+use crate::expr::Expr::{Def, Mac};
+use crate::functions::{Function, Macro};
 use crate::parser::parse;
 use crate::scope::Scope;
 use crate::types::Type;
@@ -17,10 +18,12 @@ pub enum Expr {
     Bool(bool),
     Symbol(String),
     TypeOf(Type),
-    Params(Vec<(String, Type)>),  // used by the parser to simplify function parsing
+    Params(Vec<(String, Type)>),
     Call(String, Vec<Expr>),
+    Def(String, Vec<Expr>),
     Failure(Exception),
     Fun(String, Type, Function),
+    Mac(String, Macro),
     Nil,
 }
 
@@ -86,19 +89,29 @@ impl Expr {
             _ => Err(Exception::NotA("Parameters".to_owned(), self.print()))
         }
     }
-    pub fn eval(&self, scope: &mut Scope) -> Result<Expr, Exception> {
+    pub fn eval(&self, scope: &Scope) -> Result<Expr, Exception> {
         match self {
             Failure(e) => Err(e.clone()),
             Nil | Int(_) | Float(_) | Str(_) | Bool(_) | TypeOf(_) => Ok(self.clone()),
             Symbol(name) => handle_symbol(name, scope),
-            Call(name, args) => scope.try_lazy(name, args).unwrap_or(eval_call(name, args, scope)),
+            Call(name, args) => eval_call(name, args, scope),
             _ => Err(Exception::NotImplemented(format!("{}", self))),
+        }
+    }
+    pub fn lazy_eval(&self, scope: &mut Scope) -> Result<Expr, Exception> {
+        if let Def(name, args) = self {
+            match scope.get_global(name) {
+                Some(Mac(_, lambda)) => lambda.apply(args, scope),
+                _ => Err(Exception::NotDefined(name.to_string())),
+            }
+        } else {
+            self.eval(scope)
         }
     }
     pub fn eval_or_failed(&self, scope: &mut Scope) -> Expr {
         match self {
             Failure(_) => self.clone(),
-            expr => expr.eval(scope).unwrap_or_else(|ex| Failure(ex))
+            expr => expr.lazy_eval(scope).unwrap_or_else(|ex| Failure(ex))
         }
     }
 
@@ -130,7 +143,7 @@ fn handle_symbol(name: &str, scope: &Scope) -> Result<Expr, Exception> {
     scope.get_value(name).ok_or_else(|| Exception::UndefinedSymbol(name.to_string()))
 }
 
-fn eval_call(name: &str, args: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
+fn eval_call(name: &str, args: &Vec<Expr>, scope: &Scope) -> Result<Expr, Exception> {
     args.iter().map(|e| e.eval(scope)).collect::<Result<Vec<Expr>, Exception>>().and_then(|values| {
         match scope.get_fun(name, values.get(0).map(|e| e.get_type())) {
             Some((full_name, types, fun)) => apply_fun(full_name, types, &values, fun, &mut scope.extend()),

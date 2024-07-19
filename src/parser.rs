@@ -64,12 +64,12 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
         Rule::Operator => Expr::Symbol(pair.as_str().to_owned()),
         Rule::Expr =>  parse_pairs(pair.into_inner()),
         Rule::CallExpr => build_call(to_vec(pair, 0, 0)),
-        Rule::Declaration => build_call(to_vec(pair, 4, 2)),
+        Rule::Declaration => build_def(to_vec(pair, 4, 2)),
         Rule::Assignment => Expr::Call("set".to_owned(), to_vec(pair, 0, 0)),
         Rule::IfElse =>  Expr::Call("if".to_owned(), to_vec(pair, 3, 0 )),
         Rule::While => Expr::Call("while".to_owned(), to_vec(pair, 0, 0)),
         Rule::Block => Expr::Call("block".to_owned(), to_vec(pair, 0, 0)),
-        Rule::Definition => Expr::Call("fun".to_owned(), to_vec(pair, 0, 0)),
+        Rule::Definition => Expr::Def("fun".to_owned(), to_vec(pair, 0, 0)),
         Rule::Parameters => build_params(to_vec(pair, 0, 0)),
         _ => panic!("Rule '{}' not implemented", operator_name(pair))
     }
@@ -79,6 +79,14 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
 fn build_call(mut args: Vec<Expr>) -> Expr {
     if let Expr::Symbol(name) = args.remove(0) {
         Expr::Call(name, args)
+    } else {
+        panic!("first arg should be a symbol")
+    }
+}
+
+fn build_def(mut args: Vec<Expr>) -> Expr {
+    if let Expr::Symbol(name) = args.remove(0) {
+        Expr::Def(name, args)
     } else {
         panic!("first arg should be a symbol")
     }
@@ -147,8 +155,9 @@ mod tests {
 
     #[test]
     fn test_declarations() {
-        assert_eq!("Call(var, [Symbol(a), Nil, Int(1)])", read("var a = 1"));
-        assert_eq!("Call(val, [Symbol(f), TypeOf(Float), Float(1.0)])", read("val f: Float = 1.0"));
+        assert_eq!("Def(val, [Symbol(f), TypeOf(Float), Float(1.0)])", read("val f: Float = 1.0"));
+        assert_eq!("Def(var, [Symbol(a), Nil, Int(1)])", read("var a = 1"));
+
     }
 
     #[test]
@@ -187,8 +196,8 @@ mod tests {
 
     #[test]
     fn test_fun() {
-        assert_eq!("Call(fun, [Symbol(pi), Params([]), TypeOf(Float), Float(3.14)])", read("fun pi(): Float = 3.14"));
-        assert_eq!("Call(fun, [Symbol(inc), Params([(x, Int)]), TypeOf(Int), Call(block, [Call(add, [Symbol(x), Int(1)])])])",
+        assert_eq!("Def(fun, [Symbol(pi), Params([]), TypeOf(Float), Float(3.14)])", read("fun pi(): Float = 3.14"));
+        assert_eq!("Def(fun, [Symbol(inc), Params([(x, Int)]), TypeOf(Int), Call(block, [Call(add, [Symbol(x), Int(1)])])])",
                    read("fun inc(x: Int): Int = { x + 1 }"));
     }
 }
