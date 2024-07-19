@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::string::ToString;
 
 use crate::expr::Expr;
-use crate::expr::Expr::Fun;
+use crate::expr::Expr::{Fun, Mac};
 use crate::functions::{Function, load_functions};
 use crate::types::Type;
 
@@ -20,7 +20,7 @@ impl Scope<'_> {
         load_functions(&mut scope);
         scope
     }
-    pub fn extend(&self) -> Scope {
+    pub fn local(&self) -> Scope {
         Scope::new(Some(self))
     }
     pub fn get_value(&self, name: &str) -> Option<Expr> {
@@ -37,6 +37,9 @@ impl Scope<'_> {
             self.values.get(name)
         }
     }
+    pub fn is_macro(&self, name: &str) -> bool {
+        matches!(self.get_global(name), Some(Mac(_,_)))
+    }
 
     pub fn get_fun(&self, name: &str, obj_type: Option<Type>) -> Option<(&String, &Type, &Function)> {
         match self.get(name) {
@@ -47,16 +50,17 @@ impl Scope<'_> {
     }
     pub fn add(&mut self, value: Expr) {
         match &value {
-            Fun(name, _type, _) => self.values.insert(name.to_owned(), value),
+            Fun(name, _, _) => self.values.insert(name.to_owned(), value),
+            Mac(name, _) => self.values.insert(name.to_owned(), value),
             _ => panic!("cannot add {}", value)
         };
     }
-
     pub fn add_args(&mut self, vars: &Vec<String>, values: &Vec<Expr>) {
         values.iter().zip(vars.iter()).for_each(|(v ,n)| {
             self.values.insert(n.to_string(), v.clone());
         });
     }
+
 
     pub fn is_defined(&self, name: &str) -> bool {
         self.values.contains_key(name)

@@ -7,6 +7,7 @@ use crate::functions::Function::Stateless;
 use crate::functions::Macro::BuiltIn;
 use crate::scope::Scope;
 use crate::types::Type;
+use crate::types::Type::Any;
 
 use self::Function::{Stateful, Defined};
 
@@ -16,19 +17,19 @@ macro_rules! if_else {
     };
 }
 
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum Function {
     Stateless(fn(&Vec<Expr>) -> Result<Expr, Exception>),
     Stateful(fn(&Vec<Expr>, &Scope) -> Result<Expr, Exception>),
     Defined(Vec<String>, Box<Expr>),
 }
+
 impl Function {
     pub fn apply(&self, args: &Vec<Expr>, scope: &Scope) -> Result<Expr, Exception> {
         match self {
             Stateless(f) => f(args),
             Stateful(f) => f(args, scope),
-            Defined(params,body) => { let mut local = scope.extend(); local.add_args(params, args); body.eval(&local) },
+            Defined(params,body) => apply_defined(scope, body, params, args)
         }
     }
 }
@@ -38,12 +39,19 @@ impl Function {
 pub enum Macro {
     BuiltIn(fn(&Vec<Expr>, &mut Scope) -> Result<Expr, Exception>),
 }
+
 impl Macro {
     pub fn apply(&self, args: &Vec<Expr>, scope:  &mut  Scope) -> Result<Expr, Exception> {
         match self {
             BuiltIn(f) => f(args, scope),
         }
     }
+}
+
+fn apply_defined(scope: &Scope, body: &Box<Expr>, params: &Vec<String>, args: &Vec<Expr>) -> Result<Expr, Exception> {
+    let mut local = scope.local();
+    local.add_args(params, args);
+    body.eval(&local)
 }
 
 pub fn load_functions(scope: &mut Scope) {
@@ -74,16 +82,16 @@ pub fn load_functions(scope: &mut Scope) {
     scope.add(Fun("Int.lt".to_owned(), spec(), Stateless(|args| Ok(Bool(args[0].int()? < args[1].int()?)))));
     scope.add(Fun("Int.le".to_owned(), spec(), Stateless(|args| Ok(Bool(args[0].int()? <= args[1].int()?)))));
 
-    // lazy functions
+    //  macros
     scope.add(Mac("var".to_owned(), BuiltIn(|args, scope| declare(args[0].symbol()?, args[1].to_type()?, args[2].eval(scope)?, scope, true))));
     scope.add(Mac("val".to_owned(), BuiltIn(|args, scope| declare(args[0].symbol()?, args[1].to_type()?, args[2].eval(scope)?, scope, false))));
     scope.add(Mac("fun".to_owned(), BuiltIn(|args, scope| define(args[0].symbol()?, args[1].to_params()?, args[2].to_type()?, &args[3], scope))));
     scope.add(Mac("set".to_owned(), BuiltIn(|args, scope| assign(args[0].symbol()?, args[1].eval(scope)?, scope))));
 
-    scope.add(Fun("block".to_owned(), Type::new("()->Any"), Stateful(|args, scope| block(args, scope))));
-    scope.add(Fun("print".to_owned(), Type::new("()->Any"), Stateful(|args, scope| print(args, scope))));
-    scope.add(Fun("while".to_owned(), Type::new("()->Any"), Stateful(|args, scope| run_while(args, scope))));
-    scope.add(Fun("if".to_owned(), Type::new("()->Any"), Stateful(|args, scope| if_else!(args[0].eval(scope)?.bool()? => args[1].eval(scope) ; args[2].eval(scope)))));
+    scope.add(Fun("block".to_owned(), Any,  Stateful(|args, scope| block(args, scope))));
+    scope.add(Fun("print".to_owned(), Any, Stateful(|args, scope| print(args, scope))));
+    scope.add(Fun("while".to_owned(), Any,  Stateful(|args, scope| run_while(args, scope))));
+    scope.add(Fun("if".to_owned(), Any, Stateful(|args, scope| if_else!(args[0].eval(scope)?.bool()? => args[1].eval(scope) ; args[2].eval(scope)))));
 }
 
 fn divide_int(a: &i64, b: &i64) ->  Result<Expr, Exception> {
@@ -133,8 +141,9 @@ fn assign(name: &str, value: Expr, scope: &mut Scope) -> Result<Expr, Exception>
 
 fn block(args: &Vec<Expr>, scope: &Scope) -> Result<Expr, Exception> {
     let mut result = Ok(Nil);
+    let mut local = scope.local();
     for arg in args {
-        result = arg.eval(scope);
+        result = arg.mut_eval(&mut local);
         if result.is_err() {
             break;
         }
@@ -153,6 +162,7 @@ fn print(args: &Vec<Expr>, scope: &Scope) -> Result<Expr, Exception> {
 fn run_while(args: &Vec<Expr>, scope: &Scope) -> Result<Expr, Exception> {
     let mut count = 0;
     let mut result = Ok(Nil);
+    let mut local = scope.local();
     loop {
         count += 1;
         if count >= 1000000 {
@@ -160,7 +170,7 @@ fn run_while(args: &Vec<Expr>, scope: &Scope) -> Result<Expr, Exception> {
         }
         if let Bool(bool) = args[0].eval(scope)? {
             if bool {
-                result = args[1].eval(scope)
+                result = args[1].mut_eval(&mut local)
             } else {
                 break result;
             }

@@ -1,14 +1,15 @@
 use std::fmt::Debug;
+
 use strum_macros::Display;
 
 use crate::exception::Exception;
-use crate::expr::Expr::{Def, Mac};
+use crate::expr::Expr::Mac;
 use crate::functions::{Function, Macro};
 use crate::parser::parse;
 use crate::scope::Scope;
 use crate::types::Type;
-use self::Expr::{Bool, Call, Failure, Float, Int, Nil, Str, Symbol, TypeOf, Params};
 
+use self::Expr::{Bool, Call, Failure, Float, Int, Nil, Params, Str, Symbol, TypeOf};
 
 #[derive(Debug, Clone, PartialEq, Display)]
 pub enum Expr {
@@ -20,7 +21,6 @@ pub enum Expr {
     TypeOf(Type),
     Params(Vec<(String, Type)>),
     Call(String, Vec<Expr>),
-    Def(String, Vec<Expr>),
     Failure(Exception),
     Fun(String, Type, Function),
     Mac(String, Macro),
@@ -94,24 +94,21 @@ impl Expr {
             Failure(e) => Err(e.clone()),
             Nil | Int(_) | Float(_) | Str(_) | Bool(_) | TypeOf(_) => Ok(self.clone()),
             Symbol(name) => handle_symbol(name, scope),
-            Call(name, args) => eval_call(name, args, scope),
+            Call(name, args) => handle_call(name, args, scope),
             _ => Err(Exception::NotImplemented(format!("{}", self))),
         }
     }
-    pub fn lazy_eval(&self, scope: &mut Scope) -> Result<Expr, Exception> {
-        if let Def(name, args) = self {
-            match scope.get_global(name) {
-                Some(Mac(_, lambda)) => lambda.apply(args, scope),
-                _ => Err(Exception::NotDefined(name.to_string())),
-            }
-        } else {
-            self.eval(scope)
+    pub fn mut_eval(&self, scope: &mut Scope) -> Result<Expr, Exception> {
+        match self {
+            Call(name, args) if scope.is_macro(name) => handle_macro(scope, name, args),
+            _ => self.eval(scope)
         }
     }
+
     pub fn eval_or_failed(&self, scope: &mut Scope) -> Expr {
         match self {
             Failure(_) => self.clone(),
-            expr => expr.lazy_eval(scope).unwrap_or_else(|ex| Failure(ex))
+            expr => expr.mut_eval(scope).unwrap_or_else(|ex| Failure(ex))
         }
     }
 
@@ -130,6 +127,7 @@ impl Expr {
 
 }
 
+
 fn format_float(x: &f64) -> String  {
     let str = x.to_string();
     if str.contains('.') {
@@ -139,35 +137,39 @@ fn format_float(x: &f64) -> String  {
     }
 }
 
+fn handle_macro(scope: &mut Scope, name: &String, args: &Vec<Expr>) -> Result<Expr, Exception> {
+    match scope.get_global(name) {
+        Some(Mac(_, lambda)) => lambda.clone().apply(args, scope),
+        _ => Err(Exception::NotDefined(name.to_string())),
+    }
+}
+
 fn handle_symbol(name: &str, scope: &Scope) -> Result<Expr, Exception> {
     scope.get_value(name).ok_or_else(|| Exception::UndefinedSymbol(name.to_string()))
 }
 
-fn eval_call(name: &str, args: &Vec<Expr>, scope: &Scope) -> Result<Expr, Exception> {
+fn handle_call(name: &str, args: &Vec<Expr>, scope: &Scope) -> Result<Expr, Exception> {
     args.iter().map(|e| e.eval(scope)).collect::<Result<Vec<Expr>, Exception>>().and_then(|values| {
         match scope.get_fun(name, values.get(0).map(|e| e.get_type())) {
-            Some((full_name, types, fun)) => apply_fun(full_name, types, &values, fun, &mut scope.extend()),
+            Some((full_name, types, fun)) => apply_fun(full_name, types, &values, fun, &mut scope.local()),
             _ => Err(Exception::UndefinedFunction(name.to_string())),
     }})
 }
 
 fn apply_fun(name: &str, specs: &Type, values: &Vec<Expr>, fun: &Function, scope: &mut Scope) ->  Result<Expr, Exception> {
-    if let Type::Fun(input, _output) = specs {
-        match check_arguments(name, input, values) {
-            Some(ex) => Err(ex),
-            _ => fun.apply(values, scope)
-        }
-    } else {
-        Err(Exception::NotA("Fun".to_owned(), specs.to_string()))
+    match specs {
+        Type::Any => fun.apply(values, scope),
+        Type::Fun(input, _output) => check_arguments(name, input, values).or(Some(fun.apply(values, scope))).unwrap(),
+        _ => Err(Exception::NotA("Fun".to_owned(), specs.to_string())),
     }
 }
 
-fn check_arguments(name: &str, expected: &Vec<Type>, values: &Vec<Expr>) -> Option<Exception> {
+fn check_arguments(name: &str, expected: &Vec<Type>, values: &Vec<Expr>) -> Option<Result<Expr, Exception>> {
     if expected.len() != values.len() {
-        return Some(Exception::WrongArgumentsNumber(name.to_owned(), expected.len(), values.len()))
+        return Some(Err(Exception::WrongArgumentsNumber(name.to_owned(), expected.len(), values.len())))
     }
     expected.iter().zip(values.iter()).find(|(e, v)| **e != v.get_type()).and_then(|p|
-        Some(Exception::UnexpectedArgumentType(name.to_owned(), p.1.to_string()))
+        Some(Err(Exception::UnexpectedArgumentType(name.to_owned(), p.1.to_string())))
     )
 }
 
