@@ -3,13 +3,13 @@ use std::fmt::Debug;
 use crate::exception::Exception;
 use crate::expr::Expr;
 use crate::expr::Expr::{Bool, Float, Fun, Int, Mac, Nil, Symbol};
-use crate::functions::Function::Stateless;
+use crate::functions::Function::Simple;
 use crate::functions::Macro::BuiltIn;
 use crate::scope::Scope;
 use crate::types::Type;
 use crate::types::Type::Any;
 
-use self::Function::{Stateful, Defined};
+use self::Function::{Lazy, Defined};
 
 macro_rules! if_else {
     ($condition:expr => $true_branch:expr ; $false_branch:expr) => {
@@ -19,16 +19,16 @@ macro_rules! if_else {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Function {
-    Stateless(fn(&Vec<Expr>) -> Result<Expr, Exception>),
-    Stateful(fn(&Vec<Expr>, &Scope) -> Result<Expr, Exception>),
+    Simple(fn(&Vec<Expr>) -> Result<Expr, Exception>),
+    Lazy(fn(&Vec<Expr>, &Scope) -> Result<Expr, Exception>),
     Defined(Vec<String>, Box<Expr>),
 }
 
 impl Function {
     pub fn apply(&self, args: &Vec<Expr>, scope: &Scope) -> Result<Expr, Exception> {
         match self {
-            Stateless(f) => f(args),
-            Stateful(f) => f(args, scope),
+            Simple(f) => f(args),
+            Lazy(f) => f(args, scope),
             Defined(params,body) => apply_defined(scope, body, params, args)
         }
     }
@@ -57,30 +57,30 @@ fn apply_defined(scope: &Scope, body: &Box<Expr>, params: &Vec<String>, args: &V
 pub fn load_functions(scope: &mut Scope) {
     // int arithmetics
     let spec = || Type::new("(Int,Int)->Int");
-    scope.add(Fun("Int.add".to_owned(), spec(), Stateless(|args| Ok(Int(args[0].int()? + args[1].int()?)))));
-    scope.add(Fun("Int.sub".to_owned(), spec(), Stateless(|args| Ok(Int(args[0].int()? - args[1].int()?)))));
-    scope.add(Fun("Int.mul".to_owned(), spec(), Stateless(|args| Ok(Int(args[0].int()? * args[1].int()?)))));
-    scope.add(Fun("Int.div".to_owned(), spec(), Stateless(|args| divide_int(args[0].int()?, args[1].int()?))));
-    scope.add(Fun("Int.mod".to_owned(), spec(), Stateless(|args| modulo_int(args[0].int()?, args[1].int()?))));
+    scope.add(Fun("Int.add".to_owned(), spec(), Simple(|args| Ok(Int(args[0].int()? + args[1].int()?)))));
+    scope.add(Fun("Int.sub".to_owned(), spec(), Simple(|args| Ok(Int(args[0].int()? - args[1].int()?)))));
+    scope.add(Fun("Int.mul".to_owned(), spec(), Simple(|args| Ok(Int(args[0].int()? * args[1].int()?)))));
+    scope.add(Fun("Int.div".to_owned(), spec(), Simple(|args| divide_int(args[0].int()?, args[1].int()?))));
+    scope.add(Fun("Int.mod".to_owned(), spec(), Simple(|args| modulo_int(args[0].int()?, args[1].int()?))));
 
     // float arithmetics
     let spec = || Type::new("(Float,Float)->Float");
-    scope.add(Fun("Float.add".to_owned(), spec(), Stateless(|args| Ok(Float(args[0].float()? + args[1].float()?)))));
-    scope.add(Fun("Float.sub".to_owned(), spec(), Stateless(|args| Ok(Float(args[0].float()? - args[1].float()?)))));
-    scope.add(Fun("Float.mul".to_owned(), spec(), Stateless(|args| Ok(Float(args[0].float()? * args[1].float()?)))));
-    scope.add(Fun("Float.div".to_owned(), spec(), Stateless(|args| divide_float(args[0].float()?, args[1].float()?))));
+    scope.add(Fun("Float.add".to_owned(), spec(), Simple(|args| Ok(Float(args[0].float()? + args[1].float()?)))));
+    scope.add(Fun("Float.sub".to_owned(), spec(), Simple(|args| Ok(Float(args[0].float()? - args[1].float()?)))));
+    scope.add(Fun("Float.mul".to_owned(), spec(), Simple(|args| Ok(Float(args[0].float()? * args[1].float()?)))));
+    scope.add(Fun("Float.div".to_owned(), spec(), Simple(|args| divide_float(args[0].float()?, args[1].float()?))));
     // boolean logic
     let spec = || Type::new("(Bool,Bool)->Bool");
-    scope.add(Fun("Bool.and".to_owned(), spec(), Stateless(|args| Ok(Bool(args[0].bool()? && args[1].bool()?)))));
-    scope.add(Fun("Bool.or".to_owned(), spec(), Stateless(|args| Ok(Bool(args[0].bool()? || args[1].bool()?)))));
+    scope.add(Fun("Bool.and".to_owned(), spec(), Simple(|args| Ok(Bool(args[0].bool()? && args[1].bool()?)))));
+    scope.add(Fun("Bool.or".to_owned(), spec(), Simple(|args| Ok(Bool(args[0].bool()? || args[1].bool()?)))));
     // comparisons
     let spec = || Type::new("(Int,Int)->Bool");
-    scope.add(Fun("Int.eq".to_owned(), spec(), Stateless(|args| Ok(Bool(args[0].int()? == args[1].int()?)))));
-    scope.add(Fun("Int.neq".to_owned(), spec(), Stateless(|args| Ok(Bool(args[0].int()? != args[1].int()?)))));
-    scope.add(Fun("Int.gt".to_owned(), spec(), Stateless(|args| Ok(Bool(args[0].int()? > args[1].int()?)))));
-    scope.add(Fun("Int.ge".to_owned(), spec(), Stateless(|args| Ok(Bool(args[0].int()? >= args[1].int()?)))));
-    scope.add(Fun("Int.lt".to_owned(), spec(), Stateless(|args| Ok(Bool(args[0].int()? < args[1].int()?)))));
-    scope.add(Fun("Int.le".to_owned(), spec(), Stateless(|args| Ok(Bool(args[0].int()? <= args[1].int()?)))));
+    scope.add(Fun("Int.eq".to_owned(), spec(), Simple(|args| Ok(Bool(args[0].int()? == args[1].int()?)))));
+    scope.add(Fun("Int.neq".to_owned(), spec(), Simple(|args| Ok(Bool(args[0].int()? != args[1].int()?)))));
+    scope.add(Fun("Int.gt".to_owned(), spec(), Simple(|args| Ok(Bool(args[0].int()? > args[1].int()?)))));
+    scope.add(Fun("Int.ge".to_owned(), spec(), Simple(|args| Ok(Bool(args[0].int()? >= args[1].int()?)))));
+    scope.add(Fun("Int.lt".to_owned(), spec(), Simple(|args| Ok(Bool(args[0].int()? < args[1].int()?)))));
+    scope.add(Fun("Int.le".to_owned(), spec(), Simple(|args| Ok(Bool(args[0].int()? <= args[1].int()?)))));
 
     //  macros
     scope.add(Mac("var".to_owned(), BuiltIn(|args, scope| declare(args[0].symbol()?, args[1].to_type()?, args[2].eval(scope)?, scope, true))));
@@ -88,10 +88,10 @@ pub fn load_functions(scope: &mut Scope) {
     scope.add(Mac("fun".to_owned(), BuiltIn(|args, scope| define(args[0].symbol()?, args[1].to_params()?, args[2].to_type()?, &args[3], scope))));
     scope.add(Mac("set".to_owned(), BuiltIn(|args, scope| assign(args[0].symbol()?, args[1].eval(scope)?, scope))));
 
-    scope.add(Fun("block".to_owned(), Any,  Stateful(|args, scope| block(args, scope))));
-    scope.add(Fun("print".to_owned(), Any, Stateful(|args, scope| print(args, scope))));
-    scope.add(Fun("while".to_owned(), Any,  Stateful(|args, scope| run_while(args, scope))));
-    scope.add(Fun("if".to_owned(), Any, Stateful(|args, scope| if_else!(args[0].eval(scope)?.bool()? => args[1].eval(scope) ; args[2].eval(scope)))));
+    scope.add(Fun("block".to_owned(), Any, Lazy(|args, scope| block(args, scope))));
+    scope.add(Fun("print".to_owned(), Any, Lazy(|args, scope| print(args, scope))));
+    scope.add(Fun("while".to_owned(), Any, Lazy(|args, scope| run_while(args, scope))));
+    scope.add(Fun("if".to_owned(), Any, Lazy(|args, scope| if_else!(args[0].eval(scope)?.bool()? => args[1].eval(scope) ; args[2].eval(scope)))));
 }
 
 fn divide_int(a: &i64, b: &i64) ->  Result<Expr, Exception> {
@@ -162,7 +162,6 @@ fn print(args: &Vec<Expr>, scope: &Scope) -> Result<Expr, Exception> {
 fn run_while(args: &Vec<Expr>, scope: &Scope) -> Result<Expr, Exception> {
     let mut count = 0;
     let mut result = Ok(Nil);
-    let mut local = scope.local();
     loop {
         count += 1;
         if count >= 1000000 {
@@ -170,7 +169,7 @@ fn run_while(args: &Vec<Expr>, scope: &Scope) -> Result<Expr, Exception> {
         }
         if let Bool(bool) = args[0].eval(scope)? {
             if bool {
-                result = args[1].mut_eval(&mut local)
+                result = args[1].eval(scope)
             } else {
                 break result;
             }

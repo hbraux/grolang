@@ -18,7 +18,8 @@ pub enum Type {
     Option(Box<Type>),
     Try(Box<Type>),
     Map(Box<Type>, Box<Type>),
-    Fun(Vec<Type>, Box<Type>)
+    Fun(Vec<Type>, Box<Type>),
+    LazyFun
 }
 
 

@@ -149,17 +149,19 @@ fn handle_symbol(name: &str, scope: &Scope) -> Result<Expr, Exception> {
 }
 
 fn handle_call(name: &str, args: &Vec<Expr>, scope: &Scope) -> Result<Expr, Exception> {
-    args.iter().map(|e| e.eval(scope)).collect::<Result<Vec<Expr>, Exception>>().and_then(|values| {
-        match scope.get_fun(name, values.get(0).map(|e| e.get_type())) {
-            Some((full_name, types, fun)) => apply_fun(full_name, types, &values, fun, &mut scope.local()),
-            _ => Err(Exception::UndefinedFunction(name.to_string())),
-    }})
+    let first = args.get(0).map(|e| e.eval(scope)).and_then();
+    match scope.get_fun(name, first.map(|e| e.get_type())) {
+        Some((full_name, types, fun)) => apply_fun(full_name, types, args, fun, &mut scope.local()),
+        _ => Err(Exception::UndefinedFunction(name.to_string())),
+    }
 }
 
-fn apply_fun(name: &str, specs: &Type, values: &Vec<Expr>, fun: &Function, scope: &mut Scope) ->  Result<Expr, Exception> {
+fn apply_fun(name: &str, specs: &Type, args: &Vec<Expr>, fun: &Function, scope: &mut Scope) ->  Result<Expr, Exception> {
     match specs {
-        Type::Any => fun.apply(values, scope),
-        Type::Fun(input, _output) => check_arguments(name, input, values).or(Some(fun.apply(values, scope))).unwrap(),
+        Type::LazyFun => fun.apply(args, scope),
+        Type::Fun(input, _output) => args.iter().map(|e| e.eval(scope)).collect::<Result<Vec<Expr>, Exception>>().and_then(|values| {
+            check_arguments(name, input, &values).or(Some(fun.apply(&values, scope))).unwrap()
+        }),
         _ => Err(Exception::NotA("Fun".to_owned(), specs.to_string())),
     }
 }

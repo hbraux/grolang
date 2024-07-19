@@ -30,6 +30,7 @@ impl Scope<'_> {
     fn get(&self, name: &str) -> Option<&Expr> {
         self.values.get(name).or(self.parent.map(|e| e.get(name)).flatten())
     }
+
     pub fn get_global(&self, name: &str) -> Option<&Expr> {
         if self.parent.is_some() {
             self.parent.unwrap().get_global(name)

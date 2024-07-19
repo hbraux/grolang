@@ -144,6 +144,7 @@ mod tests {
         assert_eq!("nil", scope.exec("print(\"hello world\")"));
     }
 
+
     #[test]
     fn test_while() {
         let mut scope = Scope::init();
