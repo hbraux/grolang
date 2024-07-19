@@ -65,7 +65,7 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
         Rule::Expr =>  parse_pairs(pair.into_inner()),
         Rule::CallExpr => build_call(to_vec(pair, 0, 0)),
         Rule::Declaration => build_call(to_vec(pair, 4, 2)),
-        Rule::Assignment => Expr::Call("set".to_owned(), to_vec(pair, 0, 0)),
+        Rule::Assignment => Expr::Call("assign".to_owned(), to_vec(pair, 0, 0)),
         Rule::IfElse =>  Expr::Call("if".to_owned(), to_vec(pair, 3, 0 )),
         Rule::While => Expr::Call("while".to_owned(), to_vec(pair, 0, 0)),
         Rule::Block => Expr::Call("block".to_owned(), to_vec(pair, 0, 0)),
@@ -155,8 +155,9 @@ mod tests {
 
     #[test]
     fn test_assignments() {
-        assert_eq!("Call(set, [Symbol(a), Int(2)])", read("a = 2"));
-        assert_eq!("Call(set, [Symbol(a), Int(2)])", read("set(a, 2)"));
+        assert_eq!("Call(assign, [Symbol(a), Int(2)])", read("a = 2"));
+        assert_eq!("Call(assign, [Symbol(a), Int(2)])", read("assign(a, 2)"));
+        assert_eq!("Call(assign, [Symbol(a), Call(add, [Symbol(a), Int(1)])])", read("a = a + 1"));
     }
 
     #[test]
@@ -183,7 +184,7 @@ mod tests {
     fn test_if_while() {
         assert_eq!("Call(if, [Call(eq, [Symbol(a), Int(1)]), Call(block, [Int(2)]), Call(block, [Int(3)])])", read("if (a == 1) { 2 } else { 3 }"));
         assert_eq!("Call(if, [Bool(true), Call(block, [Int(1)]), Nil])", read("if (true) { 1 } "));
-        assert_eq!("Call(while, [Call(le, [Symbol(a), Int(10)]), Call(block, [Call(set, [Symbol(a), Call(add, [Symbol(a), Int(1)])])])])",
+        assert_eq!("Call(while, [Call(le, [Symbol(a), Int(10)]), Call(block, [Call(assign, [Symbol(a), Call(add, [Symbol(a), Int(1)])])])])",
                    read("while (a < 10) { a = a + 1 }"));
     }
 

@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::string::ToString;
 
 use crate::expr::Expr;
-use crate::expr::Expr::{Fun, Mac};
+use crate::expr::Expr::{Fun};
 use crate::functions::{Function, load_functions};
 use crate::types::Type;
 
@@ -38,21 +38,20 @@ impl Scope<'_> {
             self.values.get(name)
         }
     }
-    pub fn is_macro(&self, name: &str) -> bool {
-        matches!(self.get_global(name), Some(Mac(_,_)))
+    pub fn is_mutating_fun(&self, name: &str) -> bool {
+        matches!(self.get_global(name), Some(Fun(_, Type::MutatingFun, _)))
     }
 
-    pub fn get_fun(&self, name: &str, obj_type: Option<Type>) -> Option<(&String, &Type, &Function)> {
+    pub fn get_fun(&self, name: &str, self_type: Option<Type>) -> Option<(&String, &Type, &Function)> {
         match self.get(name) {
             Some(Fun(name, specs, fun)) => Some((name, specs, fun)),
-            None if obj_type.is_some() => self.get_fun(&(obj_type.unwrap().method_name(name)), None),
+            None if self_type.is_some() => self.get_fun(&(self_type.unwrap().method_name(name)), None),
             _ => None,
         }
     }
     pub fn add(&mut self, value: Expr) {
         match &value {
             Fun(name, _, _) => self.values.insert(name.to_owned(), value),
-            Mac(name, _) => self.values.insert(name.to_owned(), value),
             _ => panic!("cannot add {}", value)
         };
     }

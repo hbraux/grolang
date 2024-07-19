@@ -84,9 +84,10 @@ mod tests {
     fn test_variables() {
         let mut scope = Scope::init();
         assert_eq!("a", scope.exec("var a = 1"));
+        assert_eq!("1", scope.exec("a"));
         assert_eq!("AlreadyDefined(a)", scope.exec("var a = 3"));
         assert_eq!("2", scope.exec("a = a + 1"));
-        assert_eq!("0", scope.exec("a.set(0)"));
+        assert_eq!("0", scope.exec("a.assign(0)"));
         assert_eq!("UnexpectedType(Float)", scope.exec("a = 3.0"));
         assert_eq!("c", scope.exec("val c=3.2"));
         assert_eq!("UnexpectedType(Float)", scope.exec("var d: Int = 3.2"));

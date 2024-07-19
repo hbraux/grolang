@@ -3,8 +3,9 @@ use std::fmt::Debug;
 use strum_macros::Display;
 
 use crate::exception::Exception;
-use crate::expr::Expr::Mac;
-use crate::functions::{Function, Macro};
+use crate::expr::Expr::Fun;
+use crate::functions::Function;
+use crate::functions::Function::Mutating;
 use crate::parser::parse;
 use crate::scope::Scope;
 use crate::types::Type;
@@ -23,7 +24,6 @@ pub enum Expr {
     Call(String, Vec<Expr>),
     Failure(Exception),
     Fun(String, Type, Function),
-    Mac(String, Macro),
     Nil,
 }
 
@@ -100,7 +100,7 @@ impl Expr {
     }
     pub fn mut_eval(&self, scope: &mut Scope) -> Result<Expr, Exception> {
         match self {
-            Call(name, args) if scope.is_macro(name) => handle_macro(scope, name, args),
+            Call(name, args) if scope.is_mutating_fun(name) => handle_mut_call(scope, name, args),
             _ => self.eval(scope)
         }
     }
@@ -137,26 +137,32 @@ fn format_float(x: &f64) -> String  {
     }
 }
 
-fn handle_macro(scope: &mut Scope, name: &String, args: &Vec<Expr>) -> Result<Expr, Exception> {
-    match scope.get_global(name) {
-        Some(Mac(_, lambda)) => lambda.clone().apply(args, scope),
-        _ => Err(Exception::NotDefined(name.to_string())),
-    }
-}
-
 fn handle_symbol(name: &str, scope: &Scope) -> Result<Expr, Exception> {
     scope.get_value(name).ok_or_else(|| Exception::UndefinedSymbol(name.to_string()))
 }
 
 fn handle_call(name: &str, args: &Vec<Expr>, scope: &Scope) -> Result<Expr, Exception> {
-    let first = args.get(0).map(|e| e.eval(scope)).and_then();
-    match scope.get_fun(name, first.map(|e| e.get_type())) {
-        Some((full_name, types, fun)) => apply_fun(full_name, types, args, fun, &mut scope.local()),
+    let self_type = match args.get(0).map(|e| e.eval(scope)) {
+        Some(Err(e)) => return Err(e),
+        Some(Ok(e)) => Some(e.get_type()),
+        _ => None,
+    };
+    match scope.get_fun(name, self_type) {
+        Some((full_name, types, fun)) => apply_fun(full_name, types, args, fun, scope),
         _ => Err(Exception::UndefinedFunction(name.to_string())),
     }
 }
 
-fn apply_fun(name: &str, specs: &Type, args: &Vec<Expr>, fun: &Function, scope: &mut Scope) ->  Result<Expr, Exception> {
+fn handle_mut_call(scope: &mut Scope, name: &String, args: &Vec<Expr>) -> Result<Expr, Exception> {
+    if let Some(Fun(_, _, fun)) = scope.get_global(name) {
+        if let Mutating(lambda) = fun {
+            return lambda(args, scope)
+        }
+    }
+    Err(Exception::NotDefined(name.to_string()))
+}
+
+fn apply_fun(name: &str, specs: &Type, args: &Vec<Expr>, fun: &Function, scope: &Scope) ->  Result<Expr, Exception> {
     match specs {
         Type::LazyFun => fun.apply(args, scope),
         Type::Fun(input, _output) => args.iter().map(|e| e.eval(scope)).collect::<Result<Vec<Expr>, Exception>>().and_then(|values| {
