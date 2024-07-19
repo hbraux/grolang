@@ -68,7 +68,7 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
         Rule::Assignment => Expr::Call("assign".to_owned(), to_vec(pair, 0, 0)),
         Rule::IfElse =>  Expr::Call("if".to_owned(), to_vec(pair, 3, 0 )),
         Rule::While => Expr::Call("while".to_owned(), to_vec(pair, 0, 0)),
-        Rule::Block => Expr::Call("block".to_owned(), to_vec(pair, 0, 0)),
+        Rule::Block => Expr::Block(to_vec(pair, 0, 0)),
         Rule::Definition => Expr::Call("fun".to_owned(), to_vec(pair, 0, 0)),
         Rule::Parameters => build_params(to_vec(pair, 0, 0)),
         _ => panic!("Rule '{}' not implemented", operator_name(pair))
@@ -173,6 +173,7 @@ mod tests {
             read("(x == 2) || (y >= 1) && z"));
     }
 
+
     #[test]
     fn test_calls() {
         assert_eq!("Call(print, [Symbol(a)])", read("print(a)"));
@@ -184,18 +185,18 @@ mod tests {
 
     #[test]
     fn test_if_while() {
-        assert_eq!("Call(if, [Call(eq, [Symbol(a), Int(1)]), Call(block, [Int(2)]), Call(block, [Int(3)])])", read("if (a == 1) { 2 } else { 3 }"));
-        assert_eq!("Call(if, [Bool(true), Call(block, [Int(1)]), Nil])", read("if (true) { 1 } "));
-        assert_eq!("Call(while, [Call(le, [Symbol(a), Int(10)]), Call(block, [Call(assign, [Symbol(a), Call(add, [Symbol(a), Int(1)])])])])",
+        assert_eq!("Call(if, [Call(eq, [Symbol(a), Int(1)]), Block([Int(2)]), Block([Int(3)])])", read("if (a == 1) { 2 } else { 3 }"));
+        assert_eq!("Call(if, [Bool(true), Block([Int(1)]), Nil])", read("if (true) { 1 } "));
+        assert_eq!("Call(while, [Call(le, [Symbol(a), Int(10)]), Block([Call(assign, [Symbol(a), Call(add, [Symbol(a), Int(1)])])])])",
                    read("while (a <= 10) { a = a + 1 }"));
     }
 
     #[test]
     fn test_fun() {
         assert_eq!("Call(fun, [Symbol(pi), Params([]), TypeOf(Float), Float(3.14)])", read("fun pi(): Float = 3.14"));
-        assert_eq!("Call(fun, [Symbol(inc), Params([(a, Int)]), TypeOf(Int), Call(block, [Call(add, [Symbol(a), Int(1)])])])",
+        assert_eq!("Call(fun, [Symbol(inc), Params([(a, Int)]), TypeOf(Int), Block([Call(add, [Symbol(a), Int(1)])])])",
                    read("fun inc(a: Int): Int = { a + 1 }"));
-        assert_eq!("Call(fun, [Symbol(zero), Params([]), TypeOf(Int), Call(block, [Call(val, [Symbol(x), Nil, Int(0)]), Symbol(x)])])",
+        assert_eq!("Call(fun, [Symbol(zero), Params([]), TypeOf(Int), Block([Call(val, [Symbol(x), Nil, Int(0)]), Symbol(x)])])",
                    read("fun zero(): Int = { val x = 0 ; x }"));
     }
 

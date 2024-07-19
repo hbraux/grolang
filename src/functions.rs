@@ -81,7 +81,7 @@ pub fn load_functions(scope: &mut Scope) {
 
     scope.add_fun(Fun("block".to_owned(), LazyFun, Lazy(|args, scope| block(args, scope))));
     scope.add_fun(Fun("print".to_owned(), LazyFun, Lazy(|args, scope| print(args, scope))));
-    scope.add_fun(Fun("while".to_owned(), MutatingFun, Mutating(|args, scope| run_while(&args[0], &args[1].unblock(), scope))));
+    scope.add_fun(Fun("while".to_owned(), MutatingFun, Mutating(|args, scope| run_while(&args[0], args, scope))));
     scope.add_fun(Fun("if".to_owned(), LazyFun, Lazy(|args, scope| if_else!(args[0].eval(scope)?.bool()? => args[1].eval(scope) ; args[2].eval(scope)))));
 }
 
