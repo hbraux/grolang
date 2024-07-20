@@ -1,6 +1,4 @@
-use std::fmt::Debug;
-
-use strum_macros::Display;
+use std::fmt::{Debug, Display, Formatter};
 
 use crate::exception::Exception;
 use crate::expr::Expr::{Block, Fun};
@@ -12,7 +10,7 @@ use crate::types::Type;
 
 use self::Expr::{Bool, Call, Failure, Float, Int, Nil, Params, Str, Symbol, TypeOf};
 
-#[derive(Debug, Clone, PartialEq, Display)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
     Int(i64),
     Float(f64),
@@ -33,6 +31,22 @@ pub const TRUE: Expr = Bool(true);
 pub const FALSE: Expr = Bool(false);
 pub const NIL: Expr = Nil;
 
+impl Display for Expr {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let str = match self {
+            Bool(x) => x.to_string(),
+            Int(x) => x.to_string(),
+            Str(x) => format!("\"{}\"", x),
+            Nil => "nil".to_owned(),
+            Float(x) => format_float(x),
+            Symbol(x) => x.to_owned(),
+            Failure(x) => x.format(),
+            Call(name, vec) => format!("{}({})", name, vec.iter().map(|e| e.to_string()).collect::<Vec<String>>().join(",")),
+            _ => format!("{:?}", self),
+        };
+        write!(f, "{}", str)
+    }
+}
 impl Expr {
     pub fn read(str: &str, _ctx: &Scope) -> Expr {
         parse(str).unwrap_or_else(|s| Failure(Exception::CannotParse(s)))
@@ -40,8 +54,6 @@ impl Expr {
     pub fn read_type(str: &str) -> Expr {
         TypeOf(Type::new(str.replace(":", "").trim()))
     }
-    // recursive format with debug
-    pub fn format(&self) -> String { format!("{:?}", self).replace("\"","") }
 
     pub fn get_type(&self) -> Type {
         match self {
@@ -120,18 +132,8 @@ impl Expr {
     }
 
     pub fn print(&self) -> String {
-        match self {
-            Bool(x) => x.to_string(),
-            Int(x) => x.to_string(),
-            Str(x) => format!("\"{}\"", x),
-            Nil => "nil".to_owned(),
-            Float(x) => format_float(x),
-            Symbol(x) => x.to_owned(),
-            Failure(x) => x.format(),
-            _ => format!("{:?}", self),
-        }
+        self.to_string()
     }
-
 }
 
 
@@ -200,12 +202,3 @@ fn check_arguments(name: &str, expected: &Vec<Type>, values: &Vec<Expr>) -> Opti
 }
 
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_format() {
-        assert_eq!("Nil", Nil.format())
-    }
-}

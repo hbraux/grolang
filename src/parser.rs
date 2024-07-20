@@ -124,7 +124,7 @@ fn to_literal(str: &str) -> Expr {
 mod tests {
     use super::*;
 
-    fn read(str: &str) -> String { parse(str).unwrap().format() }
+    fn read(str: &str) -> String { parse(str).unwrap().print().replace("\"","") }
 
     #[test]
     fn test_literals() {
