@@ -148,38 +148,35 @@ mod tests {
 
     #[test]
     fn test_declarations() {
-        assert_eq!("Call(val, [Symbol(f), TypeOf(Float), Float(1.0)])", read("val f: Float = 1.0"));
-        assert_eq!("Call(var, [Symbol(a), Nil, Int(1)])", read("var a = 1"));
-
+        assert_eq!("val(f,Float,1.0)", read("val f: Float = 1.0"));
+        assert_eq!("val(f,Float,1.0)", read("val(f,Float,1.0)"));
+        assert_eq!("var(a,nil,1)", read("var a = 1"));
     }
 
     #[test]
     fn test_assignments() {
-        assert_eq!("Call(assign, [Symbol(a), Int(2)])", read("a = 2"));
-        assert_eq!("Call(assign, [Symbol(a), Int(2)])", read("assign(a, 2)"));
-        assert_eq!("Call(assign, [Symbol(a), Call(add, [Symbol(a), Int(1)])])", read("a = a + 1"));
+        assert_eq!("assign(a,2)", read("a = 2"));
+        assert_eq!("assign(a,2)", read("assign(a, 2)"));
+        assert_eq!("assign(a,add(a,1))", read("a = a + 1"));
     }
 
     #[test]
     fn test_arithmetic_order() {
-        assert_eq!("Call(mul, [Int(1), Int(2)])", read("1 * 2"));
-        assert_eq!("Call(add, [Int(1), Call(mul, [Int(2), Int(3)])])", read("1 + 2 * 3"));
-        assert_eq!("Call(mul, [Int(1), Call(add, [Int(-2), Int(3)])])", read("1 * (-2 + 3)"));
+        assert_eq!("mul(1,2)", read("1 * 2"));
+        assert_eq!("add(1,mul(2,3))", read("1 + 2 * 3"));
+        assert_eq!("mul(1,add(-2,3))", read("1 * (-2 + 3)"));
     }
 
     #[test]
     fn test_boolean_expr() {
-        assert_eq!("Call(and, [Call(or, [Call(eq, [Symbol(x), Int(2)]), Call(ge, [Symbol(y), Int(1)])]), Symbol(z)])",
-            read("(x == 2) || (y >= 1) && z"));
+        assert_eq!("and(or(eq(x,2),ge(y,1)),z)", read("(x == 2) || (y >= 1) && z"));
     }
 
 
     #[test]
     fn test_calls() {
-        assert_eq!("Call(print, [Symbol(a)])", read("print(a)"));
-        assert_eq!("Call(mul, [Int(1), Int(2)])", read("1.mul(2)]"));
-        assert_eq!("Call(mul, [Int(1), Call(add, [Int(-2), Int(3)])])", read("1.mul(-2.add(3))"));
-        assert_eq!("Call(mul, [Symbol(a), Call(fact, [Call(sub, [Symbol(a), Int(1)])])])", read("a*fact(a-1)"));
+        assert_eq!("print(a,b)", read("print(a,b)"));
+        assert_eq!("mul(a,fact(sub(a,1)))", read("a*fact(a-1)"));
     }
 
 
