@@ -42,6 +42,7 @@ impl Display for Expr {
             Symbol(x) => x.to_owned(),
             Failure(x) => x.format(),
             TypeOf(x) => x.to_string(),
+            Block(vec) => format!("[{}]", vec.iter().map(|e| e.to_string()).collect::<Vec<String>>().join(";")),
             Call(name, vec) => format!("{}({})", name, vec.iter().map(|e| e.to_string()).collect::<Vec<String>>().join(",")),
             _ => format!("{:?}", self),
         };

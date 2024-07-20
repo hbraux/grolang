@@ -182,17 +182,17 @@ mod tests {
 
     #[test]
     fn test_if_while() {
-        assert_eq!("Call(if, [Call(eq, [Symbol(a), Int(1)]), Block([Int(2)]), Block([Int(3)])])", read("if (a == 1) { 2 } else { 3 }"));
-        assert_eq!("Call(if, [Bool(true), Block([Int(1)]), Nil])", read("if (true) { 1 } "));
-        assert_eq!("Call(while, [Call(le, [Symbol(a), Int(10)]), Block([Call(assign, [Symbol(a), Call(add, [Symbol(a), Int(1)])])])])",
-                   read("while (a <= 10) { a = a + 1 }"));
+        assert_eq!("if(eq(a,1),[2],[3])", read("if (a == 1) { 2 } else { 3 }"));
+        assert_eq!("if(eq(a,1),2,3)", read("if (a == 1) 2 else 3"));
+        assert_eq!("if(eq(a,1),2,3)", read("if(eq(a,1),2,3)"));
+        assert_eq!("if(true,[1],nil)", read("if (true) { 1 } "));
+        assert_eq!("while(le(a,10),[print(a);assign(a,add(a,1))])", read("while (a <= 10) { print(a) ; a = a + 1 }"));
     }
 
     #[test]
     fn test_fun() {
-        assert_eq!("Call(fun, [Symbol(pi), Params([]), TypeOf(Float), Float(3.14)])", read("fun pi(): Float = 3.14"));
-        assert_eq!("Call(fun, [Symbol(inc), Params([(a, Int)]), TypeOf(Int), Block([Call(add, [Symbol(a), Int(1)])])])",
-                   read("fun inc(a: Int): Int = { a + 1 }"));
+        assert_eq!("fun(pi,Params([]),Float,3.14)", read("fun pi(): Float = 3.14"));
+        assert_eq!("fun(inc,Params([(a, Int)]),Int,[add(a,1)])", read("fun inc(a: Int): Int = { a + 1 }"));
         assert_eq!("Call(fun, [Symbol(zero), Params([]), TypeOf(Int), Block([Call(val, [Symbol(x), Nil, Int(0)]), Symbol(x)])])",
                    read("fun zero(): Int = { val x = 0 ; x }"));
     }
