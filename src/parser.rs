@@ -8,7 +8,7 @@ use pest::pratt_parser::{Op, PrattParser};
 use pest::pratt_parser::Assoc::Left;
 use pest_derive::Parser;
 use crate::expr::{Expr, FALSE, NIL, TRUE};
-use crate::expr::Expr::{List, Param};
+use crate::types::Type;
 
 
 #[derive(Parser)]
@@ -62,6 +62,7 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
         Rule::Symbol | Rule::VarType => Expr::Symbol(pair.as_str().to_owned()),
         Rule::TypeSpec => Expr::read_type(pair.as_str()),
         Rule::Operator => Expr::Symbol(pair.as_str().to_owned()),
+        Rule::Param => build_param(pair.as_str()),
         Rule::Expr =>  parse_pairs(pair.into_inner()),
         Rule::CallExpr => build_call(to_vec(pair, 0, 0)),
         Rule::Declaration => build_call(to_vec(pair, 4, 2)),
@@ -70,7 +71,7 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
         Rule::While => Expr::Call("while".to_owned(), to_vec(pair, 0, 0)),
         Rule::Block => Expr::Block(to_vec(pair, 0, 0)),
         Rule::Definition => Expr::Call("fun".to_owned(), to_vec(pair, 0, 0)),
-        Rule::Parameters => build_params(to_vec(pair, 0, 0)),
+        Rule::Parameters => Expr::List(to_vec(pair, 0, 0)),
         _ => panic!("Rule '{}' not implemented", operator_name(pair))
     }
 }
@@ -85,11 +86,10 @@ fn build_call(mut args: Vec<Expr>) -> Expr {
 }
 
 
-fn build_params(args: Vec<Expr>) -> Expr {
-    List(args.chunks(2).map(|pair| match (&pair[0], &pair[1]) {
-        (Expr::Symbol(name), Expr::TypeOf(typ)) => Param(name.to_string(), typ.clone()),
-        _ => panic!("expecting a pair symbol/type"),
-    }).collect())
+fn build_param(str: &str) -> Expr {
+    let mut s = str.split(";");
+    Expr::Param(s.next().unwrap().to_string(), Type::new(s.next().unwrap()))
+
 }
 
 fn to_vec(pair: Pair<Rule>, expected_len: usize, optional_pos: usize) -> Vec<Expr> {

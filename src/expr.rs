@@ -43,7 +43,7 @@ impl Display for Expr {
             Failure(x) => x.format(),
             TypeOf(x) => x.to_string(),
             Param(n, t) => format!("{}:{}", n, t),
-            List(vec) => format_vec(vec, ",", "[", "]"),
+            List(vec) => format_vec(vec, ",", "(", ")"),
             Block(vec) => format_vec(vec, ";", "{", "}"),
             Call(name, vec) => format_vec(vec, ",", &(name.to_string() + "("), ")"),
             _ => format!("{:?}", self),
