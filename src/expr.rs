@@ -96,7 +96,7 @@ impl Expr {
             Nil | Int(_) | Float(_) | Str(_) | Bool(_) | TypeOf(_) => Ok(self.clone()),
             Symbol(name) => handle_symbol(name, scope),
             Call(name, args) => handle_call(name, args, scope),
-            _ => Err(Exception::NotImplemented(format!("{}", self))),
+            _ => panic!("not implemented {}", self),
         }
     }
     pub fn mut_eval(&self, scope: &mut Scope) -> Result<Expr, Exception> {

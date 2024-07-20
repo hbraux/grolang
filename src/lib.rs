@@ -149,7 +149,7 @@ mod tests {
     fn test_while() {
         let mut scope = Scope::init();
         scope.exec("var a = 0");
-        assert_eq!("11", scope.exec("while (a < 10) { a = a + 1 }"));
+        assert_eq!("11", scope.exec("while (a <= 10) { a = a + 1 }"));
     }
 
     #[test]

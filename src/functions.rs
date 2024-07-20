@@ -74,14 +74,14 @@ pub fn load_functions(scope: &mut Scope) {
     scope.add_fun(Fun("Int.le".to_owned(), spec(), Lambda(|args| Ok(Bool(args[0].int()? <= args[1].int()?)))));
 
     //  macros
-    scope.add_fun(Fun("var".to_owned(), MutatingFun, Mutating(|args, scope| declare(args[0].symbol()?, args[1].to_type()?, args[2].eval(scope)?, scope, true))));
-    scope.add_fun(Fun("val".to_owned(), MutatingFun, Mutating(|args, scope| declare(args[0].symbol()?, args[1].to_type()?, args[2].eval(scope)?, scope, false))));
+    scope.add_fun(Fun("var".to_owned(), MutatingFun, Mutating(|args, scope| declare(args[0].symbol()?, args[1].to_type()?, args[2].mut_eval(scope)?, scope, true))));
+    scope.add_fun(Fun("val".to_owned(), MutatingFun, Mutating(|args, scope| declare(args[0].symbol()?, args[1].to_type()?, args[2].mut_eval(scope)?, scope, false))));
     scope.add_fun(Fun("fun".to_owned(), MutatingFun, Mutating(|args, scope| define(args[0].symbol()?, args[1].to_params()?, args[2].to_type()?, &args[3], scope))));
-    scope.add_fun(Fun("assign".to_owned(), MutatingFun, Mutating(|args, scope| assign(args[0].symbol()?, args[1].eval(scope)?, scope))));
+    scope.add_fun(Fun("assign".to_owned(), MutatingFun, Mutating(|args, scope| assign(args[0].symbol()?, args[1].mut_eval(scope)?, scope))));
 
     scope.add_fun(Fun("print".to_owned(), LazyFun, Lazy(|args, scope| print(args, scope))));
     scope.add_fun(Fun("while".to_owned(), MutatingFun, Mutating(|args, scope| run_while(&args[0], args, scope))));
-    scope.add_fun(Fun("if".to_owned(), MutatingFun, Mutating(|args, scope| if_else!(args[0].eval(scope)?.bool()? => args[1].eval(scope) ; args[2].eval(scope)))));
+    scope.add_fun(Fun("if".to_owned(), MutatingFun, Mutating(|args, scope| if_else!(args[0].mut_eval(scope)?.bool()? => args[1].mut_eval(scope) ; args[2].mut_eval(scope)))));
 }
 
 fn divide_int(a: &i64, b: &i64) ->  Result<Expr, Exception> {
