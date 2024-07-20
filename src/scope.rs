@@ -81,7 +81,7 @@ impl Scope<'_> {
         }
         self.values.insert(name.to_owned(), value);
     }
-    pub fn read(&mut self, str: &str) -> Expr { Expr::read(str, self) }
+    pub fn read(&self, str: &str) -> Expr { Expr::read(str, self) }
 
     pub fn exec(&mut self, str: &str) -> String { self.read(str).eval_or_failed(self).print() }
 

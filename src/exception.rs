@@ -4,6 +4,7 @@ use strum_macros::Display;
 pub enum Exception {
     CannotParse(String),
     DivisionByZero,
+    IOError,
     UndefinedSymbol(String),
     UndefinedFunction(String),
     InfiniteLoop,

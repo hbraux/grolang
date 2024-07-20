@@ -70,26 +70,31 @@ impl Expr {
             _ => Type::Any,
         }
     }
-
-    pub fn int(&self) -> Result<&i64, Exception> {
+    pub fn to_str(&self) -> Result<&str, Exception> {
+        match self {
+            Str(x) => Ok(x),
+            _ => Err(Exception::NotA(Type::Str.to_string(), self.print()))
+        }
+    }
+    pub fn to_int(&self) -> Result<&i64, Exception> {
         match self {
             Int(x) => Ok(x),
             _ => Err(Exception::NotA(Type::Int.to_string(), self.print()))
         }
     }
-    pub fn float(&self) -> Result<&f64, Exception> {
+    pub fn to_float(&self) -> Result<&f64, Exception> {
         match self {
             Float(x) => Ok(x),
             _ => Err(Exception::NotA(Type::Float.to_string(), self.print()))
         }
     }
-    pub fn bool(&self) -> Result<bool, Exception> {
+    pub fn to_bool(&self) -> Result<bool, Exception> {
         match self {
             Bool(x) => Ok(x.to_owned()),
             _ => Err(Exception::NotA(Type::Bool.to_string(), self.print()))
         }
     }
-    pub fn symbol(&self) -> Result<&str, Exception> {
+    pub fn to_symbol(&self) -> Result<&str, Exception> {
         match self {
             Symbol(x) => Ok(x),
             _ => Err(Exception::UndefinedSymbol(self.print()))

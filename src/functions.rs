@@ -1,4 +1,5 @@
 use std::fmt::Debug;
+use std::io;
 
 use crate::exception::Exception;
 use crate::expr::Expr;
@@ -7,7 +8,7 @@ use crate::scope::Scope;
 use crate::types::Type;
 use crate::types::Type::{LazyFun, MutatingFun};
 
-use self::Function::{Lazy, UserDefined, Lambda, Mutating};
+use self::Function::{Stateless, UserDefined, Lambda, Mutating};
 
 macro_rules! if_else {
     ($condition:expr => $true_branch:expr ; $false_branch:expr) => {
@@ -19,11 +20,8 @@ macro_rules! if_else {
 pub enum Function {
     // a lambda function does not need any scope
     Lambda(fn(&Vec<Expr>) -> Result<Expr, Exception>),
-    // a lazy functions evaluates its arguments lazily in the body
-    Lazy(fn(&Vec<Expr>, &Scope) -> Result<Expr, Exception>),
-    // a mutating function evaluates arguments lazily and updates the current scope
+    Stateless(fn(&Vec<Expr>, &Scope) -> Result<Expr, Exception>),
     Mutating(fn(&Vec<Expr>, &mut Scope) -> Result<Expr, Exception>),
-    // used defined functions
     UserDefined(Vec<String>, Box<Expr>),
 }
 
@@ -31,7 +29,7 @@ impl Function {
     pub fn apply(&self, args: &Vec<Expr>, scope: &Scope) -> Result<Expr, Exception> {
         match self {
             Lambda(f) => f(args),
-            Lazy(f) => f(args, scope),
+            Stateless(f) => f(args, scope),
             UserDefined(params, body) => apply_defined(scope, body, params, args),
             _ => panic!("Cannot apply a Mutating function"),
         }
@@ -48,40 +46,47 @@ fn apply_defined(scope: &Scope, body: &Box<Expr>, params: &Vec<String>, args: &V
 pub fn load_functions(scope: &mut Scope) {
     // int arithmetics
     let spec = || Type::new("(Int,Int)->Int");
-    scope.add_fun(Fun("Int.add".to_owned(), spec(), Lambda(|args| Ok(Int(args[0].int()? + args[1].int()?)))));
-    scope.add_fun(Fun("Int.sub".to_owned(), spec(), Lambda(|args| Ok(Int(args[0].int()? - args[1].int()?)))));
-    scope.add_fun(Fun("Int.mul".to_owned(), spec(), Lambda(|args| Ok(Int(args[0].int()? * args[1].int()?)))));
-    scope.add_fun(Fun("Int.div".to_owned(), spec(), Lambda(|args| divide_int(args[0].int()?, args[1].int()?))));
-    scope.add_fun(Fun("Int.mod".to_owned(), spec(), Lambda(|args| modulo_int(args[0].int()?, args[1].int()?))));
+    scope.add_fun(Fun("Int.add".to_owned(), spec(), Lambda(|args| Ok(Int(args[0].to_int()? + args[1].to_int()?)))));
+    scope.add_fun(Fun("Int.sub".to_owned(), spec(), Lambda(|args| Ok(Int(args[0].to_int()? - args[1].to_int()?)))));
+    scope.add_fun(Fun("Int.mul".to_owned(), spec(), Lambda(|args| Ok(Int(args[0].to_int()? * args[1].to_int()?)))));
+    scope.add_fun(Fun("Int.div".to_owned(), spec(), Lambda(|args| divide_int(args[0].to_int()?, args[1].to_int()?))));
+    scope.add_fun(Fun("Int.mod".to_owned(), spec(), Lambda(|args| modulo_int(args[0].to_int()?, args[1].to_int()?))));
 
     // float arithmetics
     let spec = || Type::new("(Float,Float)->Float");
-    scope.add_fun(Fun("Float.add".to_owned(), spec(), Lambda(|args| Ok(Float(args[0].float()? + args[1].float()?)))));
-    scope.add_fun(Fun("Float.sub".to_owned(), spec(), Lambda(|args| Ok(Float(args[0].float()? - args[1].float()?)))));
-    scope.add_fun(Fun("Float.mul".to_owned(), spec(), Lambda(|args| Ok(Float(args[0].float()? * args[1].float()?)))));
-    scope.add_fun(Fun("Float.div".to_owned(), spec(), Lambda(|args| divide_float(args[0].float()?, args[1].float()?))));
+    scope.add_fun(Fun("Float.add".to_owned(), spec(), Lambda(|args| Ok(Float(args[0].to_float()? + args[1].to_float()?)))));
+    scope.add_fun(Fun("Float.sub".to_owned(), spec(), Lambda(|args| Ok(Float(args[0].to_float()? - args[1].to_float()?)))));
+    scope.add_fun(Fun("Float.mul".to_owned(), spec(), Lambda(|args| Ok(Float(args[0].to_float()? * args[1].to_float()?)))));
+    scope.add_fun(Fun("Float.div".to_owned(), spec(), Lambda(|args| divide_float(args[0].to_float()?, args[1].to_float()?))));
     // boolean logic
     let spec = || Type::new("(Bool,Bool)->Bool");
-    scope.add_fun(Fun("Bool.and".to_owned(), spec(), Lambda(|args| Ok(Bool(args[0].bool()? && args[1].bool()?)))));
-    scope.add_fun(Fun("Bool.or".to_owned(), spec(), Lambda(|args| Ok(Bool(args[0].bool()? || args[1].bool()?)))));
+    scope.add_fun(Fun("Bool.and".to_owned(), spec(), Lambda(|args| Ok(Bool(args[0].to_bool()? && args[1].to_bool()?)))));
+    scope.add_fun(Fun("Bool.or".to_owned(), spec(), Lambda(|args| Ok(Bool(args[0].to_bool()? || args[1].to_bool()?)))));
     // comparisons
     let spec = || Type::new("(Int,Int)->Bool");
-    scope.add_fun(Fun("Int.eq".to_owned(), spec(), Lambda(|args| Ok(Bool(args[0].int()? == args[1].int()?)))));
-    scope.add_fun(Fun("Int.neq".to_owned(), spec(), Lambda(|args| Ok(Bool(args[0].int()? != args[1].int()?)))));
-    scope.add_fun(Fun("Int.gt".to_owned(), spec(), Lambda(|args| Ok(Bool(args[0].int()? > args[1].int()?)))));
-    scope.add_fun(Fun("Int.ge".to_owned(), spec(), Lambda(|args| Ok(Bool(args[0].int()? >= args[1].int()?)))));
-    scope.add_fun(Fun("Int.lt".to_owned(), spec(), Lambda(|args| Ok(Bool(args[0].int()? < args[1].int()?)))));
-    scope.add_fun(Fun("Int.le".to_owned(), spec(), Lambda(|args| Ok(Bool(args[0].int()? <= args[1].int()?)))));
+    scope.add_fun(Fun("Int.eq".to_owned(), spec(), Lambda(|args| Ok(Bool(args[0].to_int()? == args[1].to_int()?)))));
+    scope.add_fun(Fun("Int.neq".to_owned(), spec(), Lambda(|args| Ok(Bool(args[0].to_int()? != args[1].to_int()?)))));
+    scope.add_fun(Fun("Int.gt".to_owned(), spec(), Lambda(|args| Ok(Bool(args[0].to_int()? > args[1].to_int()?)))));
+    scope.add_fun(Fun("Int.ge".to_owned(), spec(), Lambda(|args| Ok(Bool(args[0].to_int()? >= args[1].to_int()?)))));
+    scope.add_fun(Fun("Int.lt".to_owned(), spec(), Lambda(|args| Ok(Bool(args[0].to_int()? < args[1].to_int()?)))));
+    scope.add_fun(Fun("Int.le".to_owned(), spec(), Lambda(|args| Ok(Bool(args[0].to_int()? <= args[1].to_int()?)))));
 
-    //  macros
-    scope.add_fun(Fun("var".to_owned(), MutatingFun, Mutating(|args, scope| declare(args[0].symbol()?, args[1].to_type()?, args[2].mut_eval(scope)?, scope, true))));
-    scope.add_fun(Fun("val".to_owned(), MutatingFun, Mutating(|args, scope| declare(args[0].symbol()?, args[1].to_type()?, args[2].mut_eval(scope)?, scope, false))));
-    scope.add_fun(Fun("fun".to_owned(), MutatingFun, Mutating(|args, scope| define(args[0].symbol()?, args[1].split_params()?, args[2].to_type()?, &args[3], scope))));
-    scope.add_fun(Fun("assign".to_owned(), MutatingFun, Mutating(|args, scope| assign(args[0].symbol()?, args[1].mut_eval(scope)?, scope))));
+    // String functions
+    scope.add_fun(Fun("Str.read".to_owned(), Type::new("(Str)->Expr"), Stateless(|args, scope| Ok(scope.read(args[0].to_str()?)))));
+    let spec = || Type::new("(Str)->Str");
+    scope.add_fun(Fun("Str.trim".to_owned(), spec(), Stateless(|args, scope| Ok(Expr::Str(args[0].to_str()?.trim().to_owned())))));
 
-    scope.add_fun(Fun("print".to_owned(), LazyFun, Lazy(|args, scope| print(args, scope))));
+    // IO functions
+    scope.add_fun(Fun("read".to_owned(), Type::new("()->Str"), Lambda(|_| read_line())));
+    scope.add_fun(Fun("print".to_owned(), LazyFun, Stateless(|args, scope| print(args, scope))));
+
+    // special functions
+    scope.add_fun(Fun("var".to_owned(), MutatingFun, Mutating(|args, scope| declare(args[0].to_symbol()?, args[1].to_type()?, args[2].mut_eval(scope)?, scope, true))));
+    scope.add_fun(Fun("val".to_owned(), MutatingFun, Mutating(|args, scope| declare(args[0].to_symbol()?, args[1].to_type()?, args[2].mut_eval(scope)?, scope, false))));
+    scope.add_fun(Fun("fun".to_owned(), MutatingFun, Mutating(|args, scope| define(args[0].to_symbol()?, args[1].split_params()?, args[2].to_type()?, &args[3], scope))));
+    scope.add_fun(Fun("assign".to_owned(), MutatingFun, Mutating(|args, scope| assign(args[0].to_symbol()?, args[1].mut_eval(scope)?, scope))));
     scope.add_fun(Fun("while".to_owned(), MutatingFun, Mutating(|args, scope| run_while(&args[0], args, scope))));
-    scope.add_fun(Fun("if".to_owned(), MutatingFun, Mutating(|args, scope| if_else!(args[0].mut_eval(scope)?.bool()? => args[1].mut_eval(scope) ; args[2].mut_eval(scope)))));
+    scope.add_fun(Fun("if".to_owned(), MutatingFun, Mutating(|args, scope| if_else!(args[0].mut_eval(scope)?.to_bool()? => args[1].mut_eval(scope) ; args[2].mut_eval(scope)))));
 }
 
 fn divide_int(a: &i64, b: &i64) ->  Result<Expr, Exception> {
@@ -160,4 +165,12 @@ fn run_while(cond: &Expr, body: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, E
     }
 }
 
+fn read_line() -> Result<Expr, Exception> {
+    let mut line = String::new();
+    match io::stdin().read_line(&mut line) {
+        Err(_) => return Err(Exception::IOError),
+        _ => {}
+    }
+    Ok(Expr::Str(line))
+}
 
