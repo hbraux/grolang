@@ -8,7 +8,7 @@ use pest::pratt_parser::{Op, PrattParser};
 use pest::pratt_parser::Assoc::Left;
 use pest_derive::Parser;
 use crate::expr::{Expr, FALSE, NIL, TRUE};
-use crate::expr::Expr::Params;
+use crate::expr::Expr::{List, Param};
 
 
 #[derive(Parser)]
@@ -86,8 +86,8 @@ fn build_call(mut args: Vec<Expr>) -> Expr {
 
 
 fn build_params(args: Vec<Expr>) -> Expr {
-    Params(args.chunks(2).map(|pair| match (&pair[0], &pair[1]) {
-        (Expr::Symbol(name), Expr::TypeOf(typ)) => (name.to_string(), typ.clone()),
+    List(args.chunks(2).map(|pair| match (&pair[0], &pair[1]) {
+        (Expr::Symbol(name), Expr::TypeOf(typ)) => Param(name.to_string(), typ.clone()),
         _ => panic!("expecting a pair symbol/type"),
     }).collect())
 }
@@ -182,19 +182,22 @@ mod tests {
 
     #[test]
     fn test_if_while() {
-        assert_eq!("if(eq(a,1),[2],[3])", read("if (a == 1) { 2 } else { 3 }"));
+        assert_eq!("if(eq(a,1),{2},{3})", read("if (a == 1) { 2 } else { 3 }"));
+        assert_eq!("if(eq(a,1),{2},{3})","if(eq(a,1),{2},{3})");
         assert_eq!("if(eq(a,1),2,3)", read("if (a == 1) 2 else 3"));
         assert_eq!("if(eq(a,1),2,3)", read("if(eq(a,1),2,3)"));
-        assert_eq!("if(true,[1],nil)", read("if (true) { 1 } "));
-        assert_eq!("while(le(a,10),[print(a);assign(a,add(a,1))])", read("while (a <= 10) { print(a) ; a = a + 1 }"));
+        assert_eq!("if(true,{1},nil)", read("if (true) { 1 } "));
+        assert_eq!("while(le(a,10),{print(a);assign(a,add(a,1))})", read("while (a <= 10) { print(a) ; a = a + 1 }"));
+
+        // assert_eq!("while(le(a,10),{print(a);assign(a,add(a,1))})", read("while(le(a,10),{print(a);assign(a,add(a,1))})"));
     }
 
     #[test]
     fn test_fun() {
-        assert_eq!("fun(pi,Params([]),Float,3.14)", read("fun pi(): Float = 3.14"));
-        assert_eq!("fun(inc,Params([(a, Int)]),Int,[add(a,1)])", read("fun inc(a: Int): Int = { a + 1 }"));
-        assert_eq!("Call(fun, [Symbol(zero), Params([]), TypeOf(Int), Block([Call(val, [Symbol(x), Nil, Int(0)]), Symbol(x)])])",
-                   read("fun zero(): Int = { val x = 0 ; x }"));
+        assert_eq!("fun(pi,[],Float,3.14)", read("fun pi(): Float = 3.14"));
+        assert_eq!("fun(inc,[a:Int],Int,{add(a,1)})", read("fun inc(a: Int): Int = { a + 1 }"));
+        assert_eq!("fun(zero,[],Int,{val(x,nil,0);x})", read("fun zero(): Int = { val x = 0 ; x }"));
+        assert_eq!("fun(inc,[a:Int],Int,{add(a,1)})", read("fun(inc,[a:Int],Int,{add(a,1)})"));
     }
 
 

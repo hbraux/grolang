@@ -1,14 +1,13 @@
 use std::fmt::{Debug, Display, Formatter};
 
 use crate::exception::Exception;
-use crate::expr::Expr::{Block, Fun};
 use crate::functions::Function;
 use crate::functions::Function::Mutating;
 use crate::parser::parse;
 use crate::scope::Scope;
 use crate::types::Type;
 
-use self::Expr::{Bool, Call, Failure, Float, Int, Nil, Params, Str, Symbol, TypeOf};
+use self::Expr::{Block, Bool, Call, Failure, Float, Fun, Int, List, Nil, Param, Str, Symbol, TypeOf};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
@@ -18,8 +17,9 @@ pub enum Expr {
     Bool(bool),
     Symbol(String),
     TypeOf(Type),
-    Params(Vec<(String, Type)>),
+    Param(String, Type),
     Block(Vec<Expr>),
+    List(Vec<Expr>),
     Call(String, Vec<Expr>),
     Failure(Exception),
     Fun(String, Type, Function),
@@ -42,13 +42,17 @@ impl Display for Expr {
             Symbol(x) => x.to_owned(),
             Failure(x) => x.format(),
             TypeOf(x) => x.to_string(),
-            Block(vec) => format!("[{}]", vec.iter().map(|e| e.to_string()).collect::<Vec<String>>().join(";")),
-            Call(name, vec) => format!("{}({})", name, vec.iter().map(|e| e.to_string()).collect::<Vec<String>>().join(",")),
+            Param(n, t) => format!("{}:{}", n, t),
+            List(vec) => format_vec(vec, ",", "[", "]"),
+            Block(vec) => format_vec(vec, ";", "{", "}"),
+            Call(name, vec) => format_vec(vec, ",", &(name.to_string() + "("), ")"),
             _ => format!("{:?}", self),
         };
         write!(f, "{}", str)
     }
 }
+
+
 impl Expr {
     pub fn read(str: &str, _ctx: &Scope) -> Expr {
         parse(str).unwrap_or_else(|s| Failure(Exception::CannotParse(s)))
@@ -98,10 +102,10 @@ impl Expr {
             _ => Err(Exception::NotA("Type".to_owned(), self.print()))
         }
     }
-    pub fn to_params(&self) -> Result<&Vec<(String, Type)>, Exception> {
+    pub fn split_params(&self) -> Result<Vec<(&String, &Type)>, Exception> {
         match self {
-            Params(p) => Ok(p),
-            _ => Err(Exception::NotA("Parameters".to_owned(), self.print()))
+            List(l) => Ok(l.iter().flat_map(|e| if let Param(s, t) = e { Some((s, t)) } else { None } ).collect()),
+            _ => Err(Exception::NotA("List of Params".to_owned(), self.print()))
         }
     }
     pub fn eval(&self, scope: &Scope) -> Result<Expr, Exception> {
@@ -138,6 +142,9 @@ impl Expr {
     }
 }
 
+fn format_vec<T: ToString>(vec: &[T], separ: &str, prefix: &str, suffix: &str) -> String {
+    format!("{}{}{}", prefix, vec.iter().map(|e| e.to_string()).collect::<Vec<_>>().join(separ), suffix)
+}
 
 fn format_float(x: &f64) -> String  {
     let str = x.to_string();

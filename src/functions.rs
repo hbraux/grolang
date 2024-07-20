@@ -76,7 +76,7 @@ pub fn load_functions(scope: &mut Scope) {
     //  macros
     scope.add_fun(Fun("var".to_owned(), MutatingFun, Mutating(|args, scope| declare(args[0].symbol()?, args[1].to_type()?, args[2].mut_eval(scope)?, scope, true))));
     scope.add_fun(Fun("val".to_owned(), MutatingFun, Mutating(|args, scope| declare(args[0].symbol()?, args[1].to_type()?, args[2].mut_eval(scope)?, scope, false))));
-    scope.add_fun(Fun("fun".to_owned(), MutatingFun, Mutating(|args, scope| define(args[0].symbol()?, args[1].to_params()?, args[2].to_type()?, &args[3], scope))));
+    scope.add_fun(Fun("fun".to_owned(), MutatingFun, Mutating(|args, scope| define(args[0].symbol()?, args[1].split_params()?, args[2].to_type()?, &args[3], scope))));
     scope.add_fun(Fun("assign".to_owned(), MutatingFun, Mutating(|args, scope| assign(args[0].symbol()?, args[1].mut_eval(scope)?, scope))));
 
     scope.add_fun(Fun("print".to_owned(), LazyFun, Lazy(|args, scope| print(args, scope))));
@@ -106,7 +106,7 @@ fn declare(name: &str, expected: &Type, value: Expr, scope: &mut Scope, is_mutab
     }
 }
 
-fn define(name: &str, params: &Vec<(String, Type)>, output: &Type, expr: &Expr, scope: &mut Scope) -> Result<Expr, Exception> {
+fn define(name: &str, params: Vec<(&String, &Type)>, output: &Type, expr: &Expr, scope: &mut Scope) -> Result<Expr, Exception> {
     if scope.is_defined(&name) {
         Err(Exception::AlreadyDefined(name.to_owned()))
     } else {
