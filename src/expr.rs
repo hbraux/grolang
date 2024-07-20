@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use strum_macros::Display;
 
 use crate::exception::Exception;
-use crate::expr::Expr::Fun;
+use crate::expr::Expr::{Block, Fun};
 use crate::functions::Function;
 use crate::functions::Function::Mutating;
 use crate::parser::parse;
@@ -101,15 +101,21 @@ impl Expr {
     }
     pub fn mut_eval(&self, scope: &mut Scope) -> Result<Expr, Exception> {
         match self {
+            Block(body) => handle_block(body, scope),
             Call(name, args) if scope.is_mutating_fun(name) => handle_mut_call(scope, name, args),
             _ => self.eval(scope)
         }
     }
-
     pub fn eval_or_failed(&self, scope: &mut Scope) -> Expr {
         match self {
             Failure(_) => self.clone(),
             expr => expr.mut_eval(scope).unwrap_or_else(|ex| Failure(ex))
+        }
+    }
+    pub fn as_block(&self) -> Expr {
+        match self {
+            Block(_) => self.clone(),
+            _ => Block(vec!(self.clone())),
         }
     }
 
@@ -160,6 +166,18 @@ fn handle_mut_call(scope: &mut Scope, name: &String, args: &Vec<Expr>) -> Result
         }
     }
     Err(Exception::NotDefined(name.to_string()))
+}
+
+
+fn handle_block(body: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
+    let mut result = Ok(Nil);
+    for expr in body {
+        result = expr.mut_eval(scope);
+        if result.is_err() {
+            break;
+        }
+    }
+    result
 }
 
 fn apply_fun(name: &str, specs: &Type, args: &Vec<Expr>, fun: &Function, scope: &Scope) ->  Result<Expr, Exception> {

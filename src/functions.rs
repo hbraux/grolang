@@ -42,7 +42,7 @@ impl Function {
 fn apply_defined(scope: &Scope, body: &Box<Expr>, params: &Vec<String>, args: &Vec<Expr>) -> Result<Expr, Exception> {
     let mut local = scope.child();
     local.add_args(params, args);
-    body.eval(&local)
+    body.mut_eval(&mut local)
 }
 
 pub fn load_functions(scope: &mut Scope) {
@@ -79,10 +79,9 @@ pub fn load_functions(scope: &mut Scope) {
     scope.add_fun(Fun("fun".to_owned(), MutatingFun, Mutating(|args, scope| define(args[0].symbol()?, args[1].to_params()?, args[2].to_type()?, &args[3], scope))));
     scope.add_fun(Fun("assign".to_owned(), MutatingFun, Mutating(|args, scope| assign(args[0].symbol()?, args[1].eval(scope)?, scope))));
 
-    scope.add_fun(Fun("block".to_owned(), LazyFun, Lazy(|args, scope| block(args, scope))));
     scope.add_fun(Fun("print".to_owned(), LazyFun, Lazy(|args, scope| print(args, scope))));
     scope.add_fun(Fun("while".to_owned(), MutatingFun, Mutating(|args, scope| run_while(&args[0], args, scope))));
-    scope.add_fun(Fun("if".to_owned(), LazyFun, Lazy(|args, scope| if_else!(args[0].eval(scope)?.bool()? => args[1].eval(scope) ; args[2].eval(scope)))));
+    scope.add_fun(Fun("if".to_owned(), MutatingFun, Mutating(|args, scope| if_else!(args[0].eval(scope)?.bool()? => args[1].eval(scope) ; args[2].eval(scope)))));
 }
 
 fn divide_int(a: &i64, b: &i64) ->  Result<Expr, Exception> {
@@ -112,7 +111,7 @@ fn define(name: &str, params: &Vec<(String, Type)>, output: &Type, expr: &Expr, 
         Err(Exception::AlreadyDefined(name.to_owned()))
     } else {
         let types = Type::Fun(params.iter().map(|p| p.1.clone()).collect(), Box::new(output.clone()));
-        scope.add_fun(Fun(name.to_owned(), types, UserDefined(params.iter().map(|p| p.0.clone()).collect(), Box::new(expr.clone()))));
+        scope.add_fun(Fun(name.to_owned(), types, UserDefined(params.iter().map(|p| p.0.clone()).collect(), Box::new(expr.as_block()))));
         Ok(Symbol(name.to_owned()))
     }
 }
@@ -130,18 +129,6 @@ fn assign(name: &str, value: Expr, scope: &mut Scope) -> Result<Expr, Exception>
     }
 }
 
-fn block(args: &Vec<Expr>, scope: &Scope) -> Result<Expr, Exception> {
-
-    let mut result = Ok(Nil);
-    let mut local = scope.child();
-    for arg in args {
-        result = arg.mut_eval(&mut local);
-        if result.is_err() {
-            break;
-        }
-    }
-    result
-}
 
 fn print(args: &Vec<Expr>, scope: &Scope) -> Result<Expr, Exception> {
     for x in args {
