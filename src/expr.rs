@@ -43,7 +43,7 @@ impl Display for Expr {
             Failure(x) => x.format(),
             TypeOf(x) => x.to_string(),
             Param(n, t) => format!("{}:{}", n, t),
-            List(vec) => format_vec(vec, ",", "(", ")"),
+            List(vec) => format_vec(vec, ",", "[", "]"),
             Block(vec) => format_vec(vec, ";", "{", "}"),
             Call(name, vec) => format_vec(vec, ",", &(name.to_string() + "("), ")"),
             _ => format!("{:?}", self),
@@ -206,7 +206,7 @@ fn check_arguments(name: &str, expected: &Vec<Type>, values: &Vec<Expr>) -> Opti
         return Some(Err(Exception::WrongArgumentsNumber(name.to_owned(), expected.len(), values.len())))
     }
     expected.iter().zip(values.iter()).find(|(e, v)| **e != v.get_type()).and_then(|p|
-        Some(Err(Exception::UnexpectedArgumentType(name.to_owned(), p.1.to_string())))
+        Some(Err(Exception::UnexpectedArgumentType(name.to_owned(), p.1.get_type().to_string())))
     )
 }
 
