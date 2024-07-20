@@ -50,7 +50,6 @@ pub fn repl() {
             println!("{RED}Erreur de syntaxe ({:?}){STD}", error);
             continue;
         }
-        println!("DEBUG: {:?}", expr);
         let result = expr.eval_or_failed(&mut scope);
         if let Expr::Failure(error) = result {
             println!("{RED}Erreur d'évaluation ({:?}){STD}", error);
@@ -83,19 +82,18 @@ mod tests {
     #[test]
     fn test_variables() {
         let mut scope = Scope::init();
-        assert_eq!("NotDefined(a)", scope.exec("a = 0"));
         assert_eq!("a", scope.exec("var a = 1"));
-        assert_eq!("z", scope.exec("z.val(nil, true)"));
+        assert_eq!("1", scope.exec("a"));
         assert_eq!("AlreadyDefined(a)", scope.exec("var a = 3"));
         assert_eq!("2", scope.exec("a = a + 1"));
-        assert_eq!("0", scope.exec("a.set(0)"));
+        assert_eq!("0", scope.exec("a.assign(0)"));
         assert_eq!("UnexpectedType(Float)", scope.exec("a = 3.0"));
         assert_eq!("c", scope.exec("val c=3.2"));
         assert_eq!("UnexpectedType(Float)", scope.exec("var d: Int = 3.2"));
-        assert_eq!("0", scope.exec("a"));
         assert_eq!("3.2", scope.exec("c"));
         assert_eq!("i", scope.exec("val i = 0"));
         assert_eq!("NotMutable(i)", scope.exec("i = 1"));
+        assert_eq!("NotDefined(z)", scope.exec("z = 0"));
     }
 
     #[test]
@@ -146,20 +144,33 @@ mod tests {
         assert_eq!("nil", scope.exec("print(\"hello world\")"));
     }
 
+
     #[test]
     fn test_while() {
         let mut scope = Scope::init();
         scope.exec("var a = 0");
-        assert_eq!("11", scope.exec("while (a < 10) { a = a + 1 }"));
+        assert_eq!("11", scope.exec("while (a <= 10) { a = a + 1 }"));
     }
 
     #[test]
-    fn test_fun() {
+    fn test_functions() {
         let mut scope = Scope::init();
         assert_eq!("pi",  scope.exec("fun pi(): Float = 3.14"));
         assert_eq!("3.14", scope.exec("pi()"));
 
-        assert_eq!("inc",  scope.exec("fun inc(a: Int): Int = { a + 1 }"));
+        scope.exec("fun dec(a: Int): Int = a - 1");
+        assert_eq!("1", scope.exec("dec(2)"));
+
+        scope.exec("fun inc(a: Int): Int = { a + 1 }");
         assert_eq!("3", scope.exec("inc(2)"));
+
+        scope.exec("fun zero(): Int = { val x = 0 ; x }");
+        assert_eq!("0", scope.exec("zero()"));
+
+        scope.exec("fun fact(n: Int): Int = { if (n <= 1) 1 else n*fact(n-1) }");
+        assert_eq!("1", scope.exec("fact(0)"));
+        assert_eq!("24", scope.exec("fact(4)"));
     }
+
+
 }

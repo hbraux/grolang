@@ -3,8 +3,8 @@ use strum_macros::Display;
 #[derive(Debug, Clone, PartialEq, Display)]
 pub enum Exception {
     CannotParse(String),
-    NotImplemented(String),
     DivisionByZero,
+    IOError,
     UndefinedSymbol(String),
     UndefinedFunction(String),
     InfiniteLoop,

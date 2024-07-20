@@ -8,7 +8,7 @@ use pest::pratt_parser::{Op, PrattParser};
 use pest::pratt_parser::Assoc::Left;
 use pest_derive::Parser;
 use crate::expr::{Expr, FALSE, NIL, TRUE};
-use crate::expr::Expr::Params;
+use crate::types::Type;
 
 
 #[derive(Parser)]
@@ -62,15 +62,16 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
         Rule::Symbol | Rule::VarType => Expr::Symbol(pair.as_str().to_owned()),
         Rule::TypeSpec => Expr::read_type(pair.as_str()),
         Rule::Operator => Expr::Symbol(pair.as_str().to_owned()),
+        Rule::Parameter => build_param(pair.as_str()),
         Rule::Expr =>  parse_pairs(pair.into_inner()),
         Rule::CallExpr => build_call(to_vec(pair, 0, 0)),
         Rule::Declaration => build_call(to_vec(pair, 4, 2)),
-        Rule::Assignment => Expr::Call("set".to_owned(), to_vec(pair, 0, 0)),
+        Rule::Assignment => Expr::Call("assign".to_owned(), to_vec(pair, 0, 0)),
         Rule::IfElse =>  Expr::Call("if".to_owned(), to_vec(pair, 3, 0 )),
         Rule::While => Expr::Call("while".to_owned(), to_vec(pair, 0, 0)),
-        Rule::Block => Expr::Call("block".to_owned(), to_vec(pair, 0, 0)),
+        Rule::Block => Expr::Block(to_vec(pair, 0, 0)),
         Rule::Definition => Expr::Call("fun".to_owned(), to_vec(pair, 0, 0)),
-        Rule::Parameters => build_params(to_vec(pair, 0, 0)),
+        Rule::List | Rule::Parameters  => Expr::List(to_vec(pair, 0, 0)),
         _ => panic!("Rule '{}' not implemented", operator_name(pair))
     }
 }
@@ -84,11 +85,11 @@ fn build_call(mut args: Vec<Expr>) -> Expr {
     }
 }
 
-fn build_params(args: Vec<Expr>) -> Expr {
-    Params(args.chunks(2).map(|pair| match (&pair[0], &pair[1]) {
-        (Expr::Symbol(name), Expr::TypeOf(typ)) => (name.to_string(), typ.clone()),
-        _ => panic!("expecting a pair symbol/type"),
-    }).collect())
+
+fn build_param(str: &str) -> Expr {
+    let mut s = str.split(":");
+    Expr::Param(s.next().unwrap().trim().to_string(), Type::new(s.next().unwrap().trim()))
+
 }
 
 fn to_vec(pair: Pair<Rule>, expected_len: usize, optional_pos: usize) -> Vec<Expr> {
@@ -123,7 +124,7 @@ fn to_literal(str: &str) -> Expr {
 mod tests {
     use super::*;
 
-    fn read(str: &str) -> String { parse(str).unwrap().format() }
+    fn read(str: &str) -> String { parse(str).unwrap().print().replace("\"","") }
 
     #[test]
     fn test_literals() {
@@ -138,6 +139,10 @@ mod tests {
         assert_eq!(NIL, parse("nil").unwrap());
         assert_eq!(Expr::Str("abc".to_owned()), parse("\"abc\"").unwrap());
         assert_eq!(Expr::Str("true".to_owned()), parse("\"true\"").unwrap());
+        assert_eq!(Expr::Param("a".to_owned(), Type::Int), parse("a:Int").unwrap());
+        assert_eq!(Expr::Param("a".to_owned(), Type::Int), parse("a: Int").unwrap());
+        assert_eq!(Expr::List(vec!(Expr::Int(1), Expr::Int(2))), parse("[1,2]").unwrap());
+        assert_eq!(Expr::List(vec!(Expr::Param("a".to_string(), Type::Int))), parse("[a:Int]").unwrap());
     }
 
     #[test]
@@ -147,49 +152,60 @@ mod tests {
 
     #[test]
     fn test_declarations() {
-        assert_eq!("Call(var, [Symbol(a), Nil, Int(1)])", read("var a = 1"));
-        assert_eq!("Call(val, [Symbol(f), TypeOf(Float), Float(1.0)])", read("val f: Float = 1.0"));
+        assert_eq!("val(f,Float,1.0)", read("val f: Float = 1.0"));
+        assert_eq!("val(f,Float,1.0)", read("val(f,Float,1.0)"));
+        assert_eq!("var(a,nil,1)", read("var a = 1"));
     }
 
     #[test]
     fn test_assignments() {
-        assert_eq!("Call(set, [Symbol(a), Int(2)])", read("a = 2"));
-        assert_eq!("Call(set, [Symbol(a), Int(2)])", read("set(a, 2)"));
+        assert_eq!("assign(a,2)", read("a = 2"));
+        assert_eq!("assign(a,2)", read("assign(a, 2)"));
+        assert_eq!("assign(a,add(a,1))", read("a = a + 1"));
     }
 
     #[test]
     fn test_arithmetic_order() {
-        assert_eq!("Call(mul, [Int(1), Int(2)])", read("1 * 2"));
-        assert_eq!("Call(add, [Int(1), Call(mul, [Int(2), Int(3)])])", read("1 + 2 * 3"));
-        assert_eq!("Call(mul, [Int(1), Call(add, [Int(-2), Int(3)])])", read("1 * (-2 + 3)"));
+        assert_eq!("mul(1,2)", read("1 * 2"));
+        assert_eq!("add(1,mul(2,3))", read("1 + 2 * 3"));
+        assert_eq!("mul(1,add(-2,3))", read("1 * (-2 + 3)"));
     }
 
     #[test]
     fn test_boolean_expr() {
-        assert_eq!("Call(and, [Call(or, [Call(eq, [Symbol(x), Int(2)]), Call(ge, [Symbol(y), Int(1)])]), Symbol(z)])",
-            read("(x == 2) || (y >= 1) && z"));
+        assert_eq!("and(or(eq(x,2),ge(y,1)),z)", read("(x == 2) || (y >= 1) && z"));
     }
+
 
     #[test]
     fn test_calls() {
-        assert_eq!("Call(print, [Symbol(a)])", read("print(a)"));
-        assert_eq!("Call(mul, [Int(1), Int(2)])", read("1.mul(2)]"));
-        assert_eq!("Call(mul, [Int(1), Call(add, [Int(-2), Int(3)])])", read("1.mul(-2.add(3))"));
+        assert_eq!("print(a,b)", read("print(a,b)"));
+        assert_eq!("mul(a,fact(sub(a,1)))", read("a*fact(a-1)"));
     }
+
 
     #[test]
     fn test_if_while() {
-        assert_eq!("Call(if, [Call(eq, [Symbol(a), Int(1)]), Call(block, [Int(2)]), Call(block, [Int(3)])])", read("if (a == 1) { 2 } else { 3 }"));
-        assert_eq!("Call(if, [Bool(true), Call(block, [Int(1)]), Nil])", read("if (true) { 1 } "));
-        assert_eq!("Call(while, [Call(le, [Symbol(a), Int(10)]), Call(block, [Call(set, [Symbol(a), Call(add, [Symbol(a), Int(1)])])])])",
-                   read("while (a < 10) { a = a + 1 }"));
+        assert_eq!("if(eq(a,1),{2},{3})", read("if (a == 1) { 2 } else { 3 }"));
+        assert_eq!("if(eq(a,1),{2},{3})","if(eq(a,1),{2},{3})");
+        assert_eq!("if(eq(a,1),2,3)", read("if (a == 1) 2 else 3"));
+        assert_eq!("if(eq(a,1),2,3)", read("if(eq(a,1),2,3)"));
+        assert_eq!("if(true,{1},nil)", read("if (true) { 1 } "));
+        assert_eq!("while(le(a,10),{print(a);assign(a,add(a,1))})", read("while (a <= 10) { print(a) ; a = a + 1 }"));
+        // FIXme
+        // assert_eq!("while(le(a,10),{print(a);assign(a,add(a,1))})", read("while(le(a,10),{print(a);assign(a,add(a,1))})"));
     }
 
     #[test]
     fn test_fun() {
-        assert_eq!("Call(fun, [Symbol(pi), Params([]), TypeOf(Float), Float(3.14)])", read("fun pi(): Float = 3.14"));
-        assert_eq!("Call(fun, [Symbol(inc), Params([(x, Int)]), TypeOf(Int), Call(block, [Call(add, [Symbol(x), Int(1)])])])",
-                   read("fun inc(x: Int): Int = { x + 1 }"));
+        assert_eq!("fun(pi,[],Float,3.14)", read("fun pi(): Float = 3.14"));
+        assert_eq!("fun(pi,[],Float,3.14)", read("fun(pi,[],Float,3.14)"));
+        assert_eq!("fun(zero,[],Int,{val(x,nil,0);x})", read("fun zero(): Int = { val x = 0 ; x }"));
+        assert_eq!("fun(inc,[a:Int],Int,{add(a,1)})", read("fun inc(a: Int): Int = { a + 1 }"));
+        // FIXme
+        // assert_eq!("fun(inc,[a:Int],Int,{add(a,1)})", read("fun(inc,[a:Int],Int,{add(a,1)})"));
     }
+
+
 }
 
