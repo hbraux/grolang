@@ -119,10 +119,10 @@ impl Expr {
     pub fn eval(&self, scope: &Scope) -> Result<Expr, Exception> {
         match self {
             Failure(e) => Err(e.clone()),
-            Nil | Int(_) | Float(_) | Str(_) | Bool(_) | TypeOf(_) => Ok(self.clone()),
+            Nil | Int(_) | Float(_) | Str(_) | Bool(_) | TypeOf(_) | List(_)  | Map(_)  => Ok(self.clone()),
             Symbol(name) => handle_symbol(name, scope),
             Call(name, args) => handle_call(name, args, scope),
-            _ => panic!("not implemented {}", self),
+            _ => panic!("not implemented {:?}", self),
         }
     }
     pub fn mut_eval(&self, scope: &mut Scope) -> Result<Expr, Exception> {

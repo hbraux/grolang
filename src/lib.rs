@@ -77,6 +77,8 @@ mod tests {
         assert_eq!("true", scope.exec("true"));
         assert_eq!("nil", scope.exec("nil"));
         assert_eq!("\"abc\"", scope.exec("\"abc\""));
+        assert_eq!("[1,2,3]", scope.exec("[1,2,3]"));
+        assert_eq!("{\"a\":1,\"b\":2}", scope.exec("{\"a\":1,\"b\":2}"));
     }
 
     #[test]
