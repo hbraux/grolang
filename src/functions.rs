@@ -3,7 +3,7 @@ use std::io;
 
 use crate::exception::Exception;
 use crate::expr::Expr;
-use crate::expr::Expr::{Bool, Float, Fun, Int, Nil, Symbol};
+use crate::expr::Expr::{Bool, Float, Fun, Int, Null, Symbol};
 use crate::scope::Scope;
 use crate::types::Type;
 use crate::types::Type::Macro;
@@ -137,12 +137,12 @@ fn assign(name: &str, value: Expr, scope: &mut Scope) -> Result<Expr, Exception>
 fn print(args: &Vec<Expr>) -> Result<Expr, Exception> {
     for x in args { print!("{}", x) }
     println!();
-    Ok(Nil)
+    Ok(Null)
 }
 
 fn run_while(cond: &Expr, body: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
     let mut count = 0;
-    let mut result = Ok(Nil);
+    let mut result = Ok(Null);
     loop {
         count += 1;
         if count >= 1000000 {

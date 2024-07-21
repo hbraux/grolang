@@ -1,6 +1,6 @@
 // Langgae grammar, see https://pest.rs/book/grammars/peg.html)
 
-Special = { "true" | "false" | "nil" }
+Special = { "true" | "false" | "null" }
 
 Int = @{  "-"? ~ ASCII_DIGIT+  ~ ( "_" ~ ASCII_DIGIT+)* }
 Float = @{ "-"? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ ~ (^"e" ~ "-"? ~ ASCII_DIGIT+)? }
@@ -11,11 +11,12 @@ stringChar = _{ !"\""  ~ ANY }
 Symbol = @{ ASCII_ALPHA ~ ASCII_ALPHANUMERIC* }
 
 Literal = _{ Special | Float | Int | String }
-Pair = _{ Literal ~ ":" ~ Literal}
-List = { "[" ~ Literal? ~ ( "," ~ Literal )*  ~ "]" }
+Pair = _{ Literal ~ ":" ~ LiteralOrCollection }
+
+LiteralOrCollection = _{ Literal | List | Map }
+List = { "[" ~ LiteralOrCollection? ~ ( "," ~ LiteralOrCollection )*  ~ "]" }
 Map =  { "{" ~ Pair? ~ ( "," ~ Pair )*  ~ "}" }
 
-AnyLiteral = _{ Literal | Symbol | List | Map }
 
 Operator = _{ Add | Sub | Mul | Div | Mod | Exp | Eq | Neq | Le | Lt | Ge | Gt | And | Or }
     Add = { "+" }
@@ -41,7 +42,7 @@ Expr = {  CallExpr | BinaryExpr | ChainCall | Term  }
 ChainCall = _{ Term ~ ( Dot ~ CallExpr )+  }
 BinaryExpr = _{ Term ~ ( Operator ~ Term ) + }
 CallExpr = { Symbol ~ "(" ~ Expr? ~ ( "," ~ Expr )* ~ ")" }
-Term = _{ CallExpr | Parameters | AnyLiteral |  "(" ~ Expr ~ ")"  | Block }
+Term = _{ CallExpr | Parameters | LiteralOrCollection | Symbol |  "(" ~ Expr ~ ")"  | Block }
 
 VarType = { "var" | "val" }
 Declaration = { VarType ~ Symbol ~ TypeSpec? ~ "=" ~ Expr }

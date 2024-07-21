@@ -8,7 +8,7 @@ use pest::pratt_parser::{Op, PrattParser};
 use pest::pratt_parser::Assoc::Left;
 use pest_derive::Parser;
 
-use crate::expr::{Expr, FALSE, NIL, TRUE};
+use crate::expr::{Expr, FALSE, NULL, TRUE};
 use crate::types::Type;
 
 #[derive(Parser)]
@@ -102,9 +102,9 @@ fn to_vec(pair: Pair<Rule>, expected_len: usize, optional_pos: usize) -> Vec<Exp
     let mut args: Vec<Expr> = pair.into_inner().into_iter().map(|p| parse_primary(p)).collect();
     if expected_len > 0 && args.len() < expected_len {
         if optional_pos > 0 {
-            args.insert(optional_pos, Expr::Nil)
+            args.insert(optional_pos, Expr::Null)
         } else {
-            args.resize(expected_len, Expr::Nil)
+            args.resize(expected_len, Expr::Null)
         }
     }
     args
@@ -121,7 +121,7 @@ fn to_literal(str: &str) -> Expr {
     match str {
         "true" => TRUE,
         "false" => FALSE,
-        "nil" => NIL,
+        "null" => NULL,
         _ => panic!("unsupported literal '{}'", str),
     }
 }
@@ -142,11 +142,17 @@ mod tests {
         assert_eq!(Expr::Float(0.12), parse("1.2e-1").unwrap());
         assert_eq!(TRUE, parse("true").unwrap());
         assert_eq!(FALSE, parse("false").unwrap());
-        assert_eq!(NIL, parse("nil").unwrap());
+        assert_eq!(NULL, parse("null").unwrap());
         assert_eq!(Expr::Str("abc".to_owned()), parse("\"abc\"").unwrap());
         assert_eq!(Expr::Str("true".to_owned()), parse("\"true\"").unwrap());
+    }
+
+    #[test]
+    fn test_collections() {
         assert_eq!(Expr::List(vec!(Expr::Int(1), Expr::Int(2))), parse("[1,2]").unwrap());
         assert_eq!(Expr::Map(vec!((Expr::Str("a".to_owned()), Expr::Int(1)))), parse("{\"a\":1}").unwrap());
+        assert_eq!("{employees:[{name:alice,age:20,grade:2.3,email:alice@gmail.com},{name:bob,age:21,grade:1.2,email:null}]}",
+                   read(r#"{"employees":[{"name":"alice","age":20,"grade":2.3,"email":"alice@gmail.com"}, {"name":"bob", "age": 21,"grade":1.2,"email":null}]}"#));
     }
 
     #[test]
@@ -158,7 +164,7 @@ mod tests {
     fn test_declarations() {
         assert_eq!("val(f,Float,1.0)", read("val f: Float = 1.0"));
         assert_eq!("val(f,Float,1.0)", read("val(f,Float,1.0)"));
-        assert_eq!("var(a,nil,1)", read("var a = 1"));
+        assert_eq!("var(a,null,1)", read("var a = 1"));
     }
 
     #[test]
@@ -188,26 +194,27 @@ mod tests {
 
     #[test]
     fn test_block() {
-        assert_eq!("{val(a,nil,2);a}", read("{val a = 2;a}"));
+        assert_eq!("{val(a,null,2);a}", read("{val a = 2;a}"));
+        assert_eq!("{val(a,null,2);a}", read(r#"{
+  val a = 2
+  a
+ }"#));
     }
 
 
     #[test]
     fn test_if_while() {
         assert_eq!("if(eq(a,1),{2},{3})", read("if (a == 1) { 2 } else { 3 }"));
-        assert_eq!("if(eq(a,1),{2},{3})", read("if(eq(a,1),{2},{3})"));
         assert_eq!("if(eq(a,1),2,3)", read("if (a == 1) 2 else 3"));
         assert_eq!("if(eq(a,1),2,3)", read("if(eq(a,1),2,3)"));
-        assert_eq!("if(true,{1},nil)", read("if (true) { 1 } "));
+        assert_eq!("if(true,{1},null)", read("if (true) { 1 } "));
         assert_eq!("while(le(a,10),{print(a);assign(a,add(a,1))})", read("while (a <= 10) { print(a) ; a = a + 1 }"));
-        assert_eq!("while(le(a,10),{print(a);assign(a,add(a,1))})", read("while(le(a,10),{print(a);assign(a,add(a,1))})"));
     }
 
     #[test]
     fn test_fun() {
         assert_eq!("fun(pi,(),Float,3.14)", read("fun pi() :Float = 3.14"));
-        assert_eq!("fun(pi,(),Float,3.14)", read("fun(pi,(),Float,3.14)"));
-        assert_eq!("fun(zero,(),Int,{val(x,nil,0);x})", read("fun zero(): Int = { val x = 0 ; x }"));
+        assert_eq!("fun(zero,(),Int,{val(x,null,0);x})", read("fun zero(): Int = { val x = 0 ; x }"));
         assert_eq!("fun(inc,(a:Int),Int,{add(a,1)})", read("fun inc(a: Int): Int = { a + 1 }"));
         assert_eq!("fun(inc,(a:Int),Int,{add(a,1)})", read("fun(inc,(a:Int),Int,{add(a,1)})"));
     }

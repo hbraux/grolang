@@ -8,7 +8,7 @@ use crate::parser::parse;
 use crate::scope::Scope;
 use crate::types::Type;
 
-use self::Expr::{Block, Bool, Call, Failure, Float, Fun, Int, List, Nil, Params, Str, Symbol, TypeOf};
+use self::Expr::{Block, Bool, Call, Failure, Float, Fun, Int, List, Null, Params, Str, Symbol, TypeOf};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
@@ -25,13 +25,13 @@ pub enum Expr {
     Call(String, Vec<Expr>),
     Failure(Exception),
     Fun(String, Type, Function),
-    Nil,
+    Null,
 }
 
 
 pub const TRUE: Expr = Bool(true);
 pub const FALSE: Expr = Bool(false);
-pub const NIL: Expr = Nil;
+pub const NULL: Expr = Null;
 
 impl Display for Expr {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -39,7 +39,7 @@ impl Display for Expr {
             Bool(x) => x.to_string(),
             Int(x) => x.to_string(),
             Str(x) => format!("\"{}\"", x),
-            Nil => "nil".to_owned(),
+            Null => "null".to_owned(),
             Float(x) => format_float(x),
             Symbol(x) => x.to_owned(),
             Failure(x) => x.format(),
@@ -106,7 +106,7 @@ impl Expr {
     pub fn to_type(&self) -> Result<&Type, Exception> {
         match self {
             TypeOf(x) => Ok(x),
-            Nil => Ok(&Type::Any),
+            Null => Ok(&Type::Any),
             _ => Err(Exception::NotA("Type".to_owned(), self.print()))
         }
     }
@@ -119,7 +119,7 @@ impl Expr {
     pub fn eval(&self, scope: &Scope) -> Result<Expr, Exception> {
         match self {
             Failure(e) => Err(e.clone()),
-            Nil | Int(_) | Float(_) | Str(_) | Bool(_) | TypeOf(_) | List(_)  | Map(_)  => Ok(self.clone()),
+            Null | Int(_) | Float(_) | Str(_) | Bool(_) | TypeOf(_) | List(_)  | Map(_)  => Ok(self.clone()),
             Symbol(name) => handle_symbol(name, scope),
             Call(name, args) => handle_call(name, args, scope),
             _ => panic!("not implemented {:?}", self),
@@ -193,7 +193,7 @@ fn handle_macro(scope: &mut Scope, name: &String, args: &Vec<Expr>) -> Result<Ex
 
 
 fn handle_block(body: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
-    let mut result = Ok(Nil);
+    let mut result = Ok(Null);
     for expr in body {
         result = expr.mut_eval(scope);
         if result.is_err() {
