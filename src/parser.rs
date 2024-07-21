@@ -72,6 +72,7 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
         Rule::Definition => Expr::Call("fun".to_owned(), to_vec(pair, 0, 0)),
         Rule::Parameters  => build_params(pair.into_inner()),
         Rule::List  => Expr::List(to_vec(pair, 0, 0)),
+        Rule::Map  =>  build_map(to_vec(pair, 0, 0)),
         _ => panic!("Rule '{}' not implemented", operator_name(pair))
     }
 }
@@ -86,9 +87,16 @@ fn build_call(mut args: Vec<Expr>) -> Expr {
 }
 
 fn build_params(pairs: Pairs<Rule>) -> Expr {
-    let r = pairs.into_iter().map(|p| { let s: Vec<&str> = p.as_str().split(":").collect(); (s[0].trim().to_string(), Type::new(s[1].trim())) }).collect::<Vec<_>>();
-    Expr::Params(r)
+    Expr::Params(pairs.into_iter().map(|p| {
+        let s: Vec<&str> = p.as_str().split(":").collect();
+        (s[0].trim().to_string(), Type::new(s[1].trim()))
+    }).collect::<Vec<_>>())
 }
+
+fn build_map(pairs: Vec<Expr>) -> Expr {
+    Expr::Map(pairs.chunks(2).into_iter().map(|p| (p[0].clone(), p[1].clone())).collect::<Vec<_>>())
+}
+
 
 fn to_vec(pair: Pair<Rule>, expected_len: usize, optional_pos: usize) -> Vec<Expr> {
     let mut args: Vec<Expr> = pair.into_inner().into_iter().map(|p| parse_primary(p)).collect();
@@ -138,6 +146,7 @@ mod tests {
         assert_eq!(Expr::Str("abc".to_owned()), parse("\"abc\"").unwrap());
         assert_eq!(Expr::Str("true".to_owned()), parse("\"true\"").unwrap());
         assert_eq!(Expr::List(vec!(Expr::Int(1), Expr::Int(2))), parse("[1,2]").unwrap());
+        assert_eq!(Expr::Map(vec!((Expr::Str("a".to_owned()), Expr::Int(1)))), parse("{\"a\":1}").unwrap());
     }
 
     #[test]

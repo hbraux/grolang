@@ -1,6 +1,7 @@
 use std::fmt::{Debug, Display, Formatter};
 
 use crate::exception::Exception;
+use crate::expr::Expr::Map;
 use crate::functions::Function;
 use crate::functions::Function::BuiltIn;
 use crate::parser::parse;
@@ -20,6 +21,7 @@ pub enum Expr {
     Params(Vec<(String, Type)>),
     Block(Vec<Expr>),
     List(Vec<Expr>),
+    Map(Vec<(Expr,Expr)>),
     Call(String, Vec<Expr>),
     Failure(Exception),
     Fun(String, Type, Function),
@@ -43,6 +45,7 @@ impl Display for Expr {
             Failure(x) => x.format(),
             TypeOf(x) => x.to_string(),
             Params(v) => format_vec(&v.iter().map(|p| format!("{}:{}", p.0, p.1)).collect::<Vec<_>>(),",", "(",")"),
+            Map(v) => format_vec(&v.iter().map(|p| format!("{}:{}", p.0, p.1)).collect::<Vec<_>>(),",", "{","}"),
             List(vec) => format_vec(vec, ",", "[", "]"),
             Block(vec) => format_vec(vec, ";", "{", "}"),
             Call(name, vec) => format_vec(vec, ",", &(name.to_string() + "("), ")"),

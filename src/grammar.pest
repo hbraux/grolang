@@ -11,9 +11,11 @@ stringChar = _{ !"\""  ~ ANY }
 Symbol = @{ ASCII_ALPHA ~ ASCII_ALPHANUMERIC* }
 
 Literal = _{ Special | Float | Int | String }
+Pair = _{ Literal ~ ":" ~ Literal}
 List = { "[" ~ Literal? ~ ( "," ~ Literal )*  ~ "]" }
+Map =  { "{" ~ Pair? ~ ( "," ~ Pair )*  ~ "}" }
 
-AnyLiteral = _{ Literal | Symbol | List }
+AnyLiteral = _{ Literal | Symbol | List | Map }
 
 Operator = _{ Add | Sub | Mul | Div | Mod | Exp | Eq | Neq | Le | Lt | Ge | Gt | And | Or }
     Add = { "+" }
