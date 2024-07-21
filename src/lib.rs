@@ -1,8 +1,8 @@
 use std::io;
 use std::io::Write;
+
 use crate::expr::Expr;
 use crate::scope::Scope;
-
 
 mod parser;
 mod types;
@@ -143,7 +143,15 @@ mod tests {
     #[test]
     fn test_print() {
         let mut scope = Scope::init();
-        assert_eq!("null", scope.exec("print(\"hello world\")"));
+        assert_eq!("null", scope.exec("print(2, \"hello world\")"));
+    }
+
+    #[test]
+    fn test_read_eval() {
+        let mut scope = Scope::init();
+        scope.exec("val n = 10");
+        assert_eq!("n", scope.exec(r#""n".read()"#));
+        assert_eq!("10", scope.exec(r#""n".read().eval() "#));
     }
 
 
@@ -152,6 +160,14 @@ mod tests {
         let mut scope = Scope::init();
         scope.exec("var a = 0");
         assert_eq!("11", scope.exec("while (a <= 10) { a = a + 1 }"));
+    }
+
+    #[test]
+    fn test_exceptions() {
+        let mut scope = Scope::init();
+        assert_eq!("UndefinedFunction(read)", scope.exec("read()"));
+        assert_eq!("UndefinedMethod(Int.inc)", scope.exec("inc(2)"));
+        assert_eq!("UndefinedSymbol(n)", scope.exec("n.eval()"));
     }
 
     #[test]

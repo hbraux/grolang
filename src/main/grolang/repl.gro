@@ -1,5 +1,5 @@
 var line: String
-var expr: Expr!
+var expr: Expr
 print("Welcome to groLang 0.1)
 print(":q to quit")
 var loop = true
@@ -9,7 +9,7 @@ while (loop) {
   if (line == ":q") {
     loop = false
   } else {
-    expr = input.read()!.eval()
+    expr = input.read().eval()
     if (expr.failed()) {
       print("Error: ", expr)
     } else {

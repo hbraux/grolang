@@ -8,7 +8,7 @@ use crate::scope::Scope;
 use crate::types::Type;
 use crate::types::Type::Macro;
 
-use self::Function::{BuiltIn, Stateful, Stateless, UserDefined};
+use self::Function::{BuiltIn, Stateful, Stateless, Defined};
 
 macro_rules! if_else {
     ($condition:expr => $true_branch:expr ; $false_branch:expr) => {
@@ -21,7 +21,7 @@ pub enum Function {
     Stateless(fn(&Vec<Expr>) -> Result<Expr, Exception>),
     Stateful(fn(&Vec<Expr>, &Scope) -> Result<Expr, Exception>),
     BuiltIn(fn(&Vec<Expr>, &mut Scope) -> Result<Expr, Exception>),
-    UserDefined(Vec<String>, Box<Expr>),
+    Defined(Vec<String>, Box<Expr>),
 }
 
 impl Function {
@@ -29,7 +29,7 @@ impl Function {
         match self {
             Stateless(f) => f(args),
             Stateful(f) => f(args, scope),
-            UserDefined(params, body) => apply_defined(scope, body, params, args),
+            Defined(params, body) => apply_defined(scope, body, params, args),
             _ => panic!("Cannot apply a Mutating function"),
         }
     }
@@ -76,8 +76,9 @@ pub fn load_functions(scope: &mut Scope) {
     scope.add_fun(Fun("Str.trim".to_owned(), spec(), Stateless(|args| Ok(Expr::Str(args[0].to_str()?.trim().to_owned())))));
 
     // IO functions
-    scope.add_fun(Fun("read".to_owned(), Type::new("()->Str"), Stateless(|_| read_line())));
+    scope.add_fun(Fun("readLine".to_owned(), Type::new("()->Any"), Stateless(|_| read_line())));
     scope.add_fun(Fun("print".to_owned(), Type::new("(List<Any>)->Any"), Stateless(|args,| print(args))));
+    scope.add_fun(Fun("eval".to_owned(), Type::new("(Any)->Any"), Stateful(|args, scope| args[0].eval(scope))));
 
     // special functions
     scope.add_fun(Fun("var".to_owned(), Macro, BuiltIn(|args, scope| declare(args[0].to_symbol()?, args[1].to_type()?, args[2].mut_eval(scope)?, scope, true))));
@@ -115,7 +116,7 @@ fn define(name: &str, params: &Vec<(String, Type)>, output: &Type, expr: &Expr, 
         Err(Exception::AlreadyDefined(name.to_owned()))
     } else {
         let types = Type::Fun(params.iter().map(|p| p.1.clone()).collect(), Box::new(output.clone()));
-        scope.add_fun(Fun(name.to_owned(), types, UserDefined(params.iter().map(|p| p.0.clone()).collect(), Box::new(expr.as_block()))));
+        scope.add_fun(Fun(name.to_owned(), types, Defined(params.iter().map(|p| p.0.clone()).collect(), Box::new(expr.as_block()))));
         Ok(Symbol(name.to_owned()))
     }
 }
