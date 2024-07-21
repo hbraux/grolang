@@ -165,23 +165,27 @@ fn handle_symbol(name: &str, scope: &Scope) -> Result<Expr, Exception> {
 }
 
 fn handle_call(name: &str, args: &Vec<Expr>, scope: &Scope) -> Result<Expr, Exception> {
-    let self_type = match args.get(0).map(|e| e.eval(scope)) {
-        Some(Ok(e)) => Some(e.get_type()),
-        _ => None,
-    };
-    match scope.get_fun(name, self_type) {
-        Some((full_name, types, fun)) => apply_fun(full_name, types, args, fun, scope),
-        _ => Err(Exception::UndefinedFunction(name.to_string())),
+    match scope.global().get(name) {
+        Some(Fun(name, types, fun)) => apply_fun(name, types, args, fun, scope),
+        _ if args.len() == 0 => Err(Exception::UndefinedFunction(name.to_string())),
+        _ => {
+            let method_name = args[0].eval(scope)?.get_type().method_name(name);
+            match scope.global().get(&method_name) {
+                Some(Fun(name, types, fun)) => apply_fun(name, types, args, fun, scope),
+                _ => Err(Exception::UndefinedMethod(method_name)),
+            }
+        }
     }
 }
 
+
+
 fn handle_macro(scope: &mut Scope, name: &String, args: &Vec<Expr>) -> Result<Expr, Exception> {
-    if let Some(Fun(_, _, fun)) = scope.get_global(name) {
-        if let BuiltIn(lambda) = fun {
-            return lambda(args, scope)
-        }
+    if let Some(Fun(_, _, BuiltIn(lambda))) = scope.global().get(name) {
+        lambda(args, scope)
+    } else {
+        Err(Exception::NotDefined(name.to_string()))
     }
-    Err(Exception::NotDefined(name.to_string()))
 }
 
 

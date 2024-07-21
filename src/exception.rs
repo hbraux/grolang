@@ -7,6 +7,7 @@ pub enum Exception {
     IOError,
     UndefinedSymbol(String),
     UndefinedFunction(String),
+    UndefinedMethod(String),
     InfiniteLoop,
     NotA(String, String),
     NotMutable(String),
