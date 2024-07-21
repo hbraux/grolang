@@ -212,6 +212,7 @@ fn apply_fun(name: &str, specs: &Type, args: &Vec<Expr>, fun: &Function, scope: 
     })
 }
 
+// TODO: handle collections parameters
 fn check_arguments(name: &str, expected: &Vec<Type>, values: &Vec<Expr>) -> Option<Result<Expr, Exception>> {
     if matches!(expected.get(0), Some(Type::List(..))) {
         return None
