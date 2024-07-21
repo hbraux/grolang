@@ -1,8 +1,8 @@
 use std::io;
 use std::io::Write;
+
 use crate::expr::Expr;
 use crate::scope::Scope;
-
 
 mod parser;
 mod types;
@@ -75,8 +75,10 @@ mod tests {
         assert_eq!("23000.0", scope.exec("2.3e4"));
         assert_eq!("false", scope.exec("false"));
         assert_eq!("true", scope.exec("true"));
-        assert_eq!("nil", scope.exec("nil"));
+        assert_eq!("null", scope.exec("null"));
         assert_eq!("\"abc\"", scope.exec("\"abc\""));
+        assert_eq!("[1,2,3]", scope.exec("[1,2,3]"));
+        assert_eq!("{\"a\":1,\"b\":2}", scope.exec("{\"a\":1,\"b\":2}"));
     }
 
     #[test]
@@ -135,13 +137,21 @@ mod tests {
         assert_eq!("1", scope.exec("if (true) { 1 } else { 0 }"));
         assert_eq!("0", scope.exec("if (false) { 1 }  else { 0 }"));
         assert_eq!("1", scope.exec("if (true) 1"));
-        assert_eq!("nil", scope.exec("if (false) 1"));
+        assert_eq!("null", scope.exec("if (false) 1"));
     }
 
     #[test]
     fn test_print() {
         let mut scope = Scope::init();
-        assert_eq!("nil", scope.exec("print(\"hello world\")"));
+        assert_eq!("null", scope.exec("print(2, \"hello world\")"));
+    }
+
+    #[test]
+    fn test_read_eval() {
+        let mut scope = Scope::init();
+        scope.exec("val n = 10");
+        assert_eq!("n", scope.exec(r#""n".read()"#));
+        assert_eq!("10", scope.exec(r#"read("n").eval() "#));
     }
 
 
@@ -150,6 +160,14 @@ mod tests {
         let mut scope = Scope::init();
         scope.exec("var a = 0");
         assert_eq!("11", scope.exec("while (a <= 10) { a = a + 1 }"));
+    }
+
+    #[test]
+    fn test_exceptions() {
+        let mut scope = Scope::init();
+        assert_eq!("UndefinedFunction(read)", scope.exec("read()"));
+        assert_eq!("UndefinedMethod(Int.inc)", scope.exec("inc(2)"));
+        assert_eq!("UndefinedSymbol(n)", scope.exec("n.eval()"));
     }
 
     #[test]
@@ -167,7 +185,7 @@ mod tests {
         scope.exec("fun zero(): Int = { val x = 0 ; x }");
         assert_eq!("0", scope.exec("zero()"));
 
-        scope.exec("fun fact(n: Int): Int = { if (n <= 1) 1 else n*fact(n-1) }");
+        scope.exec(r#"fun fact(n: Int): Int = { if (n <= 1) 1 else n*fact(n-1)}"#);
         assert_eq!("1", scope.exec("fact(0)"));
         assert_eq!("24", scope.exec("fact(4)"));
     }

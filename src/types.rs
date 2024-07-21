@@ -13,14 +13,13 @@ pub enum Type {
     Bool,
     Str,
     Float,
-    Defined(String),
     List(Box<Type>),
     Option(Box<Type>),
     Try(Box<Type>),
     Map(Box<Type>, Box<Type>),
     Fun(Vec<Type>, Box<Type>),
-    LazyFun,
-    MutatingFun
+    Macro,
+    Defined(String),
 }
 
 

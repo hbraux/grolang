@@ -1,13 +1,14 @@
 use std::fmt::{Debug, Display, Formatter};
 
 use crate::exception::Exception;
+use crate::expr::Expr::Map;
 use crate::functions::Function;
-use crate::functions::Function::Mutating;
+use crate::functions::Function::BuiltIn;
 use crate::parser::parse;
 use crate::scope::Scope;
 use crate::types::Type;
 
-use self::Expr::{Block, Bool, Call, Failure, Float, Fun, Int, List, Nil, Param, Str, Symbol, TypeOf};
+use self::Expr::{Block, Bool, Call, Failure, Float, Fun, Int, List, Null, Params, Str, Symbol, TypeOf};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
@@ -17,19 +18,20 @@ pub enum Expr {
     Bool(bool),
     Symbol(String),
     TypeOf(Type),
-    Param(String, Type),
+    Params(Vec<(String, Type)>),
     Block(Vec<Expr>),
     List(Vec<Expr>),
+    Map(Vec<(Expr,Expr)>),
     Call(String, Vec<Expr>),
     Failure(Exception),
     Fun(String, Type, Function),
-    Nil,
+    Null,
 }
 
 
 pub const TRUE: Expr = Bool(true);
 pub const FALSE: Expr = Bool(false);
-pub const NIL: Expr = Nil;
+pub const NULL: Expr = Null;
 
 impl Display for Expr {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -37,12 +39,13 @@ impl Display for Expr {
             Bool(x) => x.to_string(),
             Int(x) => x.to_string(),
             Str(x) => format!("\"{}\"", x),
-            Nil => "nil".to_owned(),
+            Null => "null".to_owned(),
             Float(x) => format_float(x),
             Symbol(x) => x.to_owned(),
             Failure(x) => x.format(),
             TypeOf(x) => x.to_string(),
-            Param(n, t) => format!("{}:{}", n, t),
+            Params(v) => format_vec(&v.iter().map(|p| format!("{}:{}", p.0, p.1)).collect::<Vec<_>>(),",", "(",")"),
+            Map(v) => format_vec(&v.iter().map(|p| format!("{}:{}", p.0, p.1)).collect::<Vec<_>>(),",", "{","}"),
             List(vec) => format_vec(vec, ",", "[", "]"),
             Block(vec) => format_vec(vec, ";", "{", "}"),
             Call(name, vec) => format_vec(vec, ",", &(name.to_string() + "("), ")"),
@@ -103,29 +106,29 @@ impl Expr {
     pub fn to_type(&self) -> Result<&Type, Exception> {
         match self {
             TypeOf(x) => Ok(x),
-            Nil => Ok(&Type::Any),
+            Null => Ok(&Type::Any),
             _ => Err(Exception::NotA("Type".to_owned(), self.print()))
         }
     }
-    pub fn split_params(&self) -> Result<Vec<(&String, &Type)>, Exception> {
+    pub fn to_params(&self) -> Result<&Vec<(String, Type)>, Exception> {
         match self {
-            List(l) => Ok(l.iter().flat_map(|e| if let Param(s, t) = e { Some((s, t)) } else { None } ).collect()),
-            _ => Err(Exception::NotA("List of Params".to_owned(), self.print()))
+            Params(v) => Ok(v),
+            _ => Err(Exception::NotA("Params".to_owned(), self.print()))
         }
     }
     pub fn eval(&self, scope: &Scope) -> Result<Expr, Exception> {
         match self {
             Failure(e) => Err(e.clone()),
-            Nil | Int(_) | Float(_) | Str(_) | Bool(_) | TypeOf(_) => Ok(self.clone()),
+            Null | Int(_) | Float(_) | Str(_) | Bool(_) | TypeOf(_) | List(_)  | Map(_)  => Ok(self.clone()),
             Symbol(name) => handle_symbol(name, scope),
             Call(name, args) => handle_call(name, args, scope),
-            _ => panic!("not implemented {}", self),
+            _ => panic!("not implemented {:?}", self),
         }
     }
     pub fn mut_eval(&self, scope: &mut Scope) -> Result<Expr, Exception> {
         match self {
             Block(body) => handle_block(body, scope),
-            Call(name, args) if scope.is_mutating_fun(name) => handle_mut_call(scope, name, args),
+            Call(name, args) if scope.is_macro(name) => handle_macro(scope, name, args),
             _ => self.eval(scope)
         }
     }
@@ -165,28 +168,32 @@ fn handle_symbol(name: &str, scope: &Scope) -> Result<Expr, Exception> {
 }
 
 fn handle_call(name: &str, args: &Vec<Expr>, scope: &Scope) -> Result<Expr, Exception> {
-    let self_type = match args.get(0).map(|e| e.eval(scope)) {
-        Some(Ok(e)) => Some(e.get_type()),
-        _ => None,
-    };
-    match scope.get_fun(name, self_type) {
-        Some((full_name, types, fun)) => apply_fun(full_name, types, args, fun, scope),
-        _ => Err(Exception::UndefinedFunction(name.to_string())),
+    match scope.find(name) {
+        Some(Fun(name, types, fun)) => apply_fun(name, types, args, fun, scope),
+        _ if args.len() == 0 => Err(Exception::UndefinedFunction(name.to_string())),
+        _ => {
+            let method_name = args[0].eval(scope)?.get_type().method_name(name);
+            match scope.global().get(&method_name) {
+                Some(Fun(name, types, fun)) => apply_fun(name, types, args, fun, scope),
+                _ => Err(Exception::UndefinedMethod(method_name)),
+            }
+        }
     }
 }
 
-fn handle_mut_call(scope: &mut Scope, name: &String, args: &Vec<Expr>) -> Result<Expr, Exception> {
-    if let Some(Fun(_, _, fun)) = scope.get_global(name) {
-        if let Mutating(lambda) = fun {
-            return lambda(args, scope)
-        }
+
+
+fn handle_macro(scope: &mut Scope, name: &String, args: &Vec<Expr>) -> Result<Expr, Exception> {
+    if let Some(Fun(_, _, BuiltIn(lambda))) = scope.global().get(name) {
+        lambda(args, scope)
+    } else {
+        Err(Exception::NotDefined(name.to_string()))
     }
-    Err(Exception::NotDefined(name.to_string()))
 }
 
 
 fn handle_block(body: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
-    let mut result = Ok(Nil);
+    let mut result = Ok(Null);
     for expr in body {
         result = expr.mut_eval(scope);
         if result.is_err() {
@@ -197,16 +204,19 @@ fn handle_block(body: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> 
 }
 
 fn apply_fun(name: &str, specs: &Type, args: &Vec<Expr>, fun: &Function, scope: &Scope) ->  Result<Expr, Exception> {
-    match specs {
-        Type::LazyFun => fun.apply(args, scope),
-        Type::Fun(input, _output) => args.iter().map(|e| e.eval(scope)).collect::<Result<Vec<Expr>, Exception>>().and_then(|values| {
-            check_arguments(name, input, &values).or(Some(fun.apply(&values, scope))).unwrap()
-        }),
-        _ => Err(Exception::NotA("Fun".to_owned(), specs.to_string())),
-    }
+    args.iter().map(|e| e.eval(scope)).collect::<Result<Vec<Expr>, Exception>>().and_then(|values| {
+        match specs {
+            Type::Fun(input, _output) => check_arguments(name, input, &values).or(Some(fun.apply(&values, scope))).unwrap(),
+            _ => Err(Exception::NotA("Fun".to_owned(), specs.to_string())),
+        }
+    })
 }
 
+// TODO: handle collections parameters
 fn check_arguments(name: &str, expected: &Vec<Type>, values: &Vec<Expr>) -> Option<Result<Expr, Exception>> {
+    if matches!(expected.get(0), Some(Type::List(..))) {
+        return None
+    }
     if expected.len() != values.len() {
         return Some(Err(Exception::WrongArgumentsNumber(name.to_owned(), expected.len(), values.len())))
     }
