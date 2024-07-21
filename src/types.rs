@@ -19,8 +19,7 @@ pub enum Type {
     Try(Box<Type>),
     Map(Box<Type>, Box<Type>),
     Fun(Vec<Type>, Box<Type>),
-    LazyFun,
-    MutatingFun
+    Macro
 }
 
 

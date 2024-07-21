@@ -39,8 +39,8 @@ impl Scope<'_> {
             self.values.get(name)
         }
     }
-    pub fn is_mutating_fun(&self, name: &str) -> bool {
-        matches!(self.get_global(name), Some(Fun(_, Type::MutatingFun, _)))
+    pub fn is_macro(&self, name: &str) -> bool {
+        matches!(self.get_global(name), Some(Fun(_, Type::Macro, _)))
     }
 
     pub fn get_fun(&self, name: &str, self_type: Option<Type>) -> Option<(&String, &Type, &Function)> {

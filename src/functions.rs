@@ -6,9 +6,9 @@ use crate::expr::Expr;
 use crate::expr::Expr::{Bool, Float, Fun, Int, Nil, Symbol};
 use crate::scope::Scope;
 use crate::types::Type;
-use crate::types::Type::{LazyFun, MutatingFun};
+use crate::types::Type::Macro;
 
-use self::Function::{Stateful, UserDefined, Stateless, Mutating};
+use self::Function::{BuiltIn, Stateful, Stateless, UserDefined};
 
 macro_rules! if_else {
     ($condition:expr => $true_branch:expr ; $false_branch:expr) => {
@@ -20,7 +20,7 @@ macro_rules! if_else {
 pub enum Function {
     Stateless(fn(&Vec<Expr>) -> Result<Expr, Exception>),
     Stateful(fn(&Vec<Expr>, &Scope) -> Result<Expr, Exception>),
-    Mutating(fn(&Vec<Expr>, &mut Scope) -> Result<Expr, Exception>),
+    BuiltIn(fn(&Vec<Expr>, &mut Scope) -> Result<Expr, Exception>),
     UserDefined(Vec<String>, Box<Expr>),
 }
 
@@ -77,15 +77,15 @@ pub fn load_functions(scope: &mut Scope) {
 
     // IO functions
     scope.add_fun(Fun("read".to_owned(), Type::new("()->Str"), Stateless(|_| read_line())));
-    scope.add_fun(Fun("print".to_owned(), LazyFun, Stateful(|args, scope| print(args, scope))));
+    scope.add_fun(Fun("print".to_owned(), Type::new("(List<Any>)->Any"), Stateless(|args,| print(args))));
 
     // special functions
-    scope.add_fun(Fun("var".to_owned(), MutatingFun, Mutating(|args, scope| declare(args[0].to_symbol()?, args[1].to_type()?, args[2].mut_eval(scope)?, scope, true))));
-    scope.add_fun(Fun("val".to_owned(), MutatingFun, Mutating(|args, scope| declare(args[0].to_symbol()?, args[1].to_type()?, args[2].mut_eval(scope)?, scope, false))));
-    scope.add_fun(Fun("fun".to_owned(), MutatingFun, Mutating(|args, scope| define(args[0].to_symbol()?, args[1].to_params()?, args[2].to_type()?, &args[3], scope))));
-    scope.add_fun(Fun("assign".to_owned(), MutatingFun, Mutating(|args, scope| assign(args[0].to_symbol()?, args[1].mut_eval(scope)?, scope))));
-    scope.add_fun(Fun("while".to_owned(), MutatingFun, Mutating(|args, scope| run_while(&args[0], args, scope))));
-    scope.add_fun(Fun("if".to_owned(), MutatingFun, Mutating(|args, scope| if_else!(args[0].mut_eval(scope)?.to_bool()? => args[1].mut_eval(scope) ; args[2].mut_eval(scope)))));
+    scope.add_fun(Fun("var".to_owned(), Macro, BuiltIn(|args, scope| declare(args[0].to_symbol()?, args[1].to_type()?, args[2].mut_eval(scope)?, scope, true))));
+    scope.add_fun(Fun("val".to_owned(), Macro, BuiltIn(|args, scope| declare(args[0].to_symbol()?, args[1].to_type()?, args[2].mut_eval(scope)?, scope, false))));
+    scope.add_fun(Fun("fun".to_owned(), Macro, BuiltIn(|args, scope| define(args[0].to_symbol()?, args[1].to_params()?, args[2].to_type()?, &args[3], scope))));
+    scope.add_fun(Fun("assign".to_owned(), Macro, BuiltIn(|args, scope| assign(args[0].to_symbol()?, args[1].mut_eval(scope)?, scope))));
+    scope.add_fun(Fun("while".to_owned(), Macro, BuiltIn(|args, scope| run_while(&args[0], args, scope))));
+    scope.add_fun(Fun("if".to_owned(), Macro, BuiltIn(|args, scope| if_else!(args[0].mut_eval(scope)?.to_bool()? => args[1].mut_eval(scope) ; args[2].mut_eval(scope)))));
 }
 
 fn divide_int(a: &i64, b: &i64) ->  Result<Expr, Exception> {
@@ -134,10 +134,8 @@ fn assign(name: &str, value: Expr, scope: &mut Scope) -> Result<Expr, Exception>
 }
 
 
-fn print(args: &Vec<Expr>, scope: &Scope) -> Result<Expr, Exception> {
-    for x in args {
-        print!("{}", x.eval(scope)?)
-    }
+fn print(args: &Vec<Expr>) -> Result<Expr, Exception> {
+    for x in args { print!("{}", x) }
     println!();
     Ok(Nil)
 }

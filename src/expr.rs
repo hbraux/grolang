@@ -2,7 +2,7 @@ use std::fmt::{Debug, Display, Formatter};
 
 use crate::exception::Exception;
 use crate::functions::Function;
-use crate::functions::Function::Mutating;
+use crate::functions::Function::BuiltIn;
 use crate::parser::parse;
 use crate::scope::Scope;
 use crate::types::Type;
@@ -125,7 +125,7 @@ impl Expr {
     pub fn mut_eval(&self, scope: &mut Scope) -> Result<Expr, Exception> {
         match self {
             Block(body) => handle_block(body, scope),
-            Call(name, args) if scope.is_mutating_fun(name) => handle_mut_call(scope, name, args),
+            Call(name, args) if scope.is_macro(name) => handle_macro(scope, name, args),
             _ => self.eval(scope)
         }
     }
@@ -175,9 +175,9 @@ fn handle_call(name: &str, args: &Vec<Expr>, scope: &Scope) -> Result<Expr, Exce
     }
 }
 
-fn handle_mut_call(scope: &mut Scope, name: &String, args: &Vec<Expr>) -> Result<Expr, Exception> {
+fn handle_macro(scope: &mut Scope, name: &String, args: &Vec<Expr>) -> Result<Expr, Exception> {
     if let Some(Fun(_, _, fun)) = scope.get_global(name) {
-        if let Mutating(lambda) = fun {
+        if let BuiltIn(lambda) = fun {
             return lambda(args, scope)
         }
     }
@@ -197,16 +197,18 @@ fn handle_block(body: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> 
 }
 
 fn apply_fun(name: &str, specs: &Type, args: &Vec<Expr>, fun: &Function, scope: &Scope) ->  Result<Expr, Exception> {
-    match specs {
-        Type::LazyFun => fun.apply(args, scope),
-        Type::Fun(input, _output) => args.iter().map(|e| e.eval(scope)).collect::<Result<Vec<Expr>, Exception>>().and_then(|values| {
-            check_arguments(name, input, &values).or(Some(fun.apply(&values, scope))).unwrap()
-        }),
-        _ => Err(Exception::NotA("Fun".to_owned(), specs.to_string())),
-    }
+    args.iter().map(|e| e.eval(scope)).collect::<Result<Vec<Expr>, Exception>>().and_then(|values| {
+        match specs {
+            Type::Fun(input, _output) => check_arguments(name, input, &values).or(Some(fun.apply(&values, scope))).unwrap(),
+            _ => Err(Exception::NotA("Fun".to_owned(), specs.to_string())),
+        }
+    })
 }
 
 fn check_arguments(name: &str, expected: &Vec<Type>, values: &Vec<Expr>) -> Option<Result<Expr, Exception>> {
+    if matches!(expected.get(0), Some(Type::List(..))) {
+        return None
+    }
     if expected.len() != values.len() {
         return Some(Err(Exception::WrongArgumentsNumber(name.to_owned(), expected.len(), values.len())))
     }
