@@ -38,7 +38,7 @@ Dot = { "." }
 TypeSpec = @{ ":" ~ WHITESPACE? ~ Symbol ~ ( "<" ~ Symbol ~( "," ~ Symbol )? ~ ">")? }
 Parameter = { Symbol ~ TypeSpec }
 
-Expr = {  CallExpr | BinaryExpr | ChainCall | Term  }
+Expr = {  ChainCall | CallExpr | BinaryExpr  | Term  }
 ChainCall = _{ Term ~ ( Dot ~ CallExpr )+  }
 BinaryExpr = _{ Term ~ ( Operator ~ Term ) + }
 CallExpr = { Symbol ~ "(" ~ Expr? ~ ( "," ~ Expr )* ~ ")" }

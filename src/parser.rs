@@ -191,6 +191,7 @@ mod tests {
         assert_eq!("print(a,b)", read("print(a,b)"));
         assert_eq!("mul(a,fact(sub(a,1)))", read("a*fact(a-1)"));
         assert_eq!("print(inc(a))", read("a.inc().print()"));
+        assert_eq!("eval(read(a))", read("read(\"a\").eval()"));
     }
 
     #[test]

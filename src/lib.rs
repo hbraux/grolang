@@ -151,7 +151,7 @@ mod tests {
         let mut scope = Scope::init();
         scope.exec("val n = 10");
         assert_eq!("n", scope.exec(r#""n".read()"#));
-        assert_eq!("10", scope.exec(r#""n".read().eval() "#));
+        assert_eq!("10", scope.exec(r#"read("n").eval() "#));
     }
 
 
