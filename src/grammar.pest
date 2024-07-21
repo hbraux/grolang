@@ -10,11 +10,10 @@ stringChar = _{ !"\""  ~ ANY }
 
 Symbol = @{ ASCII_ALPHA ~ ASCII_ALPHANUMERIC* }
 
-
-TypeSpec = @{ ":" ~ WHITESPACE* ~ Symbol ~ ( "<" ~ Symbol ~( "," ~ Symbol )? ~ ">")? }
-Parameter = { Symbol ~ TypeSpec }
-Literal = _{ Special | Float | Int | String | Parameter | Symbol }
+Literal = _{ Special | Float | Int | String }
 List = { "[" ~ Literal? ~ ( "," ~ Literal )*  ~ "]" }
+
+AnyLiteral = _{ Literal | Symbol | List }
 
 Operator = _{ Add | Sub | Mul | Div | Mod | Exp | Eq | Neq | Le | Lt | Ge | Gt | And | Or }
     Add = { "+" }
@@ -33,11 +32,14 @@ Operator = _{ Add | Sub | Mul | Div | Mod | Exp | Eq | Neq | Le | Lt | Ge | Gt |
     Or = { "||" }
 Dot = { "." }
 
+TypeSpec = @{ ":" ~ WHITESPACE? ~ Symbol ~ ( "<" ~ Symbol ~( "," ~ Symbol )? ~ ">")? }
+Parameter = { Symbol ~ TypeSpec }
+
 Expr = {  CallExpr | BinaryExpr | ChainCall | Term  }
 ChainCall = _{ Term ~ ( Dot ~ CallExpr )+  }
 BinaryExpr = _{ Term ~ ( Operator ~ Term ) + }
 CallExpr = { Symbol ~ "(" ~ Expr? ~ ( "," ~ Expr )* ~ ")" }
-Term = _{ CallExpr | Literal | List |  "(" ~ Expr ~ ")"  }
+Term = _{ CallExpr | Parameters | AnyLiteral |  "(" ~ Expr ~ ")"  | Block }
 
 VarType = { "var" | "val" }
 Declaration = { VarType ~ Symbol ~ TypeSpec? ~ "=" ~ Expr }

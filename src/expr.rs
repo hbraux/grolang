@@ -7,7 +7,7 @@ use crate::parser::parse;
 use crate::scope::Scope;
 use crate::types::Type;
 
-use self::Expr::{Block, Bool, Call, Failure, Float, Fun, Int, List, Nil, Param, Str, Symbol, TypeOf};
+use self::Expr::{Block, Bool, Call, Failure, Float, Fun, Int, List, Nil, Params, Str, Symbol, TypeOf};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
@@ -17,7 +17,7 @@ pub enum Expr {
     Bool(bool),
     Symbol(String),
     TypeOf(Type),
-    Param(String, Type),
+    Params(Vec<(String, Type)>),
     Block(Vec<Expr>),
     List(Vec<Expr>),
     Call(String, Vec<Expr>),
@@ -42,7 +42,7 @@ impl Display for Expr {
             Symbol(x) => x.to_owned(),
             Failure(x) => x.format(),
             TypeOf(x) => x.to_string(),
-            Param(n, t) => format!("{}:{}", n, t),
+            Params(v) => format_vec(&v.iter().map(|p| format!("{}:{}", p.0, p.1)).collect::<Vec<_>>(),",", "(",")"),
             List(vec) => format_vec(vec, ",", "[", "]"),
             Block(vec) => format_vec(vec, ";", "{", "}"),
             Call(name, vec) => format_vec(vec, ",", &(name.to_string() + "("), ")"),
@@ -107,10 +107,10 @@ impl Expr {
             _ => Err(Exception::NotA("Type".to_owned(), self.print()))
         }
     }
-    pub fn split_params(&self) -> Result<Vec<(&String, &Type)>, Exception> {
+    pub fn to_params(&self) -> Result<&Vec<(String, Type)>, Exception> {
         match self {
-            List(l) => Ok(l.iter().flat_map(|e| if let Param(s, t) = e { Some((s, t)) } else { None } ).collect()),
-            _ => Err(Exception::NotA("List of Params".to_owned(), self.print()))
+            Params(v) => Ok(v),
+            _ => Err(Exception::NotA("Params".to_owned(), self.print()))
         }
     }
     pub fn eval(&self, scope: &Scope) -> Result<Expr, Exception> {
