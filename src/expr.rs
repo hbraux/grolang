@@ -165,7 +165,7 @@ fn handle_symbol(name: &str, scope: &Scope) -> Result<Expr, Exception> {
 }
 
 fn handle_call(name: &str, args: &Vec<Expr>, scope: &Scope) -> Result<Expr, Exception> {
-    match scope.global().get(name) {
+    match scope.find(name) {
         Some(Fun(name, types, fun)) => apply_fun(name, types, args, fun, scope),
         _ if args.len() == 0 => Err(Exception::UndefinedFunction(name.to_string())),
         _ => {

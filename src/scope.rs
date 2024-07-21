@@ -33,6 +33,9 @@ impl Scope<'_> {
     pub fn get_value(&self, name: &str) -> Option<Expr> {
         self.get(name).map(|e| e.clone())
     }
+    pub fn find(&self, name: &str) -> Option<&Expr> {
+        self.values.get(name).or(self.parent.map(|s| s.find(name)).flatten())
+    }
     pub fn is_macro(&self, name: &str) -> bool {
         matches!(self.global().get(name), Some(Fun(_, Type::Macro, _)))
     }
@@ -48,7 +51,6 @@ impl Scope<'_> {
             self.values.insert(n.to_string(), v.clone());
         });
     }
-
 
     pub fn is_defined(&self, name: &str) -> bool {
         self.values.contains_key(name)
@@ -93,8 +95,10 @@ mod tests {
         child.set("c", Int(3), None);
         child.set("b", Int(4), None);
         assert_eq!(child.get("a"), None);
+        assert_eq!(child.find("a"), Some(&Int(1)));
         assert_eq!(child.get("c"), Some(&Int(3)));
         assert_eq!(child.get("b"), Some(&Int(4)));
+        assert_eq!(child.find("b"), Some(&Int(4)));
         assert_eq!(root.global().get("b"), Some(&Int(2)));
 
     }
