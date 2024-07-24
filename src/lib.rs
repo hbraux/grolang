@@ -11,6 +11,11 @@ mod functions;
 mod expr;
 mod scope;
 
+#[macro_export]
+macro_rules! if_else {
+    ($condition:expr,  $true_branch:expr, $false_branch:expr) => { if $condition { $true_branch } else { $false_branch }};
+}
+
 pub const LANG: &str = "GroLang";
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 const PROMPT: &str = "> ";

@@ -3,28 +3,33 @@ use std::fmt::{Debug, Display, Formatter};
 use crate::exception::Exception;
 use crate::functions::Function;
 use crate::functions::Function::BuiltIn;
+use crate::if_else;
 use crate::parser::parse;
 use crate::scope::Scope;
 use crate::types::Type;
+use crate::types::Type::Any;
 
-use self::Expr::{Block, Bool, Call, Failure, Float, Fun, Int, RawList, Null, Params, Str, Symbol, RawType, RawMap};
+use self::Expr::{Block, Bool, Call, Failure, Float, Fun, Int, List, RawList, Null, RawParams, Str, Symbol, RawType, Map, RawMap};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
+    Null,
     Int(i64),
     Float(f64),
     Str(String),
     Bool(bool),
     Symbol(String),
-    RawType(String),
-    Params(Vec<(String, Type)>),
     Block(Vec<Expr>),
-    RawList(Vec<Expr>),
-    RawMap(Vec<(Expr, Expr)>),
     Call(String, Vec<Expr>),
     Failure(Exception),
     Fun(String, Type, Function),
-    Null,
+    List(Type, Vec<Expr>),
+    Map((Type, Type), Vec<(Expr, Expr)>),
+    // raw types are only used for parsing, they can't be used as an evaluation result
+    RawType(String),
+    RawList(Vec<Expr>),
+    RawMap(Vec<(Expr, Expr)>),
+    RawParams(Vec<(String, Type)>),
 }
 
 
@@ -43,9 +48,9 @@ impl Display for Expr {
             Float(x) => format_float(x),
             Symbol(x) => x.to_owned(),
             Failure(x) => x.format(),
-            Params(v) => format_vec(&v.iter().map(|p| format!("{}:{}", p.0, p.1)).collect::<Vec<_>>(),",", "(",")"),
-            RawMap(v) => format_vec(&v.iter().map(|p| format!("{}:{}", p.0, p.1)).collect::<Vec<_>>(), ",", "{", "}"),
-            RawList(vec) => format_vec(vec, ",", "[", "]"),
+            RawParams(v) => format_vec(&v.iter().map(|p| format!("{}:{}", p.0, p.1)).collect::<Vec<_>>(), ",", "(", ")"),
+            RawMap(vec) | Map( _, vec) => format_vec(&vec.iter().map(|p| format!("{}:{}", p.0, p.1)).collect::<Vec<_>>(), ",", "{", "}"),
+            RawList(vec) | List(_, vec)=> format_vec(vec, ",", "[", "]"),
             Block(vec) => format_vec(vec, ";", "{", "}"),
             Call(name, vec) => format_vec(vec, ",", &(name.to_string() + "("), ")"),
             _ => format!("{:?}", self),
@@ -102,20 +107,22 @@ impl Expr {
     pub fn to_type(&self) -> Result<Type, Exception> {
         match self {
             RawType(x) => Ok(Type::new(x)),
-            Null => Ok(Type::Any),
+            Null => Ok(Any),
             _ => Err(Exception::NotA("Type".to_owned(), self.print()))
         }
     }
     pub fn to_params(&self) -> Result<&Vec<(String, Type)>, Exception> {
         match self {
-            Params(v) => Ok(v),
+            RawParams(v) => Ok(v),
             _ => Err(Exception::NotA("Params".to_owned(), self.print()))
         }
     }
     pub fn eval(&self, scope: &Scope) -> Result<Expr, Exception> {
         match self {
             Failure(e) => Err(e.clone()),
-            Null | Int(_) | Float(_) | Str(_) | Bool(_)  | RawList(_)  | RawMap(_)  => Ok(self.clone()),
+            Null | Int(_) | Float(_) | Str(_) | Bool(_)  | List(_,_ )  | Map(_, _)  => Ok(self.clone()),
+            RawList(v) => Ok(List(if_else!(v.is_empty(), Any, v[0].get_type()), v.clone())),
+            RawMap(v) => Ok(Map(if_else!(v.is_empty(), (Any,Any), (v[0].0.get_type(),v[0].1.get_type())), v.clone())),
             Symbol(name) => handle_symbol(name, scope),
             Call(name, args) => handle_call(name, args, scope),
             _ => panic!("not implemented {:?}", self),

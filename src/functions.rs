@@ -4,17 +4,13 @@ use std::io;
 use crate::exception::Exception;
 use crate::expr::Expr;
 use crate::expr::Expr::{Bool, Float, Fun, Int, Null, Symbol};
+use crate::if_else;
 use crate::scope::Scope;
 use crate::types::Type;
 use crate::types::Type::Macro;
 
 use self::Function::{BuiltIn, Stateful, Stateless, Defined};
 
-macro_rules! if_else {
-    ($condition:expr => $true_branch:expr ; $false_branch:expr) => {
-        if $condition { $true_branch } else { $false_branch }
-    };
-}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Function {
@@ -86,7 +82,7 @@ pub fn load_functions(scope: &mut Scope) {
     scope.add_fun(Fun("fun".to_owned(), Macro, BuiltIn(|args, scope| define(args[0].to_symbol()?, args[1].to_params()?, args[2].to_type()?, &args[3], scope))));
     scope.add_fun(Fun("assign".to_owned(), Macro, BuiltIn(|args, scope| assign(args[0].to_symbol()?, args[1].mut_eval(scope)?, scope))));
     scope.add_fun(Fun("while".to_owned(), Macro, BuiltIn(|args, scope| run_while(&args[0], args, scope))));
-    scope.add_fun(Fun("if".to_owned(), Macro, BuiltIn(|args, scope| if_else!(args[0].mut_eval(scope)?.to_bool()? => args[1].mut_eval(scope) ; args[2].mut_eval(scope)))));
+    scope.add_fun(Fun("if".to_owned(), Macro, BuiltIn(|args, scope| if_else!(args[0].mut_eval(scope)?.to_bool()?, args[1].mut_eval(scope),args[2].mut_eval(scope)))));
 }
 
 fn divide_int(a: &i64, b: &i64) ->  Result<Expr, Exception> {

@@ -87,7 +87,7 @@ fn build_call(mut args: Vec<Expr>) -> Expr {
 }
 
 fn build_params(pairs: Pairs<Rule>) -> Expr {
-    Expr::Params(pairs.into_iter().map(|p| {
+    Expr::RawParams(pairs.into_iter().map(|p| {
         let s: Vec<&str> = p.as_str().split(":").collect();
         (s[0].trim().to_string(), Type::new(s[1].trim()))
     }).collect::<Vec<_>>())
