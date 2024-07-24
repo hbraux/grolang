@@ -58,9 +58,9 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
         Rule::Int => Expr::Int(pair.as_str().trim().replace("_", "").parse::<i64>().unwrap()),
         Rule::Float => Expr::Float(pair.as_str().parse::<f64>().unwrap()),
         Rule::Special => to_literal(pair.as_str()),
-        Rule::String => Expr::Str(unquote(pair.as_str())),
+        Rule::String => Expr::Str(un_quote(pair.as_str())),
         Rule::Symbol | Rule::VarType => Expr::Symbol(pair.as_str().to_owned()),
-        Rule::TypeSpec => Expr::read_type(pair.as_str()),
+        Rule::RawType => Expr::RawType(un_colon(pair.as_str())),
         Rule::Operator => Expr::Symbol(pair.as_str().to_owned()),
         Rule::Expr =>  parse_pairs(pair.into_inner()),
         Rule::CallExpr => build_call(to_vec(pair, 0, 0)),
@@ -111,9 +111,11 @@ fn to_vec(pair: Pair<Rule>, expected_len: usize, optional_pos: usize) -> Vec<Exp
 }
 
 
-fn unquote(str: &str) -> String {
+fn un_quote(str: &str) -> String {
     (&str[1..str.len()-1]).to_owned()
 }
+
+fn un_colon(str: &str) -> String { (&str[1..str.len()]).trim().to_owned() }
 
 fn operator_name(pair: Pair<Rule>) -> String {
     format!("{:?}", pair.as_rule()).to_lowercase()
@@ -148,6 +150,8 @@ mod tests {
         assert_eq!(Expr::Str("abc".to_owned()), parse(r#""abc""#).unwrap());
         assert_eq!(Expr::Str("true".to_owned()), parse(r#""true""#).unwrap());
         assert_eq!(Expr::Str("escaped \\n \\t \\\" \\\\ string".to_owned()), parse(r#""escaped \n \t \" \\ string""#).unwrap());
+        assert_eq!(Expr::RawType("Float".to_owned()), parse(": Float").unwrap());
+        assert_eq!(Expr::RawType("List<Int>".to_owned()), parse(":List<Int>").unwrap());
     }
 
     #[test]
@@ -165,8 +169,8 @@ mod tests {
 
     #[test]
     fn test_declarations() {
-        assert_eq!("val(f,Float,1.0)", read("val f: Float = 1.0"));
-        assert_eq!("val(f,Float,1.0)", read("val(f,Float,1.0)"));
+        assert_eq!("val(f,:Float,1.0)", read("val f: Float = 1.0"));
+        assert_eq!("val(f,:Float,1.0)", read("val(f,:Float,1.0)"));
         assert_eq!("var(a,null,1)", read("var a = 1"));
     }
 
@@ -218,10 +222,10 @@ mod tests {
 
     #[test]
     fn test_fun() {
-        assert_eq!("fun(pi,(),Float,3.14)", read("fun pi() :Float = 3.14"));
-        assert_eq!("fun(zero,(),Int,{val(x,null,0);x})", read("fun zero(): Int = { val x = 0 ; x }"));
-        assert_eq!("fun(inc,(a:Int),Int,{add(a,1)})", read("fun inc(a: Int): Int = { a + 1 }"));
-        assert_eq!("fun(inc,(a:Int),Int,{add(a,1)})", read("fun(inc,(a:Int),Int,{add(a,1)})"));
+        assert_eq!("fun(pi,(),:Float,3.14)", read("fun pi() :Float = 3.14"));
+        assert_eq!("fun(zero,(),:Int,{val(x,null,0);x})", read("fun zero(): Int = { val x = 0 ; x }"));
+        assert_eq!("fun(zero,(),:Int,{val(x,null,0);x})", read("fun(zero,(),:Int,{val(x,null,0);x})"));
+        assert_eq!("fun(inc,(a:Int),:Int,{add(a,1)})", read("fun inc(a: Int): Int = { a + 1 }"));
     }
 
 

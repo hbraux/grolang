@@ -100,8 +100,8 @@ fn divide_float(a: &f64, b: &f64) ->  Result<Expr, Exception> {
 }
 
 
-fn declare(name: &str, expected: &Type, value: Expr, scope: &mut Scope, is_mutable: bool) -> Result<Expr, Exception> {
-    if *expected != Type::Any && *expected != value.get_type()  {
+fn declare(name: &str, expected: Type, value: Expr, scope: &mut Scope, is_mutable: bool) -> Result<Expr, Exception> {
+    if expected != Type::Any && expected != value.get_type()  {
         Err(Exception::UnexpectedType(value.get_type().to_string()))
     } else if scope.is_defined(&name) {
         Err(Exception::AlreadyDefined(name.to_owned()))
@@ -111,7 +111,7 @@ fn declare(name: &str, expected: &Type, value: Expr, scope: &mut Scope, is_mutab
     }
 }
 
-fn define(name: &str, params: &Vec<(String, Type)>, output: &Type, expr: &Expr, scope: &mut Scope) -> Result<Expr, Exception> {
+fn define(name: &str, params: &Vec<(String, Type)>, output: Type, expr: &Expr, scope: &mut Scope) -> Result<Expr, Exception> {
     if scope.is_defined(&name) {
         Err(Exception::AlreadyDefined(name.to_owned()))
     } else {

@@ -1,14 +1,13 @@
 use std::fmt::{Debug, Display, Formatter};
 
 use crate::exception::Exception;
-use crate::expr::Expr::Map;
 use crate::functions::Function;
 use crate::functions::Function::BuiltIn;
 use crate::parser::parse;
 use crate::scope::Scope;
 use crate::types::Type;
 
-use self::Expr::{Block, Bool, Call, Failure, Float, Fun, Int, List, Null, Params, Str, Symbol, TypeOf};
+use self::Expr::{Block, Bool, Call, Failure, Float, Fun, Int, List, Null, Params, Str, Symbol, RawType, Map};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
@@ -17,7 +16,7 @@ pub enum Expr {
     Str(String),
     Bool(bool),
     Symbol(String),
-    TypeOf(Type),
+    RawType(String),
     Params(Vec<(String, Type)>),
     Block(Vec<Expr>),
     List(Vec<Expr>),
@@ -39,11 +38,11 @@ impl Display for Expr {
             Bool(x) => x.to_string(),
             Int(x) => x.to_string(),
             Str(x) => format!("\"{}\"", x),
+            RawType(x) => format!(":{}", x),
             Null => "null".to_owned(),
             Float(x) => format_float(x),
             Symbol(x) => x.to_owned(),
             Failure(x) => x.format(),
-            TypeOf(x) => x.to_string(),
             Params(v) => format_vec(&v.iter().map(|p| format!("{}:{}", p.0, p.1)).collect::<Vec<_>>(),",", "(",")"),
             Map(v) => format_vec(&v.iter().map(|p| format!("{}:{}", p.0, p.1)).collect::<Vec<_>>(),",", "{","}"),
             List(vec) => format_vec(vec, ",", "[", "]"),
@@ -59,9 +58,6 @@ impl Display for Expr {
 impl Expr {
     pub fn read(str: &str, _ctx: &Scope) -> Expr {
         parse(str).unwrap_or_else(|s| Failure(Exception::CannotParse(s)))
-    }
-    pub fn read_type(str: &str) -> Expr {
-        TypeOf(Type::new(str.replace(":", "").trim()))
     }
 
     pub fn get_type(&self) -> Type {
@@ -103,10 +99,10 @@ impl Expr {
             _ => Err(Exception::UndefinedSymbol(self.print()))
         }
     }
-    pub fn to_type(&self) -> Result<&Type, Exception> {
+    pub fn to_type(&self) -> Result<Type, Exception> {
         match self {
-            TypeOf(x) => Ok(x),
-            Null => Ok(&Type::Any),
+            RawType(x) => Ok(Type::new(x)),
+            Null => Ok(Type::Any),
             _ => Err(Exception::NotA("Type".to_owned(), self.print()))
         }
     }
@@ -119,7 +115,7 @@ impl Expr {
     pub fn eval(&self, scope: &Scope) -> Result<Expr, Exception> {
         match self {
             Failure(e) => Err(e.clone()),
-            Null | Int(_) | Float(_) | Str(_) | Bool(_) | TypeOf(_) | List(_)  | Map(_)  => Ok(self.clone()),
+            Null | Int(_) | Float(_) | Str(_) | Bool(_)  | List(_)  | Map(_)  => Ok(self.clone()),
             Symbol(name) => handle_symbol(name, scope),
             Call(name, args) => handle_call(name, args, scope),
             _ => panic!("not implemented {:?}", self),

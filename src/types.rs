@@ -25,7 +25,6 @@ pub enum Type {
 
 
 impl Type {
-
     pub fn new(str: &str) -> Type {
         if str.starts_with("(") {
             let args: Vec<&str>  = str[1..str.len()].split(")->").collect();

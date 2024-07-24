@@ -10,8 +10,9 @@ stringChar = _{ (!("\\" | "\"") ~ ANY) + }
 escape     = _{ "\\" ~ ( "n" | "r" | "t" | "\\" | "\"" ) }
 
 Symbol = @{ ASCII_ALPHA ~ ASCII_ALPHANUMERIC* }
+RawType = @{ ":" ~ WHITESPACE* ~ Symbol ~ ( "<" ~ Symbol ~( "," ~ Symbol )? ~ ">")? }
 
-Literal = _{ Special | Float | Int | String  }
+Literal = _{ Special | Float | Int | String | RawType }
 Pair = _{ Literal ~ ":" ~ LiteralOrCollection }
 
 LiteralOrCollection = _{ Literal | List | Map }
@@ -36,8 +37,6 @@ Operator = _{ Add | Sub | Mul | Div | Mod | Exp | Eq | Neq | Le | Lt | Ge | Gt |
     Or = { "||" }
 Dot = { "." }
 
-TypeSpec = @{ ":" ~ WHITESPACE* ~ Symbol ~ ( "<" ~ Symbol ~( "," ~ Symbol )? ~ ">")? }
-Parameter = { Symbol ~ TypeSpec }
 
 Expr = {  ChainCall | CallExpr | BinaryExpr  | Term  }
 ChainCall = _{ Term ~ ( Dot ~ CallExpr )+  }
@@ -46,10 +45,11 @@ CallExpr = { Symbol ~ "(" ~ Expr? ~ ( "," ~ Expr )* ~ ")" }
 Term = _{ CallExpr | Parameters | LiteralOrCollection | Symbol |  "(" ~ Expr ~ ")"  | Block }
 
 VarType = { "var" | "val" }
-Declaration = { VarType ~ Symbol ~ TypeSpec? ~ "=" ~ Expr }
+Declaration = { VarType ~ Symbol ~ RawType? ~ "=" ~ Expr }
 
+Parameter = { Symbol ~ RawType }
 Parameters = { "(" ~ Parameter? ~ ( "," ~ Parameter )* ~ ")" }
-Definition = { "fun" ~ Symbol ~ Parameters ~ TypeSpec ~ "=" ~ ( Expr | Block) }
+Definition = { "fun" ~ Symbol ~ Parameters ~ RawType ~ "=" ~ ( Expr | Block) }
 Assignment = { Symbol ~ "=" ~ Expr }
 
 Block = { "{" ~ NEWLINE* ~ Statement ~ ( (NEWLINE | ";") ~ Statement)* ~ NEWLINE* ~ "}" }
