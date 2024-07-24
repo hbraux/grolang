@@ -6,7 +6,7 @@ use crate::expr::Expr::Fun;
 use crate::functions::add_functions;
 use crate::types::Type;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Scope<'a> {
     values: HashMap<String, Expr>,
     mutables: HashSet<String>,
@@ -73,6 +73,11 @@ impl Scope<'_> {
     pub fn read(&self, str: &str) -> Expr { Expr::read(str, self) }
 
     pub fn exec(&mut self, str: &str) -> String { self.read(str).eval_or_failed(self).print() }
+
+    pub fn suggest(&self, str: &str) -> Option<String> {
+        // TODO
+        None
+    }
 
 }
 

@@ -56,12 +56,12 @@ pub fn add_functions(sc: &mut Scope) {
     def!(sc, "Float.mul", types, Stateless(|vec| Ok(Float(vec[0].to_float()? * vec[1].to_float()?))));
     def!(sc, "Float.div", types, Stateless(|vec| divide_float(vec[0].to_float()?, vec[1].to_float()?)));
 
-    // boolean logic
+    // boolean operators
     let types = Type::new("(Bool,Bool)->Bool");
     def!(sc, "Bool.and", types, Stateless(|vec| Ok(Bool(vec[0].to_bool()? && vec[1].to_bool()?))));
     def!(sc, "Bool.or", types, Stateless(|vec| Ok(Bool(vec[0].to_bool()? || vec[1].to_bool()?))));
 
-    // comparisons
+    // int comparisons
     let types = Type::new("(Int,Int)->Bool");
     def!(sc, "Int.eq", types, Stateless(|vec| Ok(Bool(vec[0].to_int()? == vec[1].to_int()?))));
     def!(sc, "Int.neq", types, Stateless(|vec| Ok(Bool(vec[0].to_int()? != vec[1].to_int()?))));

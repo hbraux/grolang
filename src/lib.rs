@@ -1,7 +1,6 @@
-use std::io;
-use std::io::Write;
 
-use crate::expr::Expr;
+use dialoguer::{BasicHistory, Completion, Input, theme::ColorfulTheme};
+
 use crate::scope::Scope;
 
 mod parser;
@@ -18,46 +17,58 @@ macro_rules! if_else {
 
 pub const LANG: &str = "GroLang";
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
-const PROMPT: &str = "> ";
 const RED: &str = "\x1b[1;31m";
 const BLUE: &str = "\x1b[1;34m";
 const STD: &str = "\x1b[0m";
 
 
 fn help() {
-    println!("Pas disponible pour le moment")
+    println!(r#"Pas disponible pour le moment"#)
 }
 
+struct AutoComplete<'a> {
+    scope: Scope<'a>
+}
+
+impl AutoComplete<'_> {
+    fn new(scope: Scope) -> AutoComplete { AutoComplete { scope } }
+}
+impl Completion for AutoComplete<'_>  {
+    fn get(&self, input: &str) -> Option<String> { self.scope.suggest(input) }
+}
 
 pub fn repl() {
     println!("{BLUE}Bienvenue sur {LANG} version {VERSION}{STD}");
     println!("Taper :q pour quitter, :h pour de l'aide");
     let mut scope = Scope::init();
+    let mut history = BasicHistory::new();
+    let autocomplete = AutoComplete::new(scope.clone());
     loop {
-        print!("{}", PROMPT);
-        io::stdout().flush().unwrap();
-        let mut line = String::new();
-        match io::stdin().read_line(&mut line) {
-            Err(_) => break,
-            _ => {}
+        let input = Input::<String>::with_theme(&ColorfulTheme::default())
+            .completion_with(&autocomplete)
+            .history_with(&mut history)
+            .interact_text();
+        if input.is_err() {
+            println!("{RED}Erreur inattendue ({:?}){STD}", input.err().unwrap());
+            break
         }
-        let input = line.trim();
-        if input.starts_with(':') {
-            match input {
+        let cmd: String = input.unwrap();
+        if cmd.starts_with(':') {
+            match cmd.as_str() {
                 ":q" => break,
                 ":h" => help(),
-                _ => println!("{RED}Commande inconnue {input}{STD}"),
+                _ => println!("{RED}Commande inconnue {}{STD}", cmd),
             }
             continue;
         }
-        let expr = scope.read(input);
-        if let Expr::Failure(error) = expr {
-            println!("{RED}Erreur de syntaxe ({:?}){STD}", error);
+        let expr = scope.read(&cmd);
+        if expr.failed() {
+            println!("{RED}Erreur de syntaxe ({:?}){STD}", expr.to_exception().unwrap());
             continue;
         }
         let result = expr.eval_or_failed(&mut scope);
-        if let Expr::Failure(error) = result {
-            println!("{RED}Erreur d'évaluation ({:?}){STD}", error);
+        if expr.failed() {
+            println!("{RED}Erreur d'évaluation ({:?}){STD}", expr.to_exception().unwrap());
         } else {
             println!("{}", result.print())
         }

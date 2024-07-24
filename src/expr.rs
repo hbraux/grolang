@@ -65,6 +65,18 @@ impl Expr {
         parse(str).unwrap_or_else(|s| Failure(Exception::CannotParse(s)))
     }
 
+    pub fn failed(&self) -> bool {
+        matches!(self, Failure(_))
+    }
+
+    pub fn to_exception(&self) -> Option<&Exception> {
+        match self {
+            Failure(ex) => Some(ex),
+            _ => None
+        }
+
+    }
+
     pub fn get_type(&self) -> Type {
         match self {
             Bool(_) => Type::Bool,
