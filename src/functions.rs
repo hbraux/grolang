@@ -40,52 +40,52 @@ fn apply_defined(scope: &Scope, body: &Box<Expr>, params: &Vec<String>, vec: &Ve
     body.mut_eval(&mut local)
 }
 
-pub fn add_functions(scope: &mut Scope) {
+pub fn add_functions(sc: &mut Scope) {
     // int arithmetics
     let types = Type::new("(Int,Int)->Int");
-    def!(scope, "Int.add", types, Stateless(|vec| Ok(Int(vec[0].to_int()? + vec[1].to_int()?))));
-    def!(scope, "Int.sub", types, Stateless(|vec| Ok(Int(vec[0].to_int()? - vec[1].to_int()?))));
-    def!(scope, "Int.mul", types, Stateless(|vec| Ok(Int(vec[0].to_int()? * vec[1].to_int()?))));
-    def!(scope, "Int.div", types, Stateless(|vec| divide_int(vec[0].to_int()?, vec[1].to_int()?)));
-    def!(scope, "Int.mod", types, Stateless(|vec| modulo_int(vec[0].to_int()?, vec[1].to_int()?)));
+    def!(sc, "Int.add", types, Stateless(|vec| Ok(Int(vec[0].to_int()? + vec[1].to_int()?))));
+    def!(sc, "Int.sub", types, Stateless(|vec| Ok(Int(vec[0].to_int()? - vec[1].to_int()?))));
+    def!(sc, "Int.mul", types, Stateless(|vec| Ok(Int(vec[0].to_int()? * vec[1].to_int()?))));
+    def!(sc, "Int.div", types, Stateless(|vec| divide_int(vec[0].to_int()?, vec[1].to_int()?)));
+    def!(sc, "Int.mod", types, Stateless(|vec| modulo_int(vec[0].to_int()?, vec[1].to_int()?)));
 
     // float arithmetics
     let types = Type::new("(Float,Float)->Float");
-    def!(scope, "Float.add", types, Stateless(|vec| Ok(Float(vec[0].to_float()? + vec[1].to_float()?))));
-    def!(scope, "Float.sub", types, Stateless(|vec| Ok(Float(vec[0].to_float()? - vec[1].to_float()?))));
-    def!(scope, "Float.mul", types, Stateless(|vec| Ok(Float(vec[0].to_float()? * vec[1].to_float()?))));
-    def!(scope, "Float.div", types, Stateless(|vec| divide_float(vec[0].to_float()?, vec[1].to_float()?)));
+    def!(sc, "Float.add", types, Stateless(|vec| Ok(Float(vec[0].to_float()? + vec[1].to_float()?))));
+    def!(sc, "Float.sub", types, Stateless(|vec| Ok(Float(vec[0].to_float()? - vec[1].to_float()?))));
+    def!(sc, "Float.mul", types, Stateless(|vec| Ok(Float(vec[0].to_float()? * vec[1].to_float()?))));
+    def!(sc, "Float.div", types, Stateless(|vec| divide_float(vec[0].to_float()?, vec[1].to_float()?)));
 
     // boolean logic
     let types = Type::new("(Bool,Bool)->Bool");
-    def!(scope, "Bool.and", types, Stateless(|vec| Ok(Bool(vec[0].to_bool()? && vec[1].to_bool()?))));
-    def!(scope, "Bool.or", types, Stateless(|vec| Ok(Bool(vec[0].to_bool()? || vec[1].to_bool()?))));
+    def!(sc, "Bool.and", types, Stateless(|vec| Ok(Bool(vec[0].to_bool()? && vec[1].to_bool()?))));
+    def!(sc, "Bool.or", types, Stateless(|vec| Ok(Bool(vec[0].to_bool()? || vec[1].to_bool()?))));
 
     // comparisons
     let types = Type::new("(Int,Int)->Bool");
-    def!(scope, "Int.eq", types, Stateless(|vec| Ok(Bool(vec[0].to_int()? == vec[1].to_int()?))));
-    def!(scope, "Int.neq", types, Stateless(|vec| Ok(Bool(vec[0].to_int()? != vec[1].to_int()?))));
-    def!(scope, "Int.gt", types, Stateless(|vec| Ok(Bool(vec[0].to_int()? > vec[1].to_int()?))));
-    def!(scope, "Int.ge", types, Stateless(|vec| Ok(Bool(vec[0].to_int()? >= vec[1].to_int()?))));
-    def!(scope, "Int.lt", types, Stateless(|vec| Ok(Bool(vec[0].to_int()? < vec[1].to_int()?))));
-    def!(scope, "Int.le", types, Stateless(|vec| Ok(Bool(vec[0].to_int()? <= vec[1].to_int()?))));
+    def!(sc, "Int.eq", types, Stateless(|vec| Ok(Bool(vec[0].to_int()? == vec[1].to_int()?))));
+    def!(sc, "Int.neq", types, Stateless(|vec| Ok(Bool(vec[0].to_int()? != vec[1].to_int()?))));
+    def!(sc, "Int.gt", types, Stateless(|vec| Ok(Bool(vec[0].to_int()? > vec[1].to_int()?))));
+    def!(sc, "Int.ge", types, Stateless(|vec| Ok(Bool(vec[0].to_int()? >= vec[1].to_int()?))));
+    def!(sc, "Int.lt", types, Stateless(|vec| Ok(Bool(vec[0].to_int()? < vec[1].to_int()?))));
+    def!(sc, "Int.le", types, Stateless(|vec| Ok(Bool(vec[0].to_int()? <= vec[1].to_int()?))));
 
     // String functions
-    def!(scope, "Str.read", Type::new("(Str)->Expr"), Stateful(|vec, scope| Ok(scope.read(vec[0].to_str()?))));
-    def!(scope, "Str.trim", Type::new("(Str)->Str"), Stateless(|vec| Ok(Expr::Str(vec[0].to_str()?.trim().to_owned()))));
+    def!(sc, "Str.read", Type::new("(Str)->Expr"), Stateful(|vec, scope| Ok(scope.read(vec[0].to_str()?))));
+    def!(sc, "Str.trim", Type::new("(Str)->Str"), Stateless(|vec| Ok(Expr::Str(vec[0].to_str()?.trim().to_owned()))));
 
     // IO functions
-    def!(scope, "readLine", Type::new("()->Any"), Stateless(|_| read_line()));
-    def!(scope, "print", Type::new("(List<Any>)->Any"), Stateless(|vec,| print(vec)));
-    def!(scope, "eval", Type::new("(Any)->Any"), Stateful(|vec, scope| vec[0].eval(scope)));
+    def!(sc, "readLine", Type::new("()->Any"), Stateless(|_| read_line()));
+    def!(sc, "print", Type::new("(List<Any>)->Any"), Stateless(|vec,| print(vec)));
+    def!(sc, "eval", Type::new("(Any)->Any"), Stateful(|vec, scope| vec[0].eval(scope)));
 
     // special functions
-    def!(scope, "var", Macro, BuiltIn(|vec, scope| declare(vec[0].to_symbol()?, vec[1].to_type()?, vec[2].mut_eval(scope)?, scope, true)));
-    def!(scope, "val", Macro, BuiltIn(|vec, scope| declare(vec[0].to_symbol()?, vec[1].to_type()?, vec[2].mut_eval(scope)?, scope, false)));
-    def!(scope, "fun", Macro, BuiltIn(|vec, scope| define(vec[0].to_symbol()?, vec[1].to_params()?, vec[2].to_type()?, &vec[3], scope)));
-    def!(scope, "assign", Macro, BuiltIn(|vec, scope| assign(vec[0].to_symbol()?, vec[1].mut_eval(scope)?, scope)));
-    def!(scope, "while", Macro, BuiltIn(|vec, scope| run_while(&vec[0], vec, scope)));
-    def!(scope, "if", Macro, BuiltIn(|vec, scope| if_else!(vec[0].mut_eval(scope)?.to_bool()?, vec[1].mut_eval(scope),vec[2].mut_eval(scope))));
+    def!(sc, "var", Macro, BuiltIn(|vec, scope| declare(vec[0].to_symbol()?, vec[1].to_type()?, vec[2].mut_eval(scope)?, scope, true)));
+    def!(sc, "val", Macro, BuiltIn(|vec, scope| declare(vec[0].to_symbol()?, vec[1].to_type()?, vec[2].mut_eval(scope)?, scope, false)));
+    def!(sc, "fun", Macro, BuiltIn(|vec, scope| define(vec[0].to_symbol()?, vec[1].to_params()?, vec[2].to_type()?, &vec[3], scope)));
+    def!(sc, "assign", Macro, BuiltIn(|vec, scope| assign(vec[0].to_symbol()?, vec[1].mut_eval(scope)?, scope)));
+    def!(sc, "while", Macro, BuiltIn(|vec, scope| run_while(&vec[0], vec, scope)));
+    def!(sc, "if", Macro, BuiltIn(|vec, scope| if_else!(vec[0].mut_eval(scope)?.to_bool()?, vec[1].mut_eval(scope),vec[2].mut_eval(scope))));
 }
 
 fn divide_int(a: &i64, b: &i64) ->  Result<Expr, Exception> {
