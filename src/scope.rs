@@ -3,7 +3,7 @@ use std::string::ToString;
 
 use crate::expr::Expr;
 use crate::expr::Expr::Fun;
-use crate::functions::load_functions;
+use crate::functions::add_functions;
 use crate::types::Type;
 
 #[derive(Debug)]
@@ -18,7 +18,7 @@ impl Scope<'_> {
 
     pub fn init<'a>() -> Scope<'a>  {
         let mut scope = Scope::new(None);
-        load_functions(&mut scope);
+        add_functions(&mut scope);
         scope
     }
     pub fn child(&self) -> Scope {
