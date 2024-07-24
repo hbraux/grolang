@@ -114,9 +114,11 @@ fn to_vec(pair: Pair<Rule>, expected_len: usize, optional_pos: usize) -> Vec<Exp
 fn unquote(str: &str) -> String {
     (&str[1..str.len()-1]).to_owned()
 }
+
 fn operator_name(pair: Pair<Rule>) -> String {
     format!("{:?}", pair.as_rule()).to_lowercase()
 }
+
 fn to_literal(str: &str) -> Expr {
     match str {
         "true" => TRUE,
@@ -143,8 +145,9 @@ mod tests {
         assert_eq!(TRUE, parse("true").unwrap());
         assert_eq!(FALSE, parse("false").unwrap());
         assert_eq!(NULL, parse("null").unwrap());
-        assert_eq!(Expr::Str("abc".to_owned()), parse("\"abc\"").unwrap());
-        assert_eq!(Expr::Str("true".to_owned()), parse("\"true\"").unwrap());
+        assert_eq!(Expr::Str("abc".to_owned()), parse(r#""abc""#).unwrap());
+        assert_eq!(Expr::Str("true".to_owned()), parse(r#""true""#).unwrap());
+        assert_eq!(Expr::Str("escaped \\n \\t \\\" \\\\ string".to_owned()), parse(r#""escaped \n \t \" \\ string""#).unwrap());
     }
 
     #[test]

@@ -1,16 +1,17 @@
-// Langgae grammar, see https://pest.rs/book/grammars/peg.html)
+// Pest grammar: https://pest.rs/book/grammars/peg.html)
 
 Special = { "true" | "false" | "null" }
 
 Int = @{  "-"? ~ ASCII_DIGIT+  ~ ( "_" ~ ASCII_DIGIT+)* }
 Float = @{ "-"? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ ~ (^"e" ~ "-"? ~ ASCII_DIGIT+)? }
 
-String = { "\"" ~ stringChar*  ~  "\"" }
-stringChar = _{ !"\""  ~ ANY }
+String = { "\"" ~ ( stringChar | escape )* ~ "\"" }
+stringChar = _{ (!("\\" | "\"") ~ ANY) + }
+escape     = _{ "\\" ~ ( "n" | "r" | "t" | "\\" | "\"" ) }
 
 Symbol = @{ ASCII_ALPHA ~ ASCII_ALPHANUMERIC* }
 
-Literal = _{ Special | Float | Int | String }
+Literal = _{ Special | Float | Int | String  }
 Pair = _{ Literal ~ ":" ~ LiteralOrCollection }
 
 LiteralOrCollection = _{ Literal | List | Map }
@@ -35,7 +36,7 @@ Operator = _{ Add | Sub | Mul | Div | Mod | Exp | Eq | Neq | Le | Lt | Ge | Gt |
     Or = { "||" }
 Dot = { "." }
 
-TypeSpec = @{ ":" ~ WHITESPACE? ~ Symbol ~ ( "<" ~ Symbol ~( "," ~ Symbol )? ~ ">")? }
+TypeSpec = @{ ":" ~ WHITESPACE* ~ Symbol ~ ( "<" ~ Symbol ~( "," ~ Symbol )? ~ ">")? }
 Parameter = { Symbol ~ TypeSpec }
 
 Expr = {  ChainCall | CallExpr | BinaryExpr  | Term  }
@@ -58,4 +59,4 @@ Statement = _{ Declaration | Definition | Assignment | IfElse | While | Expr }
 
 equation = _{ SOI ~ Expr ~ EOI }
 WHITESPACE = _{ " " }
-
+COMMENT   = { "#" ~ (!NEWLINE ~ ANY)* ~ NEWLINE }
