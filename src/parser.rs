@@ -49,7 +49,7 @@ fn reduce_expr(left: Expr, op: Pair<Rule>, right: Expr) -> Expr {
             return Expr::Call(name, args)
         }
     }
-    Expr::Call(operator_name(op), vec!(left, right))
+    Expr::Call(to_operator_name(op), vec!(left, right))
 }
 
 
@@ -71,9 +71,9 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
         Rule::Block => Expr::Block(to_vec(pair, 0, 0)),
         Rule::Definition => Expr::Call("fun".to_owned(), to_vec(pair, 0, 0)),
         Rule::Parameters  => build_params(pair.into_inner()),
-        Rule::List  => Expr::List(to_vec(pair, 0, 0)),
+        Rule::List  => Expr::RawList(to_vec(pair, 0, 0)),
         Rule::Map  =>  build_map(to_vec(pair, 0, 0)),
-        _ => panic!("Rule '{}' not implemented", operator_name(pair))
+        _ => panic!("Rule '{}' not implemented", to_operator_name(pair))
     }
 }
 
@@ -94,7 +94,7 @@ fn build_params(pairs: Pairs<Rule>) -> Expr {
 }
 
 fn build_map(pairs: Vec<Expr>) -> Expr {
-    Expr::Map(pairs.chunks(2).into_iter().map(|p| (p[0].clone(), p[1].clone())).collect::<Vec<_>>())
+    Expr::RawMap(pairs.chunks(2).into_iter().map(|p| (p[0].clone(), p[1].clone())).collect::<Vec<_>>())
 }
 
 
@@ -117,7 +117,7 @@ fn un_quote(str: &str) -> String {
 
 fn un_colon(str: &str) -> String { (&str[1..str.len()]).trim().to_owned() }
 
-fn operator_name(pair: Pair<Rule>) -> String {
+fn to_operator_name(pair: Pair<Rule>) -> String {
     format!("{:?}", pair.as_rule()).to_lowercase()
 }
 
@@ -156,8 +156,8 @@ mod tests {
 
     #[test]
     fn test_collections() {
-        assert_eq!(Expr::List(vec!(Expr::Int(1), Expr::Int(2))), parse("[1,2]").unwrap());
-        assert_eq!(Expr::Map(vec!((Expr::Str("a".to_owned()), Expr::Int(1)))), parse("{\"a\":1}").unwrap());
+        assert_eq!(Expr::RawList(vec!(Expr::Int(1), Expr::Int(2))), parse("[1,2]").unwrap());
+        assert_eq!(Expr::RawMap(vec!((Expr::Str("a".to_owned()), Expr::Int(1)))), parse("{\"a\":1}").unwrap());
         assert_eq!("{employees:[{name:alice,age:20,grade:2.3,email:alice@gmail.com},{name:bob,age:21,grade:1.2,email:null}]}",
                    read(r#"{"employees":[{"name":"alice","age":20,"grade":2.3,"email":"alice@gmail.com"}, {"name":"bob", "age": 21,"grade":1.2,"email":null}]}"#));
     }
@@ -172,6 +172,9 @@ mod tests {
         assert_eq!("val(f,:Float,1.0)", read("val f: Float = 1.0"));
         assert_eq!("val(f,:Float,1.0)", read("val(f,:Float,1.0)"));
         assert_eq!("var(a,null,1)", read("var a = 1"));
+        assert_eq!("var(l,null,[1,2,3])", read("var l = [1,2,3]"));
+        assert_eq!("var(l,:List<Int>,[1,2,3])", read("var l :List<Int> = [1,2,3]"));
+        assert_eq!("var(m,:Map<String,Int>,{a:1})", read(r#"var m: Map<String,Int> = {"a": 1}"#));
     }
 
     #[test]

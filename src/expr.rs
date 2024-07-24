@@ -7,7 +7,7 @@ use crate::parser::parse;
 use crate::scope::Scope;
 use crate::types::Type;
 
-use self::Expr::{Block, Bool, Call, Failure, Float, Fun, Int, List, Null, Params, Str, Symbol, RawType, Map};
+use self::Expr::{Block, Bool, Call, Failure, Float, Fun, Int, RawList, Null, Params, Str, Symbol, RawType, RawMap};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
@@ -19,8 +19,8 @@ pub enum Expr {
     RawType(String),
     Params(Vec<(String, Type)>),
     Block(Vec<Expr>),
-    List(Vec<Expr>),
-    Map(Vec<(Expr,Expr)>),
+    RawList(Vec<Expr>),
+    RawMap(Vec<(Expr, Expr)>),
     Call(String, Vec<Expr>),
     Failure(Exception),
     Fun(String, Type, Function),
@@ -44,8 +44,8 @@ impl Display for Expr {
             Symbol(x) => x.to_owned(),
             Failure(x) => x.format(),
             Params(v) => format_vec(&v.iter().map(|p| format!("{}:{}", p.0, p.1)).collect::<Vec<_>>(),",", "(",")"),
-            Map(v) => format_vec(&v.iter().map(|p| format!("{}:{}", p.0, p.1)).collect::<Vec<_>>(),",", "{","}"),
-            List(vec) => format_vec(vec, ",", "[", "]"),
+            RawMap(v) => format_vec(&v.iter().map(|p| format!("{}:{}", p.0, p.1)).collect::<Vec<_>>(), ",", "{", "}"),
+            RawList(vec) => format_vec(vec, ",", "[", "]"),
             Block(vec) => format_vec(vec, ";", "{", "}"),
             Call(name, vec) => format_vec(vec, ",", &(name.to_string() + "("), ")"),
             _ => format!("{:?}", self),
@@ -115,7 +115,7 @@ impl Expr {
     pub fn eval(&self, scope: &Scope) -> Result<Expr, Exception> {
         match self {
             Failure(e) => Err(e.clone()),
-            Null | Int(_) | Float(_) | Str(_) | Bool(_)  | List(_)  | Map(_)  => Ok(self.clone()),
+            Null | Int(_) | Float(_) | Str(_) | Bool(_)  | RawList(_)  | RawMap(_)  => Ok(self.clone()),
             Symbol(name) => handle_symbol(name, scope),
             Call(name, args) => handle_call(name, args, scope),
             _ => panic!("not implemented {:?}", self),
