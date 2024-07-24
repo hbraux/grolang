@@ -37,7 +37,7 @@ impl Function {
 fn apply_defined(scope: &Scope, body: &Box<Expr>, params: &Vec<String>, vec: &Vec<Expr>) -> Result<Expr, Exception> {
     let mut local = scope.child();
     local.add_args(params, vec);
-    body.mut_eval(&mut local)
+    body.eval_mutable(&mut local)
 }
 
 pub fn add_functions(sc: &mut Scope) {
@@ -79,13 +79,17 @@ pub fn add_functions(sc: &mut Scope) {
     def!(sc, "print", Type::new("(List<Any>)->Any"), Stateless(|vec,| print(vec)));
     def!(sc, "eval", Type::new("(Any)->Any"), Stateful(|vec, scope| vec[0].eval(scope)));
 
-    // special functions
-    def!(sc, "var", Macro, BuiltIn(|vec, scope| declare(vec[0].to_symbol()?, vec[1].to_type()?, vec[2].mut_eval(scope)?, scope, true)));
-    def!(sc, "val", Macro, BuiltIn(|vec, scope| declare(vec[0].to_symbol()?, vec[1].to_type()?, vec[2].mut_eval(scope)?, scope, false)));
+    // Misc functions
+    def!(sc, "type", Type::new("(Any)->Any"), Stateless(|vec| Ok(Expr::RawType(vec[0].get_type().to_string()))));
+
+    // macros
+    def!(sc, "var", Macro, BuiltIn(|vec, scope| declare(vec[0].to_symbol()?, vec[2].eval(scope)?.expect(vec[1].to_type()?)?, scope, true)));
+    def!(sc, "val", Macro, BuiltIn(|vec, scope| declare(vec[0].to_symbol()?, vec[2].eval(scope)?.expect(vec[1].to_type()?)?, scope, false)));
     def!(sc, "fun", Macro, BuiltIn(|vec, scope| define(vec[0].to_symbol()?, vec[1].to_params()?, vec[2].to_type()?, &vec[3], scope)));
-    def!(sc, "assign", Macro, BuiltIn(|vec, scope| assign(vec[0].to_symbol()?, vec[1].mut_eval(scope)?, scope)));
+    def!(sc, "assign", Macro, BuiltIn(|vec, scope| assign(vec[0].to_symbol()?, vec[1].eval_mutable(scope)?, scope)));
     def!(sc, "while", Macro, BuiltIn(|vec, scope| run_while(&vec[0], vec, scope)));
-    def!(sc, "if", Macro, BuiltIn(|vec, scope| if_else!(vec[0].mut_eval(scope)?.to_bool()?, vec[1].mut_eval(scope),vec[2].mut_eval(scope))));
+    def!(sc, "if", Macro, BuiltIn(|vec, scope| if_else!(vec[0].eval_mutable(scope)?.to_bool()?, vec[1].eval_mutable(scope),vec[2].eval_mutable(scope))));
+
 }
 
 fn divide_int(a: &i64, b: &i64) ->  Result<Expr, Exception> {
@@ -99,10 +103,8 @@ fn divide_float(a: &f64, b: &f64) ->  Result<Expr, Exception> {
 }
 
 
-fn declare(name: &str, expected: Type, value: Expr, scope: &mut Scope, is_mutable: bool) -> Result<Expr, Exception> {
-    if expected != Type::Any && expected != value.get_type()  {
-        Err(Exception::UnexpectedType(value.get_type().to_string()))
-    } else if scope.is_defined(&name) {
+fn declare(name: &str, value: Expr, scope: &mut Scope, is_mutable: bool) -> Result<Expr, Exception> {
+    if scope.is_defined(&name) {
         Err(Exception::AlreadyDefined(name.to_owned()))
     } else {
         scope.set(name, value, Some(is_mutable));
@@ -151,7 +153,7 @@ fn run_while(cond: &Expr, body: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, E
         if let Bool(bool) = cond.eval(scope)? {
             if bool {
                 for e in body {
-                    result = e.mut_eval(scope);
+                    result = e.eval_mutable(scope);
                 }
             } else {
                 break result;

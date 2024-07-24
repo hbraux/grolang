@@ -112,6 +112,16 @@ mod tests {
         assert_eq!("i", scope.exec("val i = 0"));
         assert_eq!("NotMutable(i)", scope.exec("i = 1"));
         assert_eq!("NotDefined(z)", scope.exec("z = 0"));
+
+    }
+
+    #[test]
+    fn test_collections() {
+        let mut scope = Scope::init();
+        scope.exec("val l = [1,2,3]");
+        scope.exec(r#"val m = {"a":1, "b":1}"#);
+        assert_eq!(":List<Int>", scope.exec("l.type()"));
+        assert_eq!(":Map<Str,Int>", scope.exec("m.type()"));
     }
 
     #[test]

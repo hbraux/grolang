@@ -74,7 +74,7 @@ impl Scope<'_> {
 
     pub fn exec(&mut self, str: &str) -> String { self.read(str).eval_or_failed(self).print() }
 
-    pub fn suggest(&self, str: &str) -> Option<String> {
+    pub fn suggest(&self, _str: &str) -> Option<String> {
         // TODO
         None
     }
