@@ -1,6 +1,7 @@
-
+use std::str::from_utf8;
 use dialoguer::{BasicHistory, Completion, Input, theme::ColorfulTheme};
-
+use rust_embed::Embed;
+use sys_locale::get_locale;
 use crate::scope::Scope;
 
 mod parser;
@@ -22,9 +23,10 @@ const BLUE: &str = "\x1b[1;34m";
 const STD: &str = "\x1b[0m";
 
 
-fn help() {
-    println!(r#"Pas disponible pour le moment"#)
-}
+#[derive(Embed)]
+#[folder = "resources/"]
+struct Asset;
+
 
 struct AutoComplete<'a> {
     scope: Scope<'a>
@@ -37,7 +39,16 @@ impl Completion for AutoComplete<'_>  {
     fn get(&self, input: &str) -> Option<String> { self.scope.suggest(input) }
 }
 
+fn get_resource(name: &str) -> String {
+    let locale = get_locale().unwrap_or_else(|| String::from("fr-FR"));
+    let lang = &locale[0..2];
+    let asset = Asset::get(&format!("{}_{}.txt", name, lang)).expect(&format!("No help file for language {}", lang));
+    let str = from_utf8(asset.data.as_ref()).expect("Invalid resource file");
+    return str.to_owned();
+}
+
 pub fn repl() {
+    let help = get_resource("repl");
     println!("{BLUE}Bienvenue sur {LANG} version {VERSION}{STD}");
     println!("Taper :q pour quitter, :h pour de l'aide");
     let mut scope = Scope::init();
@@ -56,7 +67,7 @@ pub fn repl() {
         if cmd.starts_with(':') {
             match cmd.as_str() {
                 ":q" => break,
-                ":h" => help(),
+                ":h" => println!("{}", help),
                 _ => println!("{RED}Commande inconnue {}{STD}", cmd),
             }
             continue;

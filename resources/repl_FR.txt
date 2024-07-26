@@ -1,0 +1,4 @@
+Toutes les commandes peuvent etre abréviées, par exemple :h pour :help
+:help [command]          affiche ce message ou de l'aide relative à une commande
+:quit                    quitte l'interpréteur
+
