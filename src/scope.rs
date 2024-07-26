@@ -78,8 +78,8 @@ impl Scope<'_> {
     pub fn exec(&mut self, str: &str) -> String { self.read(str).eval_or_failed(self).print() }
 
 
-    pub fn find_fun(&self, str: &str) -> Option<String> {
-        if_else!(str.is_empty(), None, self.values.iter().find(|i| i.1.is_fun() && i.0.starts_with(str)).map(|i| i.0.clone()))
+    pub fn find_fun(&self, prefix: &str) -> Option<String> {
+        if_else!(prefix.is_empty(), None, self.values.iter().find(|i| i.1.is_fun() && i.0.starts_with(prefix)).map(|i| i.0.clone()))
     }
 }
 
