@@ -25,6 +25,7 @@ pub enum Expr {
     Fun(String, Type, Function),
     List(Type, Vec<Expr>),
     Map(Type, Type, Vec<(Expr, Expr)>),
+    Class(Vec<(String, Type)>),
     RawType(String),
     RawList(Vec<Expr>),
     RawMap(Vec<(Expr, Expr)>),

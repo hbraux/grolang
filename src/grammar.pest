@@ -44,18 +44,19 @@ BinaryExpr = _{ Term ~ ( Operator ~ Term ) + }
 CallExpr = { Symbol ~ "(" ~ Expr? ~ ( "," ~ Expr )* ~ ")" }
 Term = _{ CallExpr | Parameters | LiteralOrCollection | Symbol |  "(" ~ Expr ~ ")"  | Block }
 
-VarType = { "var" | "val" }
+VarType = { "var" | "val" | "const" }
 Declaration = { VarType ~ Symbol ~ RawType? ~ "=" ~ Expr }
 
 Parameter = { Symbol ~ RawType }
 Parameters = { "(" ~ Parameter? ~ ( "," ~ Parameter )* ~ ")" }
 Definition = { "fun" ~ Symbol ~ Parameters ~ RawType ~ "=" ~ ( Expr | Block) }
+Class = { "class" ~ Symbol ~ Parameters }
 Assignment = { Symbol ~ "=" ~ Expr }
 
 Block = { "{" ~ NEWLINE* ~ Statement ~ ( (NEWLINE | ";") ~ Statement)* ~ NEWLINE* ~ "}" }
 IfElse = { "if" ~ "(" ~ Expr ~ ")" ~ ( Expr | Block) ~ ( "else" ~ ( Expr | Block))? }
 While = { "while" ~ "(" ~ Expr ~ ")" ~ Block  }
-Statement = _{ Declaration | Definition | Assignment | IfElse | While | Expr }
+Statement = _{ Declaration | Definition | Class | Assignment | IfElse | While | Expr }
 
 equation = _{ SOI ~ Expr ~ EOI }
 WHITESPACE = _{ " " }

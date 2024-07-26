@@ -73,6 +73,7 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
         Rule::Parameters  => build_params(pair.into_inner()),
         Rule::List  => Expr::RawList(to_vec(pair, 0, 0)),
         Rule::Map  =>  build_map(to_vec(pair, 0, 0)),
+        Rule::Class  =>  Expr::Call("class".to_owned(), to_vec(pair, 0, 0)),
         _ => panic!("Rule '{}' not implemented", to_operator_name(pair))
     }
 }
@@ -160,6 +161,11 @@ mod tests {
         assert_eq!(Expr::RawMap(vec!((Expr::Str("a".to_owned()), Expr::Int(1)))), parse("{\"a\":1}").unwrap());
         assert_eq!("{employees:[{name:alice,age:20,grade:2.3,email:alice@gmail.com},{name:bob,age:21,grade:1.2,email:null}]}",
                    read(r#"{"employees":[{"name":"alice","age":20,"grade":2.3,"email":"alice@gmail.com"}, {"name":"bob", "age": 21,"grade":1.2,"email":null}]}"#));
+    }
+
+    #[test]
+    fn test_class() {
+        assert_eq!("class(Point,(x:Float,y:Float))", read("class Point(x: Float, y:Float)"));
     }
 
     #[test]

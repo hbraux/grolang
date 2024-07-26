@@ -80,12 +80,14 @@ pub fn add_functions(sc: &mut Scope) {
     def!(sc, "eval", Type::new("(Any)->Any"), Stateful(|vec, scope| vec[0].eval(scope)));
 
     // Misc functions
-    def!(sc, "type", Type::new("(Any)->Any"), Stateless(|vec| Ok(Expr::RawType(vec[0].get_type().to_string()))));
+    def!(sc, "type", Type::new("(Any)->Str"), Stateless(|vec| Ok(Expr::Str(vec[0].get_type().to_string()))));
 
     // macros
-    def!(sc, "var", Macro, BuiltIn(|vec, scope| declare(vec[0].to_symbol()?, vec[2].eval(scope)?.expect(vec[1].to_type()?)?, scope, true)));
-    def!(sc, "val", Macro, BuiltIn(|vec, scope| declare(vec[0].to_symbol()?, vec[2].eval(scope)?.expect(vec[1].to_type()?)?, scope, false)));
-    def!(sc, "fun", Macro, BuiltIn(|vec, scope| define(vec[0].to_symbol()?, vec[1].to_params()?, vec[2].to_type()?, &vec[3], scope)));
+    def!(sc, "const", Macro, BuiltIn(|vec, scope| def_variable(vec[0].to_symbol()?, vec[2].eval(scope)?.expect(vec[1].to_type()?)?, scope, None)));
+    def!(sc, "var", Macro, BuiltIn(|vec, scope| def_variable(vec[0].to_symbol()?, vec[2].eval(scope)?.expect(vec[1].to_type()?)?, scope, Some(true))));
+    def!(sc, "val", Macro, BuiltIn(|vec, scope| def_variable(vec[0].to_symbol()?, vec[2].eval(scope)?.expect(vec[1].to_type()?)?, scope, Some(false))));
+    def!(sc, "fun", Macro, BuiltIn(|vec, scope| def_function(vec[0].to_symbol()?, vec[1].to_params()?, vec[2].to_type()?, &vec[3], scope)));
+    def!(sc, "struct", Macro, BuiltIn(|vec, scope| def_struct(vec[0].to_symbol()?, vec[1].to_params()?, scope)));
     def!(sc, "assign", Macro, BuiltIn(|vec, scope| assign(vec[0].to_symbol()?, vec[1].eval_mutable(scope)?, scope)));
     def!(sc, "while", Macro, BuiltIn(|vec, scope| run_while(&vec[0], vec, scope)));
     def!(sc, "if", Macro, BuiltIn(|vec, scope| if_else!(vec[0].eval_mutable(scope)?.to_bool()?, vec[1].eval_mutable(scope),vec[2].eval_mutable(scope))));
@@ -103,21 +105,30 @@ fn divide_float(a: &f64, b: &f64) ->  Result<Expr, Exception> {
 }
 
 
-fn declare(name: &str, value: Expr, scope: &mut Scope, is_mutable: bool) -> Result<Expr, Exception> {
-    if scope.is_defined(&name) {
+fn def_variable(name: &str, value: Expr, scope: &mut Scope, is_mutable: Option<bool>) -> Result<Expr, Exception> {
+    if scope.is_defined(&name, is_mutable.is_none()) {
         Err(Exception::AlreadyDefined(name.to_owned()))
     } else {
-        scope.set(name, value, Some(is_mutable));
+        scope.set(name, value, is_mutable);
         Ok(Symbol(name.to_owned()))
     }
 }
 
-fn define(name: &str, params: &Vec<(String, Type)>, output: Type, expr: &Expr, scope: &mut Scope) -> Result<Expr, Exception> {
-    if scope.is_defined(&name) {
+fn def_function(name: &str, params: &Vec<(String, Type)>, output: Type, expr: &Expr, scope: &mut Scope) -> Result<Expr, Exception> {
+    if scope.is_defined(&name, name.contains(".")) {
         Err(Exception::AlreadyDefined(name.to_owned()))
     } else {
         let types = Type::Fun(params.iter().map(|p| p.1.clone()).collect(), Box::new(output.clone()));
         scope.add_fun(Fun(name.to_owned(), types, Defined(params.iter().map(|p| p.0.clone()).collect(), Box::new(expr.as_block()))));
+        Ok(Symbol(name.to_owned()))
+    }
+}
+
+fn def_struct(name: &str, params: &Vec<(String, Type)>, scope: &mut Scope) -> Result<Expr, Exception> {
+    if scope.is_defined(&name, true) {
+        Err(Exception::AlreadyDefined(name.to_owned()))
+    } else {
+        scope.set(name, Expr::Class(params.clone()), None);
         Ok(Symbol(name.to_owned()))
     }
 }

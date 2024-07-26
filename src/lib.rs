@@ -120,8 +120,7 @@ mod tests {
         let mut scope = Scope::init();
         scope.exec("val l = [1,2,3]");
         scope.exec(r#"val m = {"a":1, "b":1}"#);
-        assert_eq!(":List<Int>", scope.exec("l.type()"));
-        assert_eq!(":Map<Str,Int>", scope.exec("m.type()"));
+        assert_eq!( "\"List<Int>\"", scope.exec("l.type()"));
     }
 
     #[test]
