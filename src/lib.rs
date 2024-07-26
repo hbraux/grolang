@@ -1,7 +1,10 @@
+use std::collections::VecDeque;
 use std::str::from_utf8;
-use dialoguer::{BasicHistory, Completion, Input, theme::ColorfulTheme};
+
+use dialoguer::{Completion, Input, theme::ColorfulTheme};
 use rust_embed::Embed;
 use sys_locale::get_locale;
+
 use crate::scope::Scope;
 
 mod parser;
@@ -39,6 +42,30 @@ impl Completion for AutoComplete<'_>  {
     fn get(&self, input: &str) -> Option<String> { self.scope.suggest(input) }
 }
 
+#[derive(Debug, Default)]
+pub struct History {
+    deque: VecDeque<String>,
+}
+impl History {
+    fn print(&self) {
+        self.deque.iter().for_each(|e| println!("# {}", e))
+    }
+
+}
+
+impl<T: ToString> dialoguer::History<T> for History {
+    fn read(&self, pos: usize) -> Option<String> {
+        self.deque.get(pos).cloned()
+    }
+
+    fn write(&mut self, val: &T) {
+        let val = val.to_string();
+        if !val.starts_with(":") {
+            self.deque.push_front(val);
+        }
+    }
+}
+
 fn get_resource(name: &str) -> String {
     let locale = get_locale().unwrap_or_else(|| String::from("fr-FR"));
     let lang = &locale[0..2];
@@ -48,20 +75,24 @@ fn get_resource(name: &str) -> String {
 }
 
 pub fn repl() {
+    let mut debug = false;
     let help = get_resource("help");
     let repl: Vec<String> = get_resource("repl").split("\n").map(|s| s.to_owned()).collect();
     println!("{BLUE}{LANG} Version {VERSION}{STD}\n{}\n", repl[0]);
     let mut scope = Scope::init();
-    let mut history = BasicHistory::new();
+    let mut history = History::default();
     let autocomplete = AutoComplete::new(scope.clone());
     loop {
         let input = Input::<String>::with_theme(&ColorfulTheme::default())
             .completion_with(&autocomplete)
             .history_with(&mut history)
             .interact_text().expect("Unable to read stdin");
+
         if input.starts_with(':') {
-            match input.as_str() {
-                ":q" => break,
+            match input[1..2].to_string().as_str() {
+                "q" => break,
+                "d" => { debug = !debug; println!("# debug={}", debug) },
+                "h" => history.print(),
                 _ => println!("{}", help),
             }
             continue;
@@ -78,7 +109,6 @@ pub fn repl() {
             println!("{}", result.print())
         }
     }
-    println!(".")
 }
 
 

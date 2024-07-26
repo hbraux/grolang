@@ -1,4 +1,7 @@
-Toutes les commandes peuvent etre abréviées, par exemple :h pour :help
-:help [command]          affiche ce message ou de l'aide relative à une commande
-:quit                    quitte l'interpréteur
-
+Toutes les commandes peuvent entre abréviées, par exemple :q pour :quit
+:quit             quitte l'interpréteur
+:history          affiche l'historique complet
+:load <FILE>      charge le fichier FILE.gro
+:save <FILE>      sauve les commandes de l'historique dans le fichier FILE.gro
+:debug            active ou désactive le mode debug
+:? [command]      affiche ce message ou de l'aide relative à une commande
