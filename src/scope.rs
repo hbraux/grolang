@@ -1,6 +1,8 @@
 use std::collections::{HashMap, HashSet};
 use std::string::ToString;
 
+use dialoguer::Completion;
+
 use crate::expr::Expr;
 use crate::expr::Expr::Fun;
 use crate::functions::add_functions;
@@ -75,11 +77,23 @@ impl Scope<'_> {
 
     pub fn exec(&mut self, str: &str) -> String { self.read(str).eval_or_failed(self).print() }
 
-    pub fn suggest(&self, _str: &str) -> Option<String> {
-        // TODO
-        None
-    }
 
+    pub fn find_fun(&self, str: &str) -> Option<String> {
+        if_else!(str.is_empty(), None, self.values.iter().find(|i| i.1.is_fun() && i.0.starts_with(str)).map(|i| i.0.clone()))
+    }
+}
+
+impl Completion for Scope<'_>  {
+    fn get(&self, input: &str) -> Option<String> {
+        let (expr, rest) = match input.rfind(".") {
+            Some(p) => (&input[0..p], &input[p..]),
+            None =>  (input, ""),
+        };
+        match self.read(expr).eval(self) {
+            Ok(expr) => self.find_fun(&expr.get_type().method_name(rest)),
+            _ => self.find_fun(expr),
+        }
+    }
 }
 
 #[cfg(test)]

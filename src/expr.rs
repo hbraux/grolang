@@ -65,8 +65,11 @@ impl Expr {
         parse(str).unwrap_or_else(|s| Failure(Exception::CannotParse(s)))
     }
 
-    pub fn failed(&self) -> bool {
+    pub fn is_failure(&self) -> bool {
         matches!(self, Failure(_))
+    }
+    pub fn is_fun(&self) -> bool {
+        matches!(self, Fun(_, _, _))
     }
 
     pub fn to_exception(&self) -> Option<&Exception> {

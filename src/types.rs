@@ -1,8 +1,9 @@
 use std::borrow::ToOwned;
 use std::fmt::{Display, Formatter};
 use std::string::ToString;
+use crate::if_else;
 
-use self::Type::{Fun, Option, Try, List, Map, Any, Bool, Int, Str, Float, Defined,  _Unknown};
+use self::Type::{_Unknown, Any, Bool, Defined, Float, Fun, Int, List, Map, Option, Str, Try};
 
 macro_rules! box_type {
     ($val:expr) => { Box::new(Type::new($val)) };
@@ -69,7 +70,7 @@ impl Type {
         }
     }
     pub fn method_name(&self, name: &str) -> String {
-        self.to_string().to_owned() + "." + name
+        self.to_string().to_owned() + if_else!(name.starts_with("."), "", ".") + name
     }
 
     pub fn is_defined(&self) -> bool {
@@ -84,6 +85,7 @@ impl Type {
     pub fn matches(&self, expected: &Type) -> bool {
         *expected == Any || self == expected
     }
+
 }
 
 #[cfg(test)]

@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 use std::str::from_utf8;
 
-use dialoguer::{Completion, Input, theme::ColorfulTheme};
+use dialoguer::{Input, theme::ColorfulTheme};
 use rust_embed::Embed;
 use sys_locale::get_locale;
 
@@ -31,16 +31,6 @@ const STD: &str = "\x1b[0m";
 struct Asset;
 
 
-struct AutoComplete<'a> {
-    scope: Scope<'a>
-}
-
-impl AutoComplete<'_> {
-    fn new(scope: Scope) -> AutoComplete { AutoComplete { scope } }
-}
-impl Completion for AutoComplete<'_>  {
-    fn get(&self, input: &str) -> Option<String> { self.scope.suggest(input) }
-}
 
 #[derive(Debug, Default)]
 pub struct History {
@@ -81,10 +71,10 @@ pub fn repl() {
     println!("{BLUE}{LANG} Version {VERSION}{STD}\n{}\n", repl[0]);
     let mut scope = Scope::init();
     let mut history = History::default();
-    let autocomplete = AutoComplete::new(scope.clone());
     loop {
+        //let autocomplete = AutoComplete::new(&scope);
         let input = Input::<String>::with_theme(&ColorfulTheme::default())
-            .completion_with(&autocomplete)
+            .completion_with(&scope)
             .history_with(&mut history)
             .interact_text().expect("Unable to read stdin");
 
@@ -98,12 +88,12 @@ pub fn repl() {
             continue;
         }
         let expr = scope.read(&input);
-        if expr.failed() {
+        if expr.is_failure() {
             println!("{RED}{} ({:?}){STD}", repl[1], expr.to_exception().unwrap());
             continue;
         }
         let result = expr.eval_or_failed(&mut scope);
-        if expr.failed() {
+        if expr.is_failure() {
             println!("{RED}{} ({:?}){STD}", repl[2], expr.to_exception().unwrap());
         } else {
             println!("{}", result.print())
