@@ -1,4 +1,3 @@
-Toutes les commandes peuvent etre abréviées, par exemple :h pour :help
-:help [command]          affiche ce message ou de l'aide relative à une commande
-:quit                    quitte l'interpréteur
-
+Taper :q pour quitter, :h pour l'aide, fleches haut/bas pour naviguer dans l'historique, Tab pour auto-completion
+Erreur de syntaxe
+Erreur d'évaluation

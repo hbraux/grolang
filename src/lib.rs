@@ -48,9 +48,9 @@ fn get_resource(name: &str) -> String {
 }
 
 pub fn repl() {
-    let help = get_resource("repl");
-    println!("{BLUE}Bienvenue sur {LANG} version {VERSION}{STD}");
-    println!("Taper :q pour quitter, :h pour de l'aide");
+    let help = get_resource("help");
+    let repl: Vec<String> = get_resource("repl").split("\n").map(|s| s.to_owned()).collect();
+    println!("{BLUE}{LANG} Version {VERSION}{STD}\n{}\n", repl[0]);
     let mut scope = Scope::init();
     let mut history = BasicHistory::new();
     let autocomplete = AutoComplete::new(scope.clone());
@@ -58,28 +58,22 @@ pub fn repl() {
         let input = Input::<String>::with_theme(&ColorfulTheme::default())
             .completion_with(&autocomplete)
             .history_with(&mut history)
-            .interact_text();
-        if input.is_err() {
-            println!("{RED}Erreur inattendue ({:?}){STD}", input.err().unwrap());
-            break
-        }
-        let cmd: String = input.unwrap();
-        if cmd.starts_with(':') {
-            match cmd.as_str() {
+            .interact_text().expect("Unable to read stdin");
+        if input.starts_with(':') {
+            match input.as_str() {
                 ":q" => break,
-                ":h" => println!("{}", help),
-                _ => println!("{RED}Commande inconnue {}{STD}", cmd),
+                _ => println!("{}", help),
             }
             continue;
         }
-        let expr = scope.read(&cmd);
+        let expr = scope.read(&input);
         if expr.failed() {
-            println!("{RED}Erreur de syntaxe ({:?}){STD}", expr.to_exception().unwrap());
+            println!("{RED}{} ({:?}){STD}", repl[1], expr.to_exception().unwrap());
             continue;
         }
         let result = expr.eval_or_failed(&mut scope);
         if expr.failed() {
-            println!("{RED}Erreur d'évaluation ({:?}){STD}", expr.to_exception().unwrap());
+            println!("{RED}{} ({:?}){STD}", repl[2], expr.to_exception().unwrap());
         } else {
             println!("{}", result.print())
         }
