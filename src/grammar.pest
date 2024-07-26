@@ -1,16 +1,18 @@
-// Langgae grammar, see https://pest.rs/book/grammars/peg.html)
+// Pest grammar: https://pest.rs/book/grammars/peg.html)
 
 Special = { "true" | "false" | "null" }
 
 Int = @{  "-"? ~ ASCII_DIGIT+  ~ ( "_" ~ ASCII_DIGIT+)* }
 Float = @{ "-"? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ ~ (^"e" ~ "-"? ~ ASCII_DIGIT+)? }
 
-String = { "\"" ~ stringChar*  ~  "\"" }
-stringChar = _{ !"\""  ~ ANY }
+String = { "\"" ~ ( stringChar | escape )* ~ "\"" }
+stringChar = _{ (!("\\" | "\"") ~ ANY) + }
+escape     = _{ "\\" ~ ( "n" | "r" | "t" | "\\" | "\"" ) }
 
 Symbol = @{ ASCII_ALPHA ~ ASCII_ALPHANUMERIC* }
+RawType = @{ ":" ~ WHITESPACE* ~ Symbol ~ ( "<" ~ Symbol ~( "," ~ Symbol )? ~ ">")? }
 
-Literal = _{ Special | Float | Int | String }
+Literal = _{ Special | Float | Int | String | RawType }
 Pair = _{ Literal ~ ":" ~ LiteralOrCollection }
 
 LiteralOrCollection = _{ Literal | List | Map }
@@ -35,8 +37,6 @@ Operator = _{ Add | Sub | Mul | Div | Mod | Exp | Eq | Neq | Le | Lt | Ge | Gt |
     Or = { "||" }
 Dot = { "." }
 
-TypeSpec = @{ ":" ~ WHITESPACE? ~ Symbol ~ ( "<" ~ Symbol ~( "," ~ Symbol )? ~ ">")? }
-Parameter = { Symbol ~ TypeSpec }
 
 Expr = {  ChainCall | CallExpr | BinaryExpr  | Term  }
 ChainCall = _{ Term ~ ( Dot ~ CallExpr )+  }
@@ -44,18 +44,20 @@ BinaryExpr = _{ Term ~ ( Operator ~ Term ) + }
 CallExpr = { Symbol ~ "(" ~ Expr? ~ ( "," ~ Expr )* ~ ")" }
 Term = _{ CallExpr | Parameters | LiteralOrCollection | Symbol |  "(" ~ Expr ~ ")"  | Block }
 
-VarType = { "var" | "val" }
-Declaration = { VarType ~ Symbol ~ TypeSpec? ~ "=" ~ Expr }
+VarType = { "var" | "val" | "const" }
+Declaration = { VarType ~ Symbol ~ RawType? ~ "=" ~ Expr }
 
+Parameter = { Symbol ~ RawType }
 Parameters = { "(" ~ Parameter? ~ ( "," ~ Parameter )* ~ ")" }
-Definition = { "fun" ~ Symbol ~ Parameters ~ TypeSpec ~ "=" ~ ( Expr | Block) }
+Definition = { "fun" ~ Symbol ~ Parameters ~ RawType ~ "=" ~ ( Expr | Block) }
+Class = { "class" ~ Symbol ~ Parameters }
 Assignment = { Symbol ~ "=" ~ Expr }
 
 Block = { "{" ~ NEWLINE* ~ Statement ~ ( (NEWLINE | ";") ~ Statement)* ~ NEWLINE* ~ "}" }
 IfElse = { "if" ~ "(" ~ Expr ~ ")" ~ ( Expr | Block) ~ ( "else" ~ ( Expr | Block))? }
 While = { "while" ~ "(" ~ Expr ~ ")" ~ Block  }
-Statement = _{ Declaration | Definition | Assignment | IfElse | While | Expr }
+Statement = _{ Declaration | Definition | Class | Assignment | IfElse | While | Expr }
 
 equation = _{ SOI ~ Expr ~ EOI }
 WHITESPACE = _{ " " }
-
+COMMENT   = { "#" ~ (!NEWLINE ~ ANY)* ~ NEWLINE }

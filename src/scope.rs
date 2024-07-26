@@ -3,10 +3,11 @@ use std::string::ToString;
 
 use crate::expr::Expr;
 use crate::expr::Expr::Fun;
-use crate::functions::load_functions;
+use crate::functions::add_functions;
+use crate::if_else;
 use crate::types::Type;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Scope<'a> {
     values: HashMap<String, Expr>,
     mutables: HashSet<String>,
@@ -18,7 +19,7 @@ impl Scope<'_> {
 
     pub fn init<'a>() -> Scope<'a>  {
         let mut scope = Scope::new(None);
-        load_functions(&mut scope);
+        add_functions(&mut scope);
         scope
     }
     pub fn child(&self) -> Scope {
@@ -52,11 +53,11 @@ impl Scope<'_> {
         });
     }
 
-    pub fn is_defined(&self, name: &str) -> bool {
-        self.values.contains_key(name)
+    pub fn is_defined(&self, name: &str, is_global: bool) -> bool {
+        if_else!(is_global, self.global().values.contains_key(name), self.values.contains_key(name))
     }
     pub fn is_mutable(&self, name: &str) -> Option<bool> {
-        if self.is_defined(name) {
+        if self.is_defined(name, false) {
             Some(self.mutables.contains(name))
         } else { None }
     }
@@ -73,6 +74,11 @@ impl Scope<'_> {
     pub fn read(&self, str: &str) -> Expr { Expr::read(str, self) }
 
     pub fn exec(&mut self, str: &str) -> String { self.read(str).eval_or_failed(self).print() }
+
+    pub fn suggest(&self, _str: &str) -> Option<String> {
+        // TODO
+        None
+    }
 
 }
 

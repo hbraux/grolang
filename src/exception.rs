@@ -12,6 +12,8 @@ pub enum Exception {
     NotA(String, String),
     NotMutable(String),
     UnexpectedType(String),
+    CannotInferType(String),
+    CannotCastType(String),
     AlreadyDefined(String),
     NotDefined(String),
     WrongArgumentsNumber(String, usize,usize),

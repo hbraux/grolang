@@ -1,13 +1,16 @@
-use strum_macros::Display;
+use std::borrow::ToOwned;
+use std::fmt::{Display, Formatter};
+use std::string::ToString;
 
-use self::Type::{Fun, Option, Try, List, Map, Any, Bool, Int, Str, Float};
+use self::Type::{Fun, Option, Try, List, Map, Any, Bool, Int, Str, Float, Defined,  _Unknown};
 
 macro_rules! box_type {
     ($val:expr) => { Box::new(Type::new($val)) };
 }
 
-#[derive(Debug, Eq, PartialEq, Clone, Display)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub enum Type {
+    _Unknown,
     Any,
     Int,
     Bool,
@@ -22,10 +25,22 @@ pub enum Type {
     Defined(String),
 }
 
-
-
+impl Display for Type {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let str = match self {
+            Any => "Any",
+            Bool => "Bool",
+            Int => "Int",
+            Float => "Float",
+            Str => "Str",
+            List(t) => &format!("List<{}>", t.to_string()),
+            Map(t, u) => &format!("Map<{},{}>", t.to_string(), u.to_string()),
+            _ => "??"
+        };
+        write!(f, "{}", str)
+    }
+}
 impl Type {
-
     pub fn new(str: &str) -> Type {
         if str.starts_with("(") {
             let args: Vec<&str>  = str[1..str.len()].split(")->").collect();
@@ -49,12 +64,25 @@ impl Type {
                 "Bool" => Bool,
                 "Str" => Str,
                 "Float" => Float,
-                _ => Type::Defined(str.to_owned()),
+                _ => Defined(str.to_owned()),
             }
         }
     }
     pub fn method_name(&self, name: &str) -> String {
         self.to_string().to_owned() + "." + name
+    }
+
+    pub fn is_defined(&self) -> bool {
+        match self {
+            _Unknown => false,
+            List(x) => x.is_defined(),
+            Map(x, y) => x.is_defined() && y.is_defined(),
+            _ => true
+        }
+    }
+
+    pub fn matches(&self, expected: &Type) -> bool {
+        *expected == Any || self == expected
     }
 }
 
@@ -72,5 +100,6 @@ mod tests {
         assert_eq!(Option(Box::new(Int)), Type::new("Int?"));
         assert_eq!(Try(Box::new(Int)), Type::new("Int!"));
         assert_eq!(Fun(vec!(Int, Type::Float), Box::new(Type::Float)), Type::new("(Int,Float)->Float"));
+        assert_eq!("List<Int>", Type::new("List<Int>").to_string());
     }
 }

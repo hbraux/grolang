@@ -49,7 +49,7 @@ fn reduce_expr(left: Expr, op: Pair<Rule>, right: Expr) -> Expr {
             return Expr::Call(name, args)
         }
     }
-    Expr::Call(operator_name(op), vec!(left, right))
+    Expr::Call(to_operator_name(op), vec!(left, right))
 }
 
 
@@ -58,9 +58,9 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
         Rule::Int => Expr::Int(pair.as_str().trim().replace("_", "").parse::<i64>().unwrap()),
         Rule::Float => Expr::Float(pair.as_str().parse::<f64>().unwrap()),
         Rule::Special => to_literal(pair.as_str()),
-        Rule::String => Expr::Str(unquote(pair.as_str())),
+        Rule::String => Expr::Str(un_quote(pair.as_str())),
         Rule::Symbol | Rule::VarType => Expr::Symbol(pair.as_str().to_owned()),
-        Rule::TypeSpec => Expr::read_type(pair.as_str()),
+        Rule::RawType => Expr::RawType(un_colon(pair.as_str())),
         Rule::Operator => Expr::Symbol(pair.as_str().to_owned()),
         Rule::Expr =>  parse_pairs(pair.into_inner()),
         Rule::CallExpr => build_call(to_vec(pair, 0, 0)),
@@ -71,9 +71,10 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
         Rule::Block => Expr::Block(to_vec(pair, 0, 0)),
         Rule::Definition => Expr::Call("fun".to_owned(), to_vec(pair, 0, 0)),
         Rule::Parameters  => build_params(pair.into_inner()),
-        Rule::List  => Expr::List(to_vec(pair, 0, 0)),
+        Rule::List  => Expr::RawList(to_vec(pair, 0, 0)),
         Rule::Map  =>  build_map(to_vec(pair, 0, 0)),
-        _ => panic!("Rule '{}' not implemented", operator_name(pair))
+        Rule::Class  =>  Expr::Call("class".to_owned(), to_vec(pair, 0, 0)),
+        _ => panic!("Rule '{}' not implemented", to_operator_name(pair))
     }
 }
 
@@ -87,14 +88,14 @@ fn build_call(mut args: Vec<Expr>) -> Expr {
 }
 
 fn build_params(pairs: Pairs<Rule>) -> Expr {
-    Expr::Params(pairs.into_iter().map(|p| {
+    Expr::RawParams(pairs.into_iter().map(|p| {
         let s: Vec<&str> = p.as_str().split(":").collect();
         (s[0].trim().to_string(), Type::new(s[1].trim()))
     }).collect::<Vec<_>>())
 }
 
 fn build_map(pairs: Vec<Expr>) -> Expr {
-    Expr::Map(pairs.chunks(2).into_iter().map(|p| (p[0].clone(), p[1].clone())).collect::<Vec<_>>())
+    Expr::RawMap(pairs.chunks(2).into_iter().map(|p| (p[0].clone(), p[1].clone())).collect::<Vec<_>>())
 }
 
 
@@ -111,12 +112,16 @@ fn to_vec(pair: Pair<Rule>, expected_len: usize, optional_pos: usize) -> Vec<Exp
 }
 
 
-fn unquote(str: &str) -> String {
+fn un_quote(str: &str) -> String {
     (&str[1..str.len()-1]).to_owned()
 }
-fn operator_name(pair: Pair<Rule>) -> String {
+
+fn un_colon(str: &str) -> String { (&str[1..str.len()]).trim().to_owned() }
+
+fn to_operator_name(pair: Pair<Rule>) -> String {
     format!("{:?}", pair.as_rule()).to_lowercase()
 }
+
 fn to_literal(str: &str) -> Expr {
     match str {
         "true" => TRUE,
@@ -143,16 +148,24 @@ mod tests {
         assert_eq!(TRUE, parse("true").unwrap());
         assert_eq!(FALSE, parse("false").unwrap());
         assert_eq!(NULL, parse("null").unwrap());
-        assert_eq!(Expr::Str("abc".to_owned()), parse("\"abc\"").unwrap());
-        assert_eq!(Expr::Str("true".to_owned()), parse("\"true\"").unwrap());
+        assert_eq!(Expr::Str("abc".to_owned()), parse(r#""abc""#).unwrap());
+        assert_eq!(Expr::Str("true".to_owned()), parse(r#""true""#).unwrap());
+        assert_eq!(Expr::Str("escaped \\n \\t \\\" \\\\ string".to_owned()), parse(r#""escaped \n \t \" \\ string""#).unwrap());
+        assert_eq!(Expr::RawType("Float".to_owned()), parse(": Float").unwrap());
+        assert_eq!(Expr::RawType("List<Int>".to_owned()), parse(":List<Int>").unwrap());
     }
 
     #[test]
     fn test_collections() {
-        assert_eq!(Expr::List(vec!(Expr::Int(1), Expr::Int(2))), parse("[1,2]").unwrap());
-        assert_eq!(Expr::Map(vec!((Expr::Str("a".to_owned()), Expr::Int(1)))), parse("{\"a\":1}").unwrap());
+        assert_eq!(Expr::RawList(vec!(Expr::Int(1), Expr::Int(2))), parse("[1,2]").unwrap());
+        assert_eq!(Expr::RawMap(vec!((Expr::Str("a".to_owned()), Expr::Int(1)))), parse("{\"a\":1}").unwrap());
         assert_eq!("{employees:[{name:alice,age:20,grade:2.3,email:alice@gmail.com},{name:bob,age:21,grade:1.2,email:null}]}",
                    read(r#"{"employees":[{"name":"alice","age":20,"grade":2.3,"email":"alice@gmail.com"}, {"name":"bob", "age": 21,"grade":1.2,"email":null}]}"#));
+    }
+
+    #[test]
+    fn test_class() {
+        assert_eq!("class(Point,(x:Float,y:Float))", read("class Point(x: Float, y:Float)"));
     }
 
     #[test]
@@ -162,9 +175,12 @@ mod tests {
 
     #[test]
     fn test_declarations() {
-        assert_eq!("val(f,Float,1.0)", read("val f: Float = 1.0"));
-        assert_eq!("val(f,Float,1.0)", read("val(f,Float,1.0)"));
+        assert_eq!("val(f,:Float,1.0)", read("val f: Float = 1.0"));
+        assert_eq!("val(f,:Float,1.0)", read("val(f,:Float,1.0)"));
         assert_eq!("var(a,null,1)", read("var a = 1"));
+        assert_eq!("var(l,null,[1,2,3])", read("var l = [1,2,3]"));
+        assert_eq!("var(l,:List<Int>,[1,2,3])", read("var l :List<Int> = [1,2,3]"));
+        assert_eq!("var(m,:Map<String,Int>,{a:1})", read(r#"var m: Map<String,Int> = {"a": 1}"#));
     }
 
     #[test]
@@ -215,10 +231,10 @@ mod tests {
 
     #[test]
     fn test_fun() {
-        assert_eq!("fun(pi,(),Float,3.14)", read("fun pi() :Float = 3.14"));
-        assert_eq!("fun(zero,(),Int,{val(x,null,0);x})", read("fun zero(): Int = { val x = 0 ; x }"));
-        assert_eq!("fun(inc,(a:Int),Int,{add(a,1)})", read("fun inc(a: Int): Int = { a + 1 }"));
-        assert_eq!("fun(inc,(a:Int),Int,{add(a,1)})", read("fun(inc,(a:Int),Int,{add(a,1)})"));
+        assert_eq!("fun(pi,(),:Float,3.14)", read("fun pi() :Float = 3.14"));
+        assert_eq!("fun(zero,(),:Int,{val(x,null,0);x})", read("fun zero(): Int = { val x = 0 ; x }"));
+        assert_eq!("fun(zero,(),:Int,{val(x,null,0);x})", read("fun(zero,(),:Int,{val(x,null,0);x})"));
+        assert_eq!("fun(inc,(a:Int),:Int,{add(a,1)})", read("fun inc(a: Int): Int = { a + 1 }"));
     }
 
 
