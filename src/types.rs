@@ -109,7 +109,7 @@ impl Type {
     }
 
     pub fn matches(&self, expected: &Type) -> bool {
-        *expected == Any || self == expected
+        *expected == Any || self == expected || (*expected == Number && self.is_number())
     }
 
 }

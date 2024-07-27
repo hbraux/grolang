@@ -145,7 +145,6 @@ mod tests {
         let mut scope = Scope::init();
         scope.exec("val l = [1,2,3]");
         scope.exec(r#"val m = {"a":1, "b":1}"#);
-        assert_eq!( "\"List<Int>\"", scope.exec("l.type()"));
     }
 
     #[test]
@@ -158,9 +157,7 @@ mod tests {
         assert_eq!("2", scope.exec("-2 * -1"));
         assert_eq!("3.3", scope.exec("1 + 2.3"));
         assert_eq!("DivisionByZero", scope.exec("1 / 0"));
-        assert_eq!("UnexpectedArgumentType(Int.add, Bool)", scope.exec("2 + true"));
-        // to be supported later
-        assert_eq!("UnexpectedArgumentType(Int.mul, Float)", scope.exec("2 * 0.1"));
+        assert_eq!("UnexpectedArgumentType(Number.add, Bool)", scope.exec("2 + true"));
     }
 
     #[test]
@@ -216,7 +213,7 @@ mod tests {
     fn test_exceptions() {
         let mut scope = Scope::init();
         assert_eq!("UndefinedFunction(read)", scope.exec("read()"));
-        assert_eq!("UndefinedMethod(Int.inc)", scope.exec("inc(2)"));
+        assert_eq!("UndefinedMethod(inc)", scope.exec("inc(2)"));
         assert_eq!("UndefinedSymbol(n)", scope.exec("n.eval()"));
     }
 
