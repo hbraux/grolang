@@ -194,11 +194,11 @@ fn handle_call(name: &str, args: &Vec<Expr>, scope: &Scope) -> Result<Expr, Exce
         Some(Fun(name, types, fun)) => apply_fun(name, types, args, fun, scope),
         _ if args.len() == 0 => Err(Exception::UndefinedFunction(name.to_string())),
         _ => {
-            let method_name = args[0].eval(scope)?.get_type().method_name(name);
-            match scope.global().get(&method_name) {
-                Some(Fun(name, types, fun)) => apply_fun(name, types, args, fun, scope),
-                _ => Err(Exception::UndefinedMethod(method_name)),
-            }
+            for method in args[0].eval(scope)?.get_type().all_method_names(name) {
+                if let Some(Fun(name, types, fun)) =  scope.global().get(&method) {
+                    return apply_fun(name, types, args, fun, scope);
+                }}
+            return Err(Exception::UndefinedMethod(name.to_string()));
         }
     }
 }

@@ -11,7 +11,7 @@ use crate::types::Type;
 use self::Function::{BuiltIn, Defined, Stateful, Stateless};
 
 macro_rules! def {
-    ($scope:expr, $name:expr, $types:expr, $lambda:expr) => {  $scope.add_fun(Fun($name.to_owned(), Type::from_str($types).unwrap(), $lambda)) };
+    ($scope:expr, $name:expr, $sign:expr, $lambda:expr) => {  $scope.add_fun(Fun($name.to_owned(), Type::from_str($sign).unwrap(), $lambda)) };
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -40,26 +40,28 @@ fn apply_defined(scope: &Scope, body: &Box<Expr>, params: &Vec<String>, vec: &Ve
 }
 
 pub fn add_functions(sc: &mut Scope) {
-    // arithmetics
-    let types = "(Number,Number)->Number";
-    def!(sc, "Number.add", types, Stateless(|vec| NumberFun::Add.eval(&vec[0], &vec[1])));
-    def!(sc, "Number.sub", types, Stateless(|vec| NumberFun::Sub.eval(&vec[0], &vec[1])));
-    def!(sc, "Number.mul", types, Stateless(|vec| NumberFun::Mul.eval(&vec[0], &vec[1])));
-    def!(sc, "Number.div", types, Stateless(|vec| NumberFun::Div.eval(&vec[0], &vec[1])));
-    def!(sc, "Number.mod", types, Stateless(|vec| NumberFun::Mod.eval(&vec[0], &vec[1])));
-    // comparisons
-    let types = "(Number,Number)->Bool";
-    def!(sc, "Number.eq", types, Stateless(|vec| NumberFun::Eq.eval(&vec[0], &vec[1])));
-    def!(sc, "Number.neq", types, Stateless(|vec| NumberFun::Neq.eval(&vec[0], &vec[1])));
-    def!(sc, "Number.ge", types, Stateless(|vec| NumberFun::Ge.eval(&vec[0], &vec[1])));
-    def!(sc, "Number.gt", types, Stateless(|vec| NumberFun::Gt.eval(&vec[0], &vec[1])));
-    def!(sc, "Number.lt", types, Stateless(|vec| NumberFun::Lt.eval(&vec[0], &vec[1])));
-    def!(sc, "Number.le", types, Stateless(|vec| NumberFun::Le.eval(&vec[0], &vec[1])));
+    // Any functions
+    def!(sc, "to_str", "(Any)->Str", Stateless(|vec| Ok(Expr::Str(vec[0].print()))));
 
-    // boolean operators
-    let types = "(Bool,Bool)->Bool";
-    def!(sc, "Bool.and", types, Stateless(|vec| Ok(Bool(vec[0].to_bool()? && vec[1].to_bool()?))));
-    def!(sc, "Bool.or", types, Stateless(|vec| Ok(Bool(vec[0].to_bool()? || vec[1].to_bool()?))));
+    // Number functions
+    let sign = "(Number,Number)->Number";
+    def!(sc, "Number.add", sign, Stateless(|vec| NumberFun::Add.eval(&vec[0], &vec[1])));
+    def!(sc, "Number.sub", sign, Stateless(|vec| NumberFun::Sub.eval(&vec[0], &vec[1])));
+    def!(sc, "Number.mul", sign, Stateless(|vec| NumberFun::Mul.eval(&vec[0], &vec[1])));
+    def!(sc, "Number.div", sign, Stateless(|vec| NumberFun::Div.eval(&vec[0], &vec[1])));
+    def!(sc, "Number.mod", sign, Stateless(|vec| NumberFun::Mod.eval(&vec[0], &vec[1])));
+    let sign = "(Number,Number)->Bool";
+    def!(sc, "Number.eq", sign, Stateless(|vec| NumberFun::Eq.eval(&vec[0], &vec[1])));
+    def!(sc, "Number.neq", sign, Stateless(|vec| NumberFun::Neq.eval(&vec[0], &vec[1])));
+    def!(sc, "Number.ge", sign, Stateless(|vec| NumberFun::Ge.eval(&vec[0], &vec[1])));
+    def!(sc, "Number.gt", sign, Stateless(|vec| NumberFun::Gt.eval(&vec[0], &vec[1])));
+    def!(sc, "Number.lt", sign, Stateless(|vec| NumberFun::Lt.eval(&vec[0], &vec[1])));
+    def!(sc, "Number.le", sign, Stateless(|vec| NumberFun::Le.eval(&vec[0], &vec[1])));
+
+    // Boolean Functions
+    let sign = "(Bool,Bool)->Bool";
+    def!(sc, "Bool.and", sign, Stateless(|vec| Ok(Bool(vec[0].to_bool()? && vec[1].to_bool()?))));
+    def!(sc, "Bool.or", sign, Stateless(|vec| Ok(Bool(vec[0].to_bool()? || vec[1].to_bool()?))));
 
 
     // String functions
@@ -71,8 +73,6 @@ pub fn add_functions(sc: &mut Scope) {
     def!(sc, "print", "(List<Any>)->Any", Stateless(|vec,| print(vec)));
     def!(sc, "eval", "(Any)->Any", Stateful(|vec, scope| vec[0].eval(scope)));
 
-    // Misc functions
-    def!(sc, "type", "(Any)->Str", Stateless(|vec| Ok(Expr::Str(vec[0].get_type().to_string()))));
 
     // macros
     def!(sc, "const", "Macro", BuiltIn(|vec, scope| def_variable(vec[0].to_symbol()?, vec[2].eval(scope)?.expect(vec[1].to_type()?)?, scope, None)));

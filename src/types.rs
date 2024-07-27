@@ -89,6 +89,15 @@ impl Type {
     pub fn method_name(&self, name: &str) -> String {
         self.to_string().to_owned() + if_else!(name.starts_with("."), "", ".") + name
     }
+    // TODO: return an iter
+    pub fn all_method_names(&self, name: &str) -> Vec<String> {
+        let mut vec = vec!(self.method_name(name));
+        if self.is_number() {
+            vec.push(Number.method_name(name));
+        }
+        vec.push(Any.method_name(name));
+        vec
+    }
 
     pub fn is_defined(&self) -> bool {
         match self {

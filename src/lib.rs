@@ -164,7 +164,7 @@ mod tests {
     }
 
     #[test]
-    fn test_binaries() {
+    fn test_comparisons() {
         let mut scope = Scope::init();
         scope.exec("val a = 1");
         scope.exec("val b = 2");
