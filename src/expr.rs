@@ -97,18 +97,6 @@ impl Expr {
             _ => Err(Exception::NotA(Type::Str.to_string(), self.print()))
         }
     }
-    pub fn to_int(&self) -> Result<&i64, Exception> {
-        match self {
-            Int(x) => Ok(x),
-            _ => Err(Exception::NotA(Type::Int.to_string(), self.print()))
-        }
-    }
-    pub fn to_float(&self) -> Result<&f64, Exception> {
-        match self {
-            Float(x) => Ok(x),
-            _ => Err(Exception::NotA(Type::Float.to_string(), self.print()))
-        }
-    }
     pub fn to_bool(&self) -> Result<bool, Exception> {
         match self {
             Bool(x) => Ok(x.to_owned()),

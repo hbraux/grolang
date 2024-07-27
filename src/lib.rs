@@ -152,11 +152,11 @@ mod tests {
     fn test_arithmetics() {
         let mut scope = Scope::init();
         assert_eq!("14", scope.exec("2 + 3 * 4"));
-        assert_eq!("20", scope.exec("(2 + 3) * 4"));
+        assert_eq!("20.0", scope.exec("(2 + 3.0) * 4"));
         assert_eq!("4", scope.exec("4 / 1"));
         assert_eq!("2", scope.exec("22%10"));
         assert_eq!("2", scope.exec("-2 * -1"));
-        assert_eq!("3.3", scope.exec("1.0 + 2.3"));
+        assert_eq!("3.3", scope.exec("1 + 2.3"));
         assert_eq!("DivisionByZero", scope.exec("1 / 0"));
         assert_eq!("UnexpectedArgumentType(Int.add, Bool)", scope.exec("2 + true"));
         // to be supported later

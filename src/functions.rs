@@ -41,34 +41,27 @@ fn apply_defined(scope: &Scope, body: &Box<Expr>, params: &Vec<String>, vec: &Ve
 }
 
 pub fn add_functions(sc: &mut Scope) {
-    // int arithmetics
-    let types = Type::new("(Int,Int)->Int");
-    def!(sc, "Int.add", types, Stateless(|vec| Ok(Int(vec[0].to_int()? + vec[1].to_int()?))));
-    def!(sc, "Int.sub", types, Stateless(|vec| Ok(Int(vec[0].to_int()? - vec[1].to_int()?))));
-    def!(sc, "Int.mul", types, Stateless(|vec| Ok(Int(vec[0].to_int()? * vec[1].to_int()?))));
-    def!(sc, "Int.div", types, Stateless(|vec| divide_int(vec[0].to_int()?, vec[1].to_int()?)));
-    def!(sc, "Int.mod", types, Stateless(|vec| modulo_int(vec[0].to_int()?, vec[1].to_int()?)));
-
-    // float arithmetics
-    let types = Type::new("(Float,Float)->Float");
-    def!(sc, "Float.add", types, Stateless(|vec| Ok(Float(vec[0].to_float()? + vec[1].to_float()?))));
-    def!(sc, "Float.sub", types, Stateless(|vec| Ok(Float(vec[0].to_float()? - vec[1].to_float()?))));
-    def!(sc, "Float.mul", types, Stateless(|vec| Ok(Float(vec[0].to_float()? * vec[1].to_float()?))));
-    def!(sc, "Float.div", types, Stateless(|vec| divide_float(vec[0].to_float()?, vec[1].to_float()?)));
+    // arithmetics
+    let types = Type::new("(Number,Number)->Number");
+    def!(sc, "Number.add", types, Stateless(|vec| NumberFun::Add.eval(&vec[0], &vec[1])));
+    def!(sc, "Number.sub", types, Stateless(|vec| NumberFun::Sub.eval(&vec[0], &vec[1])));
+    def!(sc, "Number.mul", types, Stateless(|vec| NumberFun::Mul.eval(&vec[0], &vec[1])));
+    def!(sc, "Number.div", types, Stateless(|vec| NumberFun::Div.eval(&vec[0], &vec[1])));
+    def!(sc, "Number.mod", types, Stateless(|vec| NumberFun::Mod.eval(&vec[0], &vec[1])));
+    // comparisons
+    let types = Type::new("(Number,Number)->Bool");
+    def!(sc, "Number.eq", types, Stateless(|vec| NumberFun::Eq.eval(&vec[0], &vec[1])));
+    def!(sc, "Number.neq", types, Stateless(|vec| NumberFun::Neq.eval(&vec[0], &vec[1])));
+    def!(sc, "Number.ge", types, Stateless(|vec| NumberFun::Ge.eval(&vec[0], &vec[1])));
+    def!(sc, "Number.gt", types, Stateless(|vec| NumberFun::Gt.eval(&vec[0], &vec[1])));
+    def!(sc, "Number.lt", types, Stateless(|vec| NumberFun::Lt.eval(&vec[0], &vec[1])));
+    def!(sc, "Number.le", types, Stateless(|vec| NumberFun::Le.eval(&vec[0], &vec[1])));
 
     // boolean operators
     let types = Type::new("(Bool,Bool)->Bool");
     def!(sc, "Bool.and", types, Stateless(|vec| Ok(Bool(vec[0].to_bool()? && vec[1].to_bool()?))));
     def!(sc, "Bool.or", types, Stateless(|vec| Ok(Bool(vec[0].to_bool()? || vec[1].to_bool()?))));
 
-    // int comparisons
-    let types = Type::new("(Int,Int)->Bool");
-    def!(sc, "Int.eq", types, Stateless(|vec| Ok(Bool(vec[0].to_int()? == vec[1].to_int()?))));
-    def!(sc, "Int.neq", types, Stateless(|vec| Ok(Bool(vec[0].to_int()? != vec[1].to_int()?))));
-    def!(sc, "Int.gt", types, Stateless(|vec| Ok(Bool(vec[0].to_int()? > vec[1].to_int()?))));
-    def!(sc, "Int.ge", types, Stateless(|vec| Ok(Bool(vec[0].to_int()? >= vec[1].to_int()?))));
-    def!(sc, "Int.lt", types, Stateless(|vec| Ok(Bool(vec[0].to_int()? < vec[1].to_int()?))));
-    def!(sc, "Int.le", types, Stateless(|vec| Ok(Bool(vec[0].to_int()? <= vec[1].to_int()?))));
 
     // String functions
     def!(sc, "Str.read", Type::new("(Str)->Expr"), Stateful(|vec, scope| Ok(scope.read(vec[0].to_str()?))));
@@ -92,16 +85,6 @@ pub fn add_functions(sc: &mut Scope) {
     def!(sc, "while", Macro, BuiltIn(|vec, scope| run_while(&vec[0], vec, scope)));
     def!(sc, "if", Macro, BuiltIn(|vec, scope| if_else!(vec[0].eval_mutable(scope)?.to_bool()?, vec[1].eval_mutable(scope),vec[2].eval_mutable(scope))));
 
-}
-
-fn divide_int(a: &i64, b: &i64) ->  Result<Expr, Exception> {
-    if *b != 0 { Ok(Int(a/b)) } else { Err(Exception::DivisionByZero)}
-}
-fn modulo_int(a: &i64, b: &i64) ->  Result<Expr, Exception> {
-    if *b != 0 { Ok(Int(a % b)) } else { Err(Exception::DivisionByZero)}
-}
-fn divide_float(a: &f64, b: &f64) ->  Result<Expr, Exception> {
-    if *b != 0.0 { Ok(Float(a/b)) } else { Err(Exception::DivisionByZero)}
 }
 
 
@@ -146,6 +129,61 @@ fn assign(name: &str, value: Expr, scope: &mut Scope) -> Result<Expr, Exception>
     }
 }
 
+#[derive(Debug)]
+pub enum NumberFun {
+    Mul,
+    Div,
+    Add,
+    Sub,
+    Mod,
+    Eq,
+    Neq,
+    Gt,
+    Ge,
+    Lt,
+    Le,
+}
+impl NumberFun {
+    fn eval(&self, left: &Expr, right: &Expr) -> Result<Expr, Exception> {
+        match (left, right) {
+            (Int(a), Int(b))    =>  self.eval_int(*a, *b),
+            (Float(a), Float(b)) => self.eval_float(*a, *b),
+            (Int(a), Float(b))  => self.eval_float(*a as f64, *b),
+            (Float(a), Int(b))  => self.eval_float(*a, *b as f64),
+            _ => Err(Exception::NotA("Number".to_owned(), left.to_string())),
+        }
+    }
+    fn eval_int(&self, a: i64, b: i64) -> Result<Expr, Exception> {
+        match self {
+            NumberFun::Add => Ok(Int(a + b)),
+            NumberFun::Sub => Ok(Int(a - b)),
+            NumberFun::Mul => Ok(Int(a * b)),
+            NumberFun::Mod => if_else!(b != 0, Ok(Int(a % b)), Err(Exception::DivisionByZero)),
+            NumberFun::Div => if_else!(b != 0, Ok(Int(a / b)), Err(Exception::DivisionByZero)),
+            NumberFun::Eq => Ok(Bool(a == b)),
+            NumberFun::Neq => Ok(Bool(a != b)),
+            NumberFun::Gt => Ok(Bool(a > b)),
+            NumberFun::Ge => Ok(Bool(a >= b)),
+            NumberFun::Lt => Ok(Bool(a < b)),
+            NumberFun::Le => Ok(Bool(a <= b)),
+        }
+    }
+    fn eval_float(&self, a: f64, b: f64) -> Result<Expr, Exception> {
+        match self {
+            NumberFun::Add => Ok(Float(a + b)),
+            NumberFun::Sub => Ok(Float(a - b)),
+            NumberFun::Mul => Ok(Float(a * b)),
+            NumberFun::Mod => if_else!(b != 0.0, Ok(Float(a % b)), Err(Exception::DivisionByZero)),
+            NumberFun::Div => if_else!(b != 0.0, Ok(Float(a / b)), Err(Exception::DivisionByZero)),
+            NumberFun::Eq => Ok(Bool(a == b)),
+            NumberFun::Neq => Ok(Bool(a != b)),
+            NumberFun::Gt => Ok(Bool(a > b)),
+            NumberFun::Ge => Ok(Bool(a >= b)),
+            NumberFun::Lt => Ok(Bool(a < b)),
+            NumberFun::Le => Ok(Bool(a <= b)),
+        }
+    }
+}
 
 fn print(vec: &Vec<Expr>) -> Result<Expr, Exception> {
     for x in vec { print!("{}", x) }
