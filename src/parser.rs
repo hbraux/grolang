@@ -85,12 +85,12 @@ fn build_call(mut args: Vec<Expr>) -> Expr {
 }
 
 fn build_list(args: Vec<Expr>) -> Expr {
-    Expr::List(Type::from_exprs(&args), args)
+    Expr::List(Type::infer(&args), args)
 }
 
 fn build_map(args: Vec<Expr>) -> Expr {
     let pairs: Vec<(Expr, Expr)> = args.chunks(2).into_iter().map(|p| (p[0].clone(), p[1].clone())).collect();
-    Expr::Map(Type::from_exprs(&pairs.iter().map(|p| p.0.clone()).collect::<Vec<_>>()), Type::from_exprs(&pairs.iter().map(|p| p.1.clone()).collect()), pairs)
+    Expr::Map(Type::infer(&pairs.iter().map(|p| p.0.clone()).collect::<Vec<_>>()), Type::infer(&pairs.iter().map(|p| p.1.clone()).collect()), pairs)
 }
 
 

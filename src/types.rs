@@ -7,7 +7,7 @@ use crate::exception::Exception;
 use crate::expr::Expr;
 use crate::if_else;
 
-use self::Type::{Unknown, Any, Bool, Float, Fun, Int, List, Map, Option, Str, Try, Class};
+use self::Type::{Unknown, Any, Bool, Float, Fun, Int, List, Map, Option, Str, Try, Class, Macro, Number};
 
 #[derive(Debug, Eq, PartialEq, Clone, Display)]
 pub enum Type {
@@ -56,17 +56,29 @@ impl Type {
                 "Bool" => Ok(Bool),
                 "Str" => Ok(Str),
                 "Float" => Ok(Float),
+                "Number" => Ok(Number),
+                "Macro" => Ok(Macro),
                 _ => if_else!(str.chars().all(|c| c.is_alphabetic()), Ok(Class(str.to_string())), Err(Exception::CannotParse(str.to_owned())))
             }
         }
     }
-    pub fn from_exprs(args: &Vec<Expr>) -> Type {
-        if args.is_empty() { Unknown } else {
-            let types: Vec<Type> = args.iter().map(Expr::get_type).collect();
-            // TODO: match higher type
-            types[0].clone()
+    pub fn is_number(&self) -> bool {
+        *self == Int || *self == Float || *self == Number
+    }
+
+    pub fn infer(vec: &Vec<Expr>) -> Type {
+        if vec.is_empty() { Unknown } else {
+            let mut current = vec[0].get_type();
+            for e in vec[1..].iter() {
+                let other = e.get_type();
+                if current != other && current != Any {
+                    current = if_else!(current.is_number() && other.is_number(), Number, Any)
+                    }
+            }
+            current
         }
     }
+
     pub fn print(&self) -> String {
         match self {
             List(t) => format!("List<{}>", t.print()),
@@ -95,6 +107,7 @@ impl Type {
 
 #[cfg(test)]
 mod tests {
+    use crate::expr::TRUE;
     use super::*;
     fn read(str: &str) -> Type { Type::from_str(str).unwrap() }
 
@@ -108,9 +121,22 @@ mod tests {
         assert_eq!(Option(Box::new(Int)), read("Int?"));
         assert_eq!(Try(Box::new(Int)), read("Int!"));
         assert_eq!(Fun(vec!(Int, Float), Box::new(Float)), read("(Int,Float)->Float"));
+        assert_eq!(Class("Point".to_owned()), read("Point"));
+        assert_eq!(Err(Exception::CannotParse("Poi!nt".to_string())), Type::from_str("Poi!nt"));
     }
+
     #[test]
     fn test_print() {
-        assert_eq!("List<Int>", read("List<Int>").print());
+        let t = List(Box::new(Int));
+        assert_eq!("List<Int>", t.print());
+        assert_eq!("List", t.to_string());
+    }
+
+    #[test]
+    fn test_infer() {
+        assert_eq!(Unknown, Type::infer(&vec!()));
+        assert_eq!(Int, Type::infer(&vec!(Expr::Int(1), Expr::Int(2))));
+        assert_eq!(Number, Type::infer(&vec!(Expr::Int(1), Expr::Float(2.0))));
+        assert_eq!(Any, Type::infer(&vec!(Expr::Int(1), TRUE)));
     }
 }
