@@ -29,8 +29,9 @@ impl Type {
     pub fn parse(str: &str) -> Result<Type, Exception> {
         if str.starts_with("(") {
             let args: Vec<&str>  = str[1..str.len()].split(")->").collect();
-            let v = args[0].split(",").map(Type::parse).collect();
-            Type::parse(args[1]).map(|o| Fun(v, Box::new(o)))
+            args[0].split(",").map(Type::parse).collect::<Result<Vec<_>, _> >().and_then(
+                |vec| Type::parse(args[1]).map(|o| Fun(vec, Box::new(o)))
+            )
         } else if str.ends_with("?") {
             Type::parse(&str[0..str.len() - 1]).map(|t| Option(Box::new(t)))
         } else if str.ends_with("!") {
@@ -38,11 +39,13 @@ impl Type {
         } else if str.starts_with("List<") {
             Type::parse(&str[5..str.len() - 1]).map(|t| List(Box::new(t)))
         } else if str.starts_with("Map<") {
-            let v: Vec<&str> = (&str[4..str.len() - 1]).split(',').collect();
-            if v.len() != 2 {
+            let args: Vec<&str> = (&str[4..str.len() - 1]).split(',').collect();
+            if args.len() != 2 {
                 Err(Exception::CannotParse("Map type".to_owned()))
             } else {
-                v.iter().map(Type::parse).collect().map(|v| Ok(Map(Box::new(v[0]), Box::new(v[1]))))
+                args.into_iter().map(Type::parse).collect::<Result<Vec<_>, _>>().and_then(
+                    |vec| Ok(Map(Box::new(vec[0].clone()), Box::new(vec[1].clone())))
+                )
             }
         } else {
             match str {
