@@ -60,7 +60,7 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
         Rule::Special => to_literal(pair.as_str()),
         Rule::String => Expr::Str(un_quote(pair.as_str())),
         Rule::Symbol | Rule::VarType => Expr::Symbol(pair.as_str().to_owned()),
-        Rule::RawType => Expr::TypeOf(Type::from_str(pair.as_str()).unwrap()), // TODO: handle failure
+        Rule::RawType => Expr::TypeOf(Type::from_str(remove_first(pair.as_str()).trim()).unwrap()), // TODO: handle failure
         Rule::Operator => Expr::Symbol(pair.as_str().to_owned()),
         Rule::Expr =>  parse_pairs(pair.into_inner()),
         Rule::CallExpr => build_call(to_vec(pair, 0, 0)),
@@ -118,6 +118,9 @@ fn un_quote(str: &str) -> String {
     (&str[1..str.len()-1]).to_owned()
 }
 
+fn remove_first(str: &str) -> String {
+    (&str[1..str.len()]).to_owned()
+}
 
 fn to_operator_name(pair: Pair<Rule>) -> String {
     format!("{:?}", pair.as_rule()).to_lowercase()
@@ -159,7 +162,7 @@ mod tests {
     #[test]
     fn test_collections() {
         assert_eq!(Expr::List(Type::Int, vec!(Expr::Int(1), Expr::Int(2))), parse("[1,2]").unwrap());
-        assert_eq!(Expr::Map(Type::Int, Type::Int, vec!((Expr::Str("a".to_owned()), Expr::Int(1)))), parse("{\"a\":1}").unwrap());
+        assert_eq!(Expr::Map(Type::Str, Type::Int, vec!((Expr::Str("a".to_owned()), Expr::Int(1)))), parse("{\"a\":1}").unwrap());
         assert_eq!("{employees:[{name:alice,age:20,grade:2.3,email:alice@gmail.com},{name:bob,age:21,grade:1.2,email:null}]}",
                    read(r#"{"employees":[{"name":"alice","age":20,"grade":2.3,"email":"alice@gmail.com"}, {"name":"bob", "age": 21,"grade":1.2,"email":null}]}"#));
     }
@@ -181,7 +184,7 @@ mod tests {
         assert_eq!("var(a,null,1)", read("var a = 1"));
         assert_eq!("var(l,null,[1,2,3])", read("var l = [1,2,3]"));
         assert_eq!("var(l,:List<Int>,[1,2,3])", read("var l :List<Int> = [1,2,3]"));
-        assert_eq!("var(m,:Map<String,Int>,{a:1})", read(r#"var m: Map<String,Int> = {"a": 1}"#));
+        assert_eq!("var(m,:Map<Str,Int>,{a:1})", read(r#"var m: Map<Str,Int> = {"a": 1}"#));
     }
 
     #[test]

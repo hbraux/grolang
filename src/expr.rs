@@ -3,6 +3,7 @@ use std::fmt::{Debug, Display, Formatter};
 use crate::exception::Exception;
 use crate::functions::Function;
 use crate::functions::Function::BuiltIn;
+use crate::if_else;
 use crate::parser::parse;
 use crate::scope::Scope;
 use crate::types::Type;
@@ -160,32 +161,28 @@ impl Expr {
             Bool(x) => x.to_string(),
             Int(x) => x.to_string(),
             Str(x) => format!("\"{}\"", x),
-            TypeOf(x) => format!(":{}", x),
+            TypeOf(x) => format!(":{}", x.print()),
             Null => "null".to_owned(),
-            Float(x) => format_float(x),
+            Float(x) => print_float(x),
             Symbol(x) => x.to_owned(),
             Failure(x) => x.format(),
-            Params(v) => format_vec(&v.iter().map(|p| format!("{}:{}", p.0, p.1)).collect::<Vec<_>>(), ",", "(", ")"),
-            Map(_, _, vec) => format_vec(&vec.iter().map(|p| format!("{}:{}", p.0, p.1)).collect::<Vec<_>>(), ",", "{", "}"),
-            List(_, vec) => format_vec(vec, ",", "[", "]"),
-            Block(vec) => format_vec(vec, ";", "{", "}"),
-            Call(name, vec) => format_vec(vec, ",", &(name.to_string() + "("), ")"),
+            Params(vec) => print_vec(vec, ",", "(", ")", |p| format!("{}:{}", p.0, p.1)),
+            Map(_, _, vec) => print_vec(vec, ",", "{", "}", |p| format!("{}:{}", p.0.print(), p.1.print())),
+            List(_, vec) => print_vec(vec, ",", "[", "]", Expr::print),
+            Block(vec) => print_vec(vec, ";", "{", "}", Expr::print),
+            Call(name, vec) => print_vec(vec, ",", &(name.to_string() + "("), ")",  Expr::print),
             _ => format!("{:?}", self),
         }
     }
 }
 
-fn format_vec<T: ToString>(vec: &[T], separ: &str, prefix: &str, suffix: &str) -> String {
-    format!("{}{}{}", prefix, vec.iter().map(|e| e.to_string()).collect::<Vec<_>>().join(separ), suffix)
+fn print_vec<T>(vec: &[T], separ: &str, prefix: &str, suffix: &str, fmt: fn(t: &T) -> String) -> String {
+    format!("{}{}{}", prefix, vec.iter().map(fmt).collect::<Vec<_>>().join(separ), suffix)
 }
 
-fn format_float(x: &f64) -> String  {
+fn print_float(x: &f64) -> String  {
     let str = x.to_string();
-    if str.contains('.') {
-        str
-    } else {
-        format!("{}.0", str)
-    }
+    if_else!(str.contains('.'), str, format!("{}.0", str))
 }
 
 fn handle_symbol(name: &str, scope: &Scope) -> Result<Expr, Exception> {
