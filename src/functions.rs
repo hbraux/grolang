@@ -11,7 +11,7 @@ use crate::types::Type;
 use self::Function::{BuiltIn, Defined, Stateful, Stateless};
 
 macro_rules! def {
-    ($scope:expr, $name:expr, $types:expr, $lambda:expr) => {  $scope.add_fun(Fun($name.to_owned(), Type::parse($types).unwrap(), $lambda)) };
+    ($scope:expr, $name:expr, $types:expr, $lambda:expr) => {  $scope.add_fun(Fun($name.to_owned(), Type::from_str($types).unwrap(), $lambda)) };
 }
 
 #[derive(Debug, Clone, PartialEq)]

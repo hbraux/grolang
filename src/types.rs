@@ -4,13 +4,14 @@ use std::string::ToString;
 use strum_macros::Display;
 
 use crate::exception::Exception;
+use crate::expr::Expr;
 use crate::if_else;
 
-use self::Type::{_Unknown, Any, Bool, Float, Fun, Int, List, Map, Option, Str, Try};
+use self::Type::{Unknown, Any, Bool, Float, Fun, Int, List, Map, Option, Str, Try, Class};
 
 #[derive(Debug, Eq, PartialEq, Clone, Display)]
 pub enum Type {
-    _Unknown,
+    Unknown,
     Any,
     Int,
     Bool,
@@ -22,31 +23,32 @@ pub enum Type {
     Try(Box<Type>),
     Map(Box<Type>, Box<Type>),
     Fun(Vec<Type>, Box<Type>),
-    Macro
+    Macro,
+    Class(String)
 }
 
 impl Type {
-    pub fn parse(str: &str) -> Result<Type, Exception> {
-        if str.starts_with("(") {
+    pub fn from_str(str: &str) -> Result<Type, Exception> {
+        if str.starts_with(":") {
+            Type::from_str(&str[1..])
+        } else if str.starts_with("(") {
             let args: Vec<&str>  = str[1..str.len()].split(")->").collect();
-            args[0].split(",").map(Type::parse).collect::<Result<Vec<_>, _> >().and_then(
-                |vec| Type::parse(args[1]).map(|o| Fun(vec, Box::new(o)))
+            args[0].split(",").map(Type::from_str).collect::<Result<Vec<_>, _> >().and_then(
+                |vec| Type::from_str(args[1]).map(|o| Fun(vec, Box::new(o)))
             )
         } else if str.ends_with("?") {
-            Type::parse(&str[0..str.len() - 1]).map(|t| Option(Box::new(t)))
+            Type::from_str(&str[0..str.len() - 1]).map(|t| Option(Box::new(t)))
         } else if str.ends_with("!") {
-            Type::parse(&str[0..str.len() - 1]).map(|t| Try(Box::new(t)))
+            Type::from_str(&str[0..str.len() - 1]).map(|t| Try(Box::new(t)))
         } else if str.starts_with("List<") {
-            Type::parse(&str[5..str.len() - 1]).map(|t| List(Box::new(t)))
+            Type::from_str(&str[5..str.len() - 1]).map(|t| List(Box::new(t)))
         } else if str.starts_with("Map<") {
             let args: Vec<&str> = (&str[4..str.len() - 1]).split(',').collect();
-            if args.len() != 2 {
-                Err(Exception::CannotParse("Map type".to_owned()))
-            } else {
-                args.into_iter().map(Type::parse).collect::<Result<Vec<_>, _>>().and_then(
+            if args.len() == 2 {
+                args.into_iter().map(Type::from_str).collect::<Result<Vec<_>, _>>().and_then(
                     |vec| Ok(Map(Box::new(vec[0].clone()), Box::new(vec[1].clone())))
                 )
-            }
+            } else {  Err(Exception::CannotParse("Map type".to_owned())) }
         } else {
             match str {
                 "Any" => Ok(Any),
@@ -54,8 +56,15 @@ impl Type {
                 "Bool" => Ok(Bool),
                 "Str" => Ok(Str),
                 "Float" => Ok(Float),
-                _ => Err(Exception::UndefinedType(str.to_owned()))
+                _ => if_else!(str.chars().all(|c| c.is_alphabetic()), Ok(Class(str.to_string())), Err(Exception::CannotParse(str.to_owned())))
             }
+        }
+    }
+    pub fn from_exprs(args: &Vec<Expr>) -> Type {
+        if args.is_empty() { Unknown } else {
+            let types: Vec<Type> = args.iter().map(Expr::get_type).collect();
+            // TODO: match higher type
+            types[0].clone()
         }
     }
     pub fn print(&self) -> String {
@@ -71,7 +80,7 @@ impl Type {
 
     pub fn is_defined(&self) -> bool {
         match self {
-            _Unknown => false,
+            Unknown => false,
             List(x) => x.is_defined(),
             Map(x, y) => x.is_defined() && y.is_defined(),
             _ => true
@@ -87,7 +96,7 @@ impl Type {
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn read(str: &str) -> Type { Type::parse(str).unwrap() }
+    fn read(str: &str) -> Type { Type::from_str(str).unwrap() }
 
     #[test]
     fn test_parse() {

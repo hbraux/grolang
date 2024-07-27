@@ -3,13 +3,12 @@ use std::fmt::{Debug, Display, Formatter};
 use crate::exception::Exception;
 use crate::functions::Function;
 use crate::functions::Function::BuiltIn;
-use crate::if_else;
 use crate::parser::parse;
 use crate::scope::Scope;
 use crate::types::Type;
-use crate::types::Type::{_Unknown};
+use crate::types::Type::Unknown;
 
-use self::Expr::{Block, Bool, Call, Failure, Float, Fun, Int, List, RawList, Null, RawParams, Str, Symbol, RawType, Map, RawMap};
+use self::Expr::{Block, Bool, Call, Failure, Float, Fun, Int, List, Map, Null, Params, TypeOf, Str, Symbol};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
@@ -19,6 +18,7 @@ pub enum Expr {
     Str(String),
     Bool(bool),
     Symbol(String),
+    TypeOf(Type),
     Block(Vec<Expr>),
     Call(String, Vec<Expr>),
     Failure(Exception),
@@ -26,11 +26,7 @@ pub enum Expr {
     List(Type, Vec<Expr>),
     Map(Type, Type, Vec<(Expr, Expr)>),
     Class(Vec<(String, Type)>),
-    // those raw types are only used for parsing
-    RawType(String),
-    RawList(Vec<Expr>),
-    RawMap(Vec<(Expr, Expr)>),
-    RawParams(Vec<(String, Expr)>),
+    Params(Vec<(String, Type)>),
 }
 
 impl Display for Expr {
@@ -71,7 +67,7 @@ impl Expr {
             Str(_) => Type::Str,
             List(t, _) => Type::List(Box::new(t.clone())), // TODO: avoid clone
             Map(t, u, _) => Type::Map(Box::new(t.clone()),Box::new(u.clone())),
-            _ => _Unknown,
+            _ => Unknown,
         }
     }
     pub fn to_str(&self) -> Result<&str, Exception> {
@@ -94,14 +90,14 @@ impl Expr {
     }
     pub fn to_type(&self) -> Result<Type, Exception> {
         match self {
-            RawType(str) => Type::parse(str),
-            Null => Ok(_Unknown),
+            TypeOf(t) => Ok(t.clone()),
+            Null => Ok(Unknown),
             _ => Err(Exception::NotA("Type".to_owned(), self.print()))
         }
     }
     pub fn to_params(&self) -> Result<&Vec<(String, Type)>, Exception> {
         match self {
-            RawParams(v) => Ok(v),
+            Params(v) => Ok(v),
             _ => Err(Exception::NotA("Params".to_owned(), self.print()))
         }
     }
@@ -110,8 +106,6 @@ impl Expr {
         match self {
             Failure(e) => Err(e.clone()),
             Null | Int(_) | Float(_) | Str(_) | Bool(_)  | List(_,_ )  | Map(_, _, _)  => Ok(self.clone()),
-            RawList(v) => Ok(List(if_else!(v.is_empty(), _Unknown, v[0].get_type()), v.clone())),
-            RawMap(v) => Ok(Map(if_else!(v.is_empty(), _Unknown, v[0].0.get_type()), if_else!(v.is_empty(), _Unknown, v[0].1.get_type()), v.clone())),
             Symbol(name) => handle_symbol(name, scope),
             Call(name, args) => handle_call(name, args, scope),
             _ => panic!("not implemented {:?}", self),
@@ -166,14 +160,14 @@ impl Expr {
             Bool(x) => x.to_string(),
             Int(x) => x.to_string(),
             Str(x) => format!("\"{}\"", x),
-            RawType(x) => format!(":{}", x),
+            TypeOf(x) => format!(":{}", x),
             Null => "null".to_owned(),
             Float(x) => format_float(x),
             Symbol(x) => x.to_owned(),
             Failure(x) => x.format(),
-            RawParams(v) => format_vec(&v.iter().map(|p| format!("{}:{}", p.0, p.1)).collect::<Vec<_>>(), ",", "(", ")"),
-            RawMap(vec) | Map(_, _, vec) => format_vec(&vec.iter().map(|p| format!("{}:{}", p.0, p.1)).collect::<Vec<_>>(), ",", "{", "}"),
-            RawList(vec) | List(_, vec) => format_vec(vec, ",", "[", "]"),
+            Params(v) => format_vec(&v.iter().map(|p| format!("{}:{}", p.0, p.1)).collect::<Vec<_>>(), ",", "(", ")"),
+            Map(_, _, vec) => format_vec(&vec.iter().map(|p| format!("{}:{}", p.0, p.1)).collect::<Vec<_>>(), ",", "{", "}"),
+            List(_, vec) => format_vec(vec, ",", "[", "]"),
             Block(vec) => format_vec(vec, ";", "{", "}"),
             Call(name, vec) => format_vec(vec, ",", &(name.to_string() + "("), ")"),
             _ => format!("{:?}", self),
