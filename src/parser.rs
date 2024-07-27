@@ -9,7 +9,6 @@ use pest::pratt_parser::Assoc::Left;
 use pest_derive::Parser;
 
 use crate::expr::{Expr, FALSE, NULL, TRUE};
-use crate::types::Type;
 
 #[derive(Parser)]
 #[grammar = "grammar.pest"]
@@ -90,7 +89,7 @@ fn build_call(mut args: Vec<Expr>) -> Expr {
 fn build_params(pairs: Pairs<Rule>) -> Expr {
     Expr::RawParams(pairs.into_iter().map(|p| {
         let s: Vec<&str> = p.as_str().split(":").collect();
-        (s[0].trim().to_string(), Type::new(s[1].trim()))
+        (s[0].trim().to_string(), Expr::RawType(s[1].trim().to_string()))
     }).collect::<Vec<_>>())
 }
 

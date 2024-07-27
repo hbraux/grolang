@@ -7,12 +7,11 @@ use crate::expr::Expr::{Bool, Float, Fun, Int, Null, Symbol};
 use crate::if_else;
 use crate::scope::Scope;
 use crate::types::Type;
-use crate::types::Type::Macro;
 
-use self::Function::{BuiltIn, Stateful, Stateless, Defined};
+use self::Function::{BuiltIn, Defined, Stateful, Stateless};
 
 macro_rules! def {
-    ($scope:expr, $name:expr, $types:expr, $lambda:expr) => {  $scope.add_fun(Fun($name.to_owned(), $types.clone(), $lambda)) };
+    ($scope:expr, $name:expr, $types:expr, $lambda:expr) => {  $scope.add_fun(Fun($name.to_owned(), Type::parse($types).unwrap(), $lambda)) };
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -42,14 +41,14 @@ fn apply_defined(scope: &Scope, body: &Box<Expr>, params: &Vec<String>, vec: &Ve
 
 pub fn add_functions(sc: &mut Scope) {
     // arithmetics
-    let types = Type::new("(Number,Number)->Number");
+    let types = "(Number,Number)->Number";
     def!(sc, "Number.add", types, Stateless(|vec| NumberFun::Add.eval(&vec[0], &vec[1])));
     def!(sc, "Number.sub", types, Stateless(|vec| NumberFun::Sub.eval(&vec[0], &vec[1])));
     def!(sc, "Number.mul", types, Stateless(|vec| NumberFun::Mul.eval(&vec[0], &vec[1])));
     def!(sc, "Number.div", types, Stateless(|vec| NumberFun::Div.eval(&vec[0], &vec[1])));
     def!(sc, "Number.mod", types, Stateless(|vec| NumberFun::Mod.eval(&vec[0], &vec[1])));
     // comparisons
-    let types = Type::new("(Number,Number)->Bool");
+    let types = "(Number,Number)->Bool";
     def!(sc, "Number.eq", types, Stateless(|vec| NumberFun::Eq.eval(&vec[0], &vec[1])));
     def!(sc, "Number.neq", types, Stateless(|vec| NumberFun::Neq.eval(&vec[0], &vec[1])));
     def!(sc, "Number.ge", types, Stateless(|vec| NumberFun::Ge.eval(&vec[0], &vec[1])));
@@ -58,32 +57,32 @@ pub fn add_functions(sc: &mut Scope) {
     def!(sc, "Number.le", types, Stateless(|vec| NumberFun::Le.eval(&vec[0], &vec[1])));
 
     // boolean operators
-    let types = Type::new("(Bool,Bool)->Bool");
+    let types = "(Bool,Bool)->Bool";
     def!(sc, "Bool.and", types, Stateless(|vec| Ok(Bool(vec[0].to_bool()? && vec[1].to_bool()?))));
     def!(sc, "Bool.or", types, Stateless(|vec| Ok(Bool(vec[0].to_bool()? || vec[1].to_bool()?))));
 
 
     // String functions
-    def!(sc, "Str.read", Type::new("(Str)->Expr"), Stateful(|vec, scope| Ok(scope.read(vec[0].to_str()?))));
-    def!(sc, "Str.trim", Type::new("(Str)->Str"), Stateless(|vec| Ok(Expr::Str(vec[0].to_str()?.trim().to_owned()))));
+    def!(sc, "Str.read", "(Str)->Expr", Stateful(|vec, scope| Ok(scope.read(vec[0].to_str()?))));
+    def!(sc, "Str.trim", "(Str)->Str", Stateless(|vec| Ok(Expr::Str(vec[0].to_str()?.trim().to_owned()))));
 
     // IO functions
-    def!(sc, "readLine", Type::new("()->Any"), Stateless(|_| read_line()));
-    def!(sc, "print", Type::new("(List<Any>)->Any"), Stateless(|vec,| print(vec)));
-    def!(sc, "eval", Type::new("(Any)->Any"), Stateful(|vec, scope| vec[0].eval(scope)));
+    def!(sc, "readLine", "()->Any", Stateless(|_| read_line()));
+    def!(sc, "print", "(List<Any>)->Any", Stateless(|vec,| print(vec)));
+    def!(sc, "eval", "(Any)->Any", Stateful(|vec, scope| vec[0].eval(scope)));
 
     // Misc functions
-    def!(sc, "type", Type::new("(Any)->Str"), Stateless(|vec| Ok(Expr::Str(vec[0].get_type().to_string()))));
+    def!(sc, "type", "(Any)->Str", Stateless(|vec| Ok(Expr::Str(vec[0].get_type().to_string()))));
 
     // macros
-    def!(sc, "const", Macro, BuiltIn(|vec, scope| def_variable(vec[0].to_symbol()?, vec[2].eval(scope)?.expect(vec[1].to_type()?)?, scope, None)));
-    def!(sc, "var", Macro, BuiltIn(|vec, scope| def_variable(vec[0].to_symbol()?, vec[2].eval(scope)?.expect(vec[1].to_type()?)?, scope, Some(true))));
-    def!(sc, "val", Macro, BuiltIn(|vec, scope| def_variable(vec[0].to_symbol()?, vec[2].eval(scope)?.expect(vec[1].to_type()?)?, scope, Some(false))));
-    def!(sc, "fun", Macro, BuiltIn(|vec, scope| def_function(vec[0].to_symbol()?, vec[1].to_params()?, vec[2].to_type()?, &vec[3], scope)));
-    def!(sc, "struct", Macro, BuiltIn(|vec, scope| def_struct(vec[0].to_symbol()?, vec[1].to_params()?, scope)));
-    def!(sc, "assign", Macro, BuiltIn(|vec, scope| assign(vec[0].to_symbol()?, vec[1].eval_mutable(scope)?, scope)));
-    def!(sc, "while", Macro, BuiltIn(|vec, scope| run_while(&vec[0], vec, scope)));
-    def!(sc, "if", Macro, BuiltIn(|vec, scope| if_else!(vec[0].eval_mutable(scope)?.to_bool()?, vec[1].eval_mutable(scope),vec[2].eval_mutable(scope))));
+    def!(sc, "const", "Macro", BuiltIn(|vec, scope| def_variable(vec[0].to_symbol()?, vec[2].eval(scope)?.expect(vec[1].to_type()?)?, scope, None)));
+    def!(sc, "var", "Macro", BuiltIn(|vec, scope| def_variable(vec[0].to_symbol()?, vec[2].eval(scope)?.expect(vec[1].to_type()?)?, scope, Some(true))));
+    def!(sc, "val", "Macro", BuiltIn(|vec, scope| def_variable(vec[0].to_symbol()?, vec[2].eval(scope)?.expect(vec[1].to_type()?)?, scope, Some(false))));
+    def!(sc, "fun", "Macro", BuiltIn(|vec, scope| def_function(vec[0].to_symbol()?, vec[1].to_params()?, vec[2].to_type()?, &vec[3], scope)));
+    def!(sc, "struct", "Macro", BuiltIn(|vec, scope| def_struct(vec[0].to_symbol()?, vec[1].to_params()?, scope)));
+    def!(sc, "assign", "Macro", BuiltIn(|vec, scope| assign(vec[0].to_symbol()?, vec[1].eval_mutable(scope)?, scope)));
+    def!(sc, "while", "Macro", BuiltIn(|vec, scope| run_while(&vec[0], vec, scope)));
+    def!(sc, "if", "Macro", BuiltIn(|vec, scope| if_else!(vec[0].eval_mutable(scope)?.to_bool()?, vec[1].eval_mutable(scope),vec[2].eval_mutable(scope))));
 
 }
 

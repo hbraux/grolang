@@ -67,7 +67,7 @@ fn get_resource(name: &str) -> String {
 pub fn repl() {
     let mut debug = false;
     let help = get_resource("help");
-    let repl: Vec<String> = get_resource("repl").split("\n").map(|s| s.to_owned()).collect();
+    let repl: Vec<String> = get_resource("repl").split("\n").map(String::from).collect();
     println!("{BLUE}{LANG} Version {VERSION}{STD}\n{}\n", repl[0]);
     let mut scope = Scope::init();
     let mut history = History::default();

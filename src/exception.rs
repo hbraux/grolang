@@ -8,6 +8,7 @@ pub enum Exception {
     UndefinedSymbol(String),
     UndefinedFunction(String),
     UndefinedMethod(String),
+    UndefinedType(String),
     InfiniteLoop,
     NotA(String, String),
     NotMutable(String),

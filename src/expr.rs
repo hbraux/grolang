@@ -26,38 +26,21 @@ pub enum Expr {
     List(Type, Vec<Expr>),
     Map(Type, Type, Vec<(Expr, Expr)>),
     Class(Vec<(String, Type)>),
+    // those raw types are only used for parsing
     RawType(String),
     RawList(Vec<Expr>),
     RawMap(Vec<(Expr, Expr)>),
-    RawParams(Vec<(String, Type)>),
+    RawParams(Vec<(String, Expr)>),
 }
-
-
-pub const TRUE: Expr = Bool(true);
-pub const FALSE: Expr = Bool(false);
-pub const NULL: Expr = Null;
 
 impl Display for Expr {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let str = match self {
-            Bool(x) => x.to_string(),
-            Int(x) => x.to_string(),
-            Str(x) => format!("\"{}\"", x),
-            RawType(x) => format!(":{}", x),
-            Null => "null".to_owned(),
-            Float(x) => format_float(x),
-            Symbol(x) => x.to_owned(),
-            Failure(x) => x.format(),
-            RawParams(v) => format_vec(&v.iter().map(|p| format!("{}:{}", p.0, p.1)).collect::<Vec<_>>(), ",", "(", ")"),
-            RawMap(vec) | Map( _, _, vec) => format_vec(&vec.iter().map(|p| format!("{}:{}", p.0, p.1)).collect::<Vec<_>>(), ",", "{", "}"),
-            RawList(vec) | List(_, vec)=> format_vec(vec, ",", "[", "]"),
-            Block(vec) => format_vec(vec, ";", "{", "}"),
-            Call(name, vec) => format_vec(vec, ",", &(name.to_string() + "("), ")"),
-            _ => format!("{:?}", self),
-        };
-        write!(f, "{}", str)
+        write!(f, "{}", format!("{:?}", self))
     }
 }
+pub const TRUE: Expr = Bool(true);
+pub const FALSE: Expr = Bool(false);
+pub const NULL: Expr = Null;
 
 
 impl Expr {
@@ -93,25 +76,25 @@ impl Expr {
     }
     pub fn to_str(&self) -> Result<&str, Exception> {
         match self {
-            Str(x) => Ok(x),
+            Str(str) => Ok(str),
             _ => Err(Exception::NotA(Type::Str.to_string(), self.print()))
         }
     }
     pub fn to_bool(&self) -> Result<bool, Exception> {
         match self {
-            Bool(x) => Ok(x.to_owned()),
+            Bool(str) => Ok(str.to_owned()),
             _ => Err(Exception::NotA(Type::Bool.to_string(), self.print()))
         }
     }
     pub fn to_symbol(&self) -> Result<&str, Exception> {
         match self {
-            Symbol(x) => Ok(x),
+            Symbol(str) => Ok(str),
             _ => Err(Exception::UndefinedSymbol(self.print()))
         }
     }
     pub fn to_type(&self) -> Result<Type, Exception> {
         match self {
-            RawType(x) => Ok(Type::new(x)),
+            RawType(str) => Type::parse(str),
             Null => Ok(_Unknown),
             _ => Err(Exception::NotA("Type".to_owned(), self.print()))
         }
@@ -179,7 +162,22 @@ impl Expr {
     }
 
     pub fn print(&self) -> String {
-        self.to_string()
+        match self {
+            Bool(x) => x.to_string(),
+            Int(x) => x.to_string(),
+            Str(x) => format!("\"{}\"", x),
+            RawType(x) => format!(":{}", x),
+            Null => "null".to_owned(),
+            Float(x) => format_float(x),
+            Symbol(x) => x.to_owned(),
+            Failure(x) => x.format(),
+            RawParams(v) => format_vec(&v.iter().map(|p| format!("{}:{}", p.0, p.1)).collect::<Vec<_>>(), ",", "(", ")"),
+            RawMap(vec) | Map(_, _, vec) => format_vec(&vec.iter().map(|p| format!("{}:{}", p.0, p.1)).collect::<Vec<_>>(), ",", "{", "}"),
+            RawList(vec) | List(_, vec) => format_vec(vec, ",", "[", "]"),
+            Block(vec) => format_vec(vec, ";", "{", "}"),
+            Call(name, vec) => format_vec(vec, ",", &(name.to_string() + "("), ")"),
+            _ => format!("{:?}", self),
+        }
     }
 }
 

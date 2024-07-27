@@ -1,15 +1,14 @@
 use std::borrow::ToOwned;
-use std::fmt::{Display, Formatter};
 use std::string::ToString;
+
+use strum_macros::Display;
+
+use crate::exception::Exception;
 use crate::if_else;
 
-use self::Type::{_Unknown, Any, Bool, Defined, Float, Fun, Int, List, Map, Option, Str, Try};
+use self::Type::{_Unknown, Any, Bool, Float, Fun, Int, List, Map, Option, Str, Try};
 
-macro_rules! box_type {
-    ($val:expr) => { Box::new(Type::new($val)) };
-}
-
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Eq, PartialEq, Clone, Display)]
 pub enum Type {
     _Unknown,
     Any,
@@ -17,56 +16,50 @@ pub enum Type {
     Bool,
     Str,
     Float,
+    Number,
     List(Box<Type>),
     Option(Box<Type>),
     Try(Box<Type>),
     Map(Box<Type>, Box<Type>),
     Fun(Vec<Type>, Box<Type>),
-    Macro,
-    Defined(String),
+    Macro
 }
 
-impl Display for Type {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let str = match self {
-            Any => "Any",
-            Bool => "Bool",
-            Int => "Int",
-            Float => "Float",
-            Str => "Str",
-            List(t) => &format!("List<{}>", t.to_string()),
-            Map(t, u) => &format!("Map<{},{}>", t.to_string(), u.to_string()),
-            _ => "??"
-        };
-        write!(f, "{}", str)
-    }
-}
 impl Type {
-    pub fn new(str: &str) -> Type {
+    pub fn parse(str: &str) -> Result<Type, Exception> {
         if str.starts_with("(") {
             let args: Vec<&str>  = str[1..str.len()].split(")->").collect();
-            let v: Vec<&str> = args[0].split(",").collect();
-            Fun(v.iter().map(|s| Type::new(s)).collect(), box_type!(args[1]))
+            let v = args[0].split(",").map(Type::parse).collect();
+            Type::parse(args[1]).map(|o| Fun(v, Box::new(o)))
         } else if str.ends_with("?") {
-            Option(box_type!(&str[0..str.len() - 1]))
+            Type::parse(&str[0..str.len() - 1]).map(|t| Option(Box::new(t)))
         } else if str.ends_with("!") {
-            Try(box_type!(&str[0..str.len() - 1]))
+            Type::parse(&str[0..str.len() - 1]).map(|t| Try(Box::new(t)))
         } else if str.starts_with("List<") {
-            List(box_type!(&str[5..str.len() - 1]))
-        } else if str.starts_with("List<") {
-            List(box_type!(&str[5..str.len() - 1]))
+            Type::parse(&str[5..str.len() - 1]).map(|t| List(Box::new(t)))
         } else if str.starts_with("Map<") {
             let v: Vec<&str> = (&str[4..str.len() - 1]).split(',').collect();
-            Map(box_type!(v[0]), box_type!(v[1]))
+            if v.len() != 2 {
+                Err(Exception::CannotParse("Map type".to_owned()))
+            } else {
+                v.iter().map(Type::parse).collect().map(|v| Ok(Map(Box::new(v[0]), Box::new(v[1]))))
+            }
         } else {
             match str {
-                "Any" => Any,
-                "Int" => Int,
-                "Bool" => Bool,
-                "Str" => Str,
-                "Float" => Float,
-                _ => Defined(str.to_owned()),
+                "Any" => Ok(Any),
+                "Int" => Ok(Int),
+                "Bool" => Ok(Bool),
+                "Str" => Ok(Str),
+                "Float" => Ok(Float),
+                _ => Err(Exception::UndefinedType(str.to_owned()))
             }
+        }
+    }
+    pub fn print(&self) -> String {
+        match self {
+            List(t) => format!("List<{}>", t.print()),
+            Map(t, u) => format!("Map<{},{}>", t.print() , u.print()),
+            _ => self.to_string()
         }
     }
     pub fn method_name(&self, name: &str) -> String {
@@ -91,17 +84,21 @@ impl Type {
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn read(str: &str) -> Type { Type::parse(str).unwrap() }
 
     #[test]
-    fn test_types() {
-        assert_eq!(Any, Type::new("Any"));
-        assert_eq!(Int, Type::new("Int"));
-        assert_eq!(Bool, Type::new("Bool"));
-        assert_eq!(List(Box::new(Int)), Type::new("List<Int>"));
-        assert_eq!(Map(Box::new(Int), Box::new(Type::Bool)), Type::new("Map<Int,Bool>"));
-        assert_eq!(Option(Box::new(Int)), Type::new("Int?"));
-        assert_eq!(Try(Box::new(Int)), Type::new("Int!"));
-        assert_eq!(Fun(vec!(Int, Type::Float), Box::new(Type::Float)), Type::new("(Int,Float)->Float"));
-        assert_eq!("List<Int>", Type::new("List<Int>").to_string());
+    fn test_parse() {
+        assert_eq!(Any, read("Any"));
+        assert_eq!(Int, read("Int"));
+        assert_eq!(Bool, read("Bool"));
+        assert_eq!(List(Box::new(Int)), read("List<Int>"));
+        assert_eq!(Map(Box::new(Int), Box::new(Bool)), read("Map<Int,Bool>"));
+        assert_eq!(Option(Box::new(Int)), read("Int?"));
+        assert_eq!(Try(Box::new(Int)), read("Int!"));
+        assert_eq!(Fun(vec!(Int, Float), Box::new(Float)), read("(Int,Float)->Float"));
+    }
+    #[test]
+    fn test_print() {
+        assert_eq!("List<Int>", read("List<Int>").print());
     }
 }
