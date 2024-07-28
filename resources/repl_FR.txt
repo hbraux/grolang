@@ -1,3 +1,0 @@
-Taper :q pour quitter, :? pour l'aide, fleches haut/bas pour naviguer dans l'historique, Tab pour auto-completion
-Erreur de syntaxe
-Erreur d'évaluation

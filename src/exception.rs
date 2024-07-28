@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use strum_macros::Display;
 
 #[derive(Debug, Clone, PartialEq, Display)]
@@ -21,7 +22,9 @@ pub enum Exception {
 }
 
 impl Exception {
-    // TODO: replace with Display
-    pub fn format(&self) -> String { format!("{:?}", self).replace("\"","") }
+    pub fn format(&self, msg: &HashMap<&str, &str>) -> String {
+        // let fmt = msg.get(&self.to_string()).or(Some(&"{:?}")).unwrap().to_string();
+        format!("{}", self).replace("\"", "")
+    }
 }
 

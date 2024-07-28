@@ -1,4 +1,4 @@
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::str::from_utf8;
 
 use dialoguer::{Input, theme::ColorfulTheme};
@@ -73,8 +73,9 @@ fn get_resource(name: &str) -> String {
 pub fn repl() {
     let mut debug = false;
     let help = get_resource("help");
-    let repl: Vec<String> = get_resource("repl").split("\n").map(String::from).collect();
-    println!("{BLUE}{LANG} Version {VERSION}{STD}\n{}\n", repl[0]);
+    let msg: HashMap<&str, &str> = get_resource("msg").split("\n").filter(|s| !s.is_empty()).map(|s| s.split_at(s.find(":").unwrap())).map(|(k, v)| (k, &v[1..])).collect();
+
+    println!("{BLUE}{LANG} Version {VERSION}{STD}\n{}\n", help.split("\n").next().unwrap());
     let mut scope = Scope::init();
     let mut history = History::default();
     loop {
@@ -98,12 +99,12 @@ pub fn repl() {
         }
         let expr = scope.read(&input);
         if expr.is_failure() {
-            println!("{RED}{} ({:?}){STD}", repl[1], expr.to_exception().unwrap());
+            println!("{RED}{} {STD}", expr.to_exception().format(&msg));
             continue;
         }
         let result = expr.eval_or_failed(&mut scope);
         if expr.is_failure() {
-            println!("{RED}{} ({:?}){STD}", repl[2], expr.to_exception().unwrap());
+            println!("{RED}{} {STD}", expr.print());
         } else {
             println!("{}", result.print())
         }

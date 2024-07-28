@@ -1,3 +1,4 @@
+Taper :q pour quitter, :? pour l'aide, fleches haut/bas pour naviguer dans l'historique, Tab pour auto-completion
 Toutes les commandes peuvent entre abréviées, par exemple :q pour :quit
 :quit             quitte l'interpréteur
 :history          affiche l'historique complet

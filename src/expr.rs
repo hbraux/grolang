@@ -52,12 +52,8 @@ impl Expr {
         matches!(self, Fun(_, _, _))
     }
 
-    pub fn to_exception(&self) -> Option<&Exception> {
-        match self {
-            Failure(ex) => Some(ex),
-            _ => None
-        }
-
+    pub fn to_exception(&self) -> &Exception {
+        match self { Failure(ex) => ex, _ => panic!("not a failure") }
     }
 
     pub fn get_type(&self) -> Type {
@@ -248,3 +244,14 @@ fn check_arguments(name: &str, expected: &Vec<Type>, values: &Vec<Expr>) -> Opti
 }
 
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_print() {
+        let expr = Int(1);
+        assert_eq!("1", expr.print());
+        assert_eq!("Int(1)", expr.to_string());
+    }
+}
