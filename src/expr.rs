@@ -1,4 +1,4 @@
-use std::fmt::{Debug, Display, Formatter};
+
 use strum_macros::Display;
 
 use crate::exception::Exception;
@@ -10,7 +10,7 @@ use crate::scope::Scope;
 use crate::types::Type;
 use crate::types::Type::Unknown;
 
-use self::Expr::{Block, Bool, Call, Failure, Float, Fun, Int, List, Map, Null, Params, TypeOf, Str, Symbol};
+use self::Expr::{Block, Bool, Call, Failure, Float, Fun, Int, List, Map, Null, Params, Str, Symbol, TypeOf};
 
 #[derive(Debug, Clone, PartialEq, Display)]
 pub enum Expr {
@@ -173,9 +173,6 @@ impl Expr {
             _ => format!("{:?}", self),
         }
     }
-    pub fn debug_string(&self) -> String {
-        format!("{self:?}")
-    }
 }
 
 fn print_vec<T>(vec: &[T], separ: &str, prefix: &str, suffix: &str, fmt: fn(t: &T) -> String) -> String {
@@ -238,7 +235,7 @@ fn apply_fun(name: &str, specs: &Type, args: &Vec<Expr>, fun: &Function, scope: 
 
 
 fn check_arguments(name: &str, expected: &Vec<Type>, values: &Vec<Expr>) -> Option<Result<Expr, Exception>> {
-    println!("DEBUG {name} {expected:?} {values:?}");
+    //println!("#check_arguments({name},{expected:?} {values:?})");
     if matches!(expected.get(0), Some(Type::Macro)) {
         return None
     }
@@ -267,6 +264,5 @@ mod tests {
         let expr = Int(1);
         assert_eq!("1", expr.print());
         assert_eq!("Int", expr.to_string());
-        assert_eq!("Int(1)", expr.debug_string());
     }
 }

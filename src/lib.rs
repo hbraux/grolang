@@ -41,10 +41,10 @@ impl History {
     fn print(&self) {
         self.deque.iter().for_each(|e| println!("# {}", e))
     }
-    fn load(&self, filename: &str) {
+    fn load(&self, _filename: &str) {
         // TODO
     }
-    fn save(&self, filename: &str) {
+    fn save(&self, _filename: &str) {
         // TODO
     }
 
