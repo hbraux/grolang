@@ -40,6 +40,12 @@ impl History {
     fn print(&self) {
         self.deque.iter().for_each(|e| println!("# {}", e))
     }
+    fn load(&self, filename: &str) {
+        // TODO
+    }
+    fn save(&self, filename: &str) {
+        // TODO
+    }
 
 }
 
@@ -79,10 +85,13 @@ pub fn repl() {
             .interact_text().expect("Unable to read stdin");
 
         if input.starts_with(':') {
+            let v: Vec<&str> = input.split(" ").collect();
             match input[1..2].to_string().as_str() {
                 "q" => break,
                 "d" => { debug = !debug; println!("# debug={}", debug) },
                 "h" => history.print(),
+                "l" if v.len() == 2 => history.load(v[1]),
+                "s" if v.len() == 2 => history.save(v[1]),
                 _ => println!("{}", help),
             }
             continue;
