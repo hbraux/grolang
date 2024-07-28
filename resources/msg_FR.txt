@@ -1,1 +1,6 @@
-CannotParse: Erreur de syntaxe {}
+CannotParse         Erreur de syntaxe: {1}
+DivisionByZero      Division par 0
+IOError             Erreur entrée sortie
+UndefinedSymbol     Le symbole '{1}' n'est pas définie
+UndefinedFunction   La fonction '{1}' n'est pas définie
+UndefinedMethod     La méthode '{1}' n'est pas définie

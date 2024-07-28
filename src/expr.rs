@@ -56,6 +56,7 @@ impl Expr {
         match self { Failure(ex) => ex, _ => panic!("not a failure") }
     }
 
+    // TODO: return &Type
     pub fn get_type(&self) -> Type {
         match self {
             Bool(_) => Type::Bool,
@@ -161,7 +162,7 @@ impl Expr {
             Null => "null".to_owned(),
             Float(x) => print_float(x),
             Symbol(x) => x.to_owned(),
-            Failure(x) => x.format(),
+            Failure(x) => x.print(),
             Params(vec) => print_vec(vec, ",", "(", ")", |p| format!("{}:{}", p.0, p.1)),
             Map(_, _, vec) => print_vec(vec, ",", "{", "}", |p| format!("{}:{}", p.0.print(), p.1.print())),
             List(_, vec) => print_vec(vec, ",", "[", "]", Expr::print),
@@ -236,7 +237,7 @@ fn check_arguments(name: &str, expected: &Vec<Type>, values: &Vec<Expr>) -> Opti
         return None
     }
     if expected.len() != values.len() {
-        return Some(Err(Exception::WrongArgumentsNumber(name.to_owned(), expected.len(), values.len())))
+        return Some(Err(Exception::WrongArgumentsNumber(name.to_owned(), expected.len().to_string(), values.len().to_string())))
     }
     expected.iter().zip(values.iter()).find(|(e, v)| !v.get_type().matches(*e)).and_then(|p|
         Some(Err(Exception::UnexpectedArgumentType(name.to_owned(), p.1.get_type().to_string())))

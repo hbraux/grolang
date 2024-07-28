@@ -4,6 +4,7 @@ use std::str::from_utf8;
 use dialoguer::{Input, theme::ColorfulTheme};
 use rust_embed::Embed;
 use sys_locale::get_locale;
+use regex::Regex;
 
 use crate::scope::Scope;
 
@@ -73,7 +74,9 @@ fn get_resource(name: &str) -> String {
 pub fn repl() {
     let mut debug = false;
     let help = get_resource("help");
-    let msg: HashMap<&str, &str> = get_resource("msg").split("\n").filter(|s| !s.is_empty()).map(|s| s.split_at(s.find(":").unwrap())).map(|(k, v)| (k, &v[1..])).collect();
+    let msg = get_resource("msg");
+    let regex = Regex::new(r"(\W+)\t+(\W+.*)").unwrap();
+    let messages = msg.split("\n").filter(|s| !s.is_empty()).map(|s| regex.split(s).collect::<Vec<_>>()).map(|v| (v[0], v[1])).collect::<HashMap<_,_>>();
 
     println!("{BLUE}{LANG} Version {VERSION}{STD}\n{}\n", help.split("\n").next().unwrap());
     let mut scope = Scope::init();
@@ -99,12 +102,12 @@ pub fn repl() {
         }
         let expr = scope.read(&input);
         if expr.is_failure() {
-            println!("{RED}{} {STD}", expr.to_exception().format(&msg));
+            println!("{RED}{} {STD}", expr.to_exception().format(&messages));
             continue;
         }
         let result = expr.eval_or_failed(&mut scope);
         if expr.is_failure() {
-            println!("{RED}{} {STD}", expr.print());
+            println!("{RED}{} {STD}", expr.to_exception().format(&messages));
         } else {
             println!("{}", result.print())
         }
