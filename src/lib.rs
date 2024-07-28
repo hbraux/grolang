@@ -164,6 +164,7 @@ mod tests {
     fn test_arithmetics() {
         let mut scope = Scope::init();
         assert_eq!("14", scope.exec("2 + 3 * 4"));
+        assert_eq!("20", scope.exec("(2 + 3) * 4"));
         assert_eq!("20.0", scope.exec("(2 + 3.0) * 4"));
         assert_eq!("4", scope.exec("4 / 1"));
         assert_eq!("2", scope.exec("22%10"));

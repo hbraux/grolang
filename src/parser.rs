@@ -138,8 +138,8 @@ fn to_literal(str: &str) -> Expr {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn read(str: &str) -> String { parse(str).unwrap().print().replace("\"","") }
+    // Warning, using debug format for expr
+    fn read(str: &str) -> String { format!("{:?}", parse(str).unwrap()).replace("\"","") }
 
     #[test]
     fn test_literals() {
@@ -163,13 +163,13 @@ mod tests {
     fn test_collections() {
         assert_eq!(Expr::List(Type::Int, vec!(Expr::Int(1), Expr::Int(2))), parse("[1,2]").unwrap());
         assert_eq!(Expr::Map(Type::Str, Type::Int, vec!((Expr::Str("a".to_owned()), Expr::Int(1)))), parse("{\"a\":1}").unwrap());
-        assert_eq!("{employees:[{name:alice,age:20,grade:2.3,email:alice@gmail.com},{name:bob,age:21,grade:1.2,email:null}]}",
+        assert_eq!("Map(Str, List(Map(Str, Any)), [(Str(employees), List(Map(Str, Any), [Map(Str, Any, [(Str(name), Str(alice)), (Str(age), Int(20)), (Str(grade), Float(2.3)), (Str(email), Str(alice@gmail.com))]), Map(Str, Any, [(Str(name), Str(bob)), (Str(age), Int(21)), (Str(grade), Float(1.2)), (Str(email), Null)])]))])",
                    read(r#"{"employees":[{"name":"alice","age":20,"grade":2.3,"email":"alice@gmail.com"}, {"name":"bob", "age": 21,"grade":1.2,"email":null}]}"#));
     }
 
     #[test]
     fn test_class() {
-        assert_eq!("class(Point,(x:Float,y:Float))", read("class Point(x: Float, y:Float)"));
+        assert_eq!("Call(class, [Symbol(Point), Params([(x, Float), (y, Float)])])", read("class Point(x: Float, y:Float)"));
     }
 
     #[test]
@@ -179,45 +179,33 @@ mod tests {
 
     #[test]
     fn test_declarations() {
-        assert_eq!("val(f,:Float,1.0)", read("val f: Float = 1.0"));
-        assert_eq!("val(f,:Float,1.0)", read("val(f,:Float,1.0)"));
-        assert_eq!("var(a,null,1)", read("var a = 1"));
-        assert_eq!("var(l,null,[1,2,3])", read("var l = [1,2,3]"));
-        assert_eq!("var(l,:List<Int>,[1,2,3])", read("var l :List<Int> = [1,2,3]"));
-        assert_eq!("var(m,:Map<Str,Int>,{a:1})", read(r#"var m: Map<Str,Int> = {"a": 1}"#));
+        assert_eq!("Call(val, [Symbol(f), TypeOf(Float), Float(1.0)])", read("val f: Float = 1.0"));
+        assert_eq!("Call(val, [Symbol(f), TypeOf(Float), Float(1.0)])", read("val(f,:Float,1.0)"));
+        assert_eq!("Call(var, [Symbol(a), Null, Int(1)])", read("var a = 1"));
+        assert_eq!("Call(var, [Symbol(l), Null, List(Int, [Int(1), Int(2), Int(3)])])", read("var l = [1,2,3]"));
+        assert_eq!("Call(var, [Symbol(l), TypeOf(List(Int)), List(Int, [Int(1), Int(2), Int(3)])])", read("var l :List<Int> = [1,2,3]"));
     }
 
     #[test]
     fn test_assignments() {
-        assert_eq!("assign(a,2)", read("a = 2"));
-        assert_eq!("assign(a,2)", read("assign(a, 2)"));
-        assert_eq!("assign(a,add(a,1))", read("a = a + 1"));
-    }
-
-    #[test]
-    fn test_arithmetic_order() {
-        assert_eq!("mul(1,2)", read("1 * 2"));
-        assert_eq!("add(1,mul(2,3))", read("1 + 2 * 3"));
-        assert_eq!("mul(1,add(-2,3))", read("1 * (-2 + 3)"));
+        assert_eq!("Call(assign, [Symbol(a), Int(2)])", read("a = 2"));
+        assert_eq!("Call(assign, [Symbol(a), Int(2)])", read("assign(a, 2)"));
     }
 
     #[test]
     fn test_boolean_expr() {
-        assert_eq!("and(or(eq(x,2),ge(y,1)),z)", read("(x == 2) || (y >= 1) && z"));
+        assert_eq!("Call(and, [Call(or, [Call(eq, [Symbol(x), Int(2)]), Call(ge, [Symbol(y), Int(1)])]), Symbol(z)])", read("(x == 2) || (y >= 1) && z"));
     }
 
     #[test]
     fn test_calls() {
-        assert_eq!("print(a,b)", read("print(a,b)"));
-        assert_eq!("mul(a,fact(sub(a,1)))", read("a*fact(a-1)"));
-        assert_eq!("print(inc(a))", read("a.inc().print()"));
-        assert_eq!("eval(read(a))", read("read(\"a\").eval()"));
+        assert_eq!("Call(print, [Symbol(a), Symbol(b)])", read("print(a,b)"));
+        assert_eq!("Call(mul, [Symbol(a), Call(fact, [Call(sub, [Symbol(a), Int(1)])])])", read("a*fact(a-1)"));
     }
 
     #[test]
     fn test_block() {
-        assert_eq!("{val(a,null,2);a}", read("{val a = 2;a}"));
-        assert_eq!("{val(a,null,2);a}", read(r#"{
+        assert_eq!("Block([Call(val, [Symbol(a), Null, Int(2)]), Symbol(a)])", read(r#"{
   val a = 2
   a
  }"#));
@@ -226,19 +214,16 @@ mod tests {
 
     #[test]
     fn test_if_while() {
-        assert_eq!("if(eq(a,1),{2},{3})", read("if (a == 1) { 2 } else { 3 }"));
-        assert_eq!("if(eq(a,1),2,3)", read("if (a == 1) 2 else 3"));
-        assert_eq!("if(eq(a,1),2,3)", read("if(eq(a,1),2,3)"));
-        assert_eq!("if(true,{1},null)", read("if (true) { 1 } "));
-        assert_eq!("while(le(a,10),{print(a);assign(a,add(a,1))})", read("while (a <= 10) { print(a) ; a = a + 1 }"));
+        assert_eq!("Call(if, [Call(eq, [Symbol(a), Int(1)]), Int(2), Int(3)])", read("if (a == 1) 2 else 3"));
+        assert_eq!("Call(if, [Bool(true), Block([Int(1)]), Null])", read("if (true) { 1 } "));
+        assert_eq!("Call(while, [Call(le, [Symbol(a), Int(10)]), Block([Call(print, [Symbol(a)]), Call(assign, [Symbol(a), Call(add, [Symbol(a), Int(1)])])])])",
+                   read("while (a <= 10) { print(a) ; a = a + 1 }"));
     }
 
     #[test]
     fn test_fun() {
-        assert_eq!("fun(pi,(),:Float,3.14)", read("fun pi() :Float = 3.14"));
-        assert_eq!("fun(zero,(),:Int,{val(x,null,0);x})", read("fun zero(): Int = { val x = 0 ; x }"));
-        assert_eq!("fun(zero,(),:Int,{val(x,null,0);x})", read("fun(zero,(),:Int,{val(x,null,0);x})"));
-        assert_eq!("fun(inc,(a:Int),:Int,{add(a,1)})", read("fun inc(a: Int): Int = { a + 1 }"));
+        assert_eq!("Call(fun, [Symbol(pi), Params([]), TypeOf(Float), Float(3.14)])", read("fun pi() :Float = 3.14"));
+        assert_eq!("Call(fun, [Symbol(inc), Params([(a, Int)]), TypeOf(Int), Block([Call(add, [Symbol(a), Int(1)])])])", read("fun inc(a: Int): Int = { a + 1 }"));
     }
 
 

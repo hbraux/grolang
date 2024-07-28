@@ -70,7 +70,7 @@ pub fn add_functions(sc: &mut Scope) {
 
     // IO functions
     def!(sc, "readLine", "()->Any", Stateless(|_| read_line()));
-    def!(sc, "print", "(List<Any>)->Any", Stateless(|vec,| print(vec)));
+    def!(sc, "print", "(Macro)->Any", Stateless(|vec,| print(vec)));
     def!(sc, "eval", "(Any)->Any", Stateful(|vec, scope| vec[0].eval(scope)));
 
 

@@ -62,8 +62,14 @@ impl Type {
             }
         }
     }
+    // same derived from strum
+    pub fn name(&self) -> String { self.to_string() }
+
     pub fn is_number(&self) -> bool {
         *self == Int || *self == Float || *self == Number
+    }
+    pub fn matches(&self, expected: &Type) -> bool {
+        *expected == Any || self == expected || (*expected == Number && self.is_number())
     }
 
     pub fn infer(vec: &Vec<Expr>) -> Type {
@@ -78,16 +84,15 @@ impl Type {
             current
         }
     }
-
     pub fn print(&self) -> String {
         match self {
             List(t) => format!("List<{}>", t.print()),
             Map(t, u) => format!("Map<{},{}>", t.print() , u.print()),
-            _ => self.to_string()
+            _ => self.name()
         }
     }
     pub fn method_name(&self, name: &str) -> String {
-        self.to_string().to_owned() + if_else!(name.starts_with("."), "", ".") + name
+        self.name().to_owned() + if_else!(name.starts_with("."), "", ".") + name
     }
     // TODO: return an iter
     pub fn all_method_names(&self, name: &str) -> Vec<String> {
@@ -108,9 +113,7 @@ impl Type {
         }
     }
 
-    pub fn matches(&self, expected: &Type) -> bool {
-        *expected == Any || self == expected || (*expected == Number && self.is_number())
-    }
+
 
 }
 

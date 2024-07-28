@@ -1,4 +1,5 @@
 use std::fmt::{Debug, Display, Formatter};
+use strum_macros::Display;
 
 use crate::exception::Exception;
 use crate::functions::Function;
@@ -11,7 +12,7 @@ use crate::types::Type::Unknown;
 
 use self::Expr::{Block, Bool, Call, Failure, Float, Fun, Int, List, Map, Null, Params, TypeOf, Str, Symbol};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Display)]
 pub enum Expr {
     Null,
     Int(i64),
@@ -30,11 +31,7 @@ pub enum Expr {
     Params(Vec<(String, Type)>),
 }
 
-impl Display for Expr {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", format!("{:?}", self))
-    }
-}
+
 pub const TRUE: Expr = Bool(true);
 pub const FALSE: Expr = Bool(false);
 pub const NULL: Expr = Null;
@@ -43,6 +40,9 @@ pub const NULL: Expr = Null;
 impl Expr {
     pub fn read(str: &str, _ctx: &Scope) -> Expr {
         parse(str).unwrap_or_else(|s| Failure(Exception::CannotParse(s)))
+    }
+    pub fn name(&self) -> String {
+        self.to_string()
     }
 
     pub fn is_failure(&self) -> bool {
@@ -59,13 +59,14 @@ impl Expr {
     // TODO: return &Type
     pub fn get_type(&self) -> Type {
         match self {
+            Null => Type::Any,
             Bool(_) => Type::Bool,
             Int(_) => Type::Int,
             Float(_) => Type::Float,
             Str(_) => Type::Str,
             List(t, _) => Type::List(Box::new(t.clone())), // TODO: avoid clone
             Map(t, u, _) => Type::Map(Box::new(t.clone()),Box::new(u.clone())),
-            _ => Unknown,
+            _ => panic!("unknown type {:?}", self)
         }
     }
     pub fn to_str(&self) -> Result<&str, Exception> {
@@ -138,6 +139,7 @@ impl Expr {
         }
         Ok(self)
     }
+    // TODO: simplify cast
     pub fn cast(self, expected: &Type) -> Result<Expr, Exception> {
         match (self, expected) {
             (List(_, vec), Type::List(t)) => Ok(List(*t.clone(), vec.clone())),
@@ -170,6 +172,9 @@ impl Expr {
             Call(name, vec) => print_vec(vec, ",", &(name.to_string() + "("), ")",  Expr::print),
             _ => format!("{:?}", self),
         }
+    }
+    pub fn debug_string(&self) -> String {
+        format!("{self:?}")
     }
 }
 
@@ -231,13 +236,21 @@ fn apply_fun(name: &str, specs: &Type, args: &Vec<Expr>, fun: &Function, scope: 
     })
 }
 
-// TODO: handle collections parameters
+
 fn check_arguments(name: &str, expected: &Vec<Type>, values: &Vec<Expr>) -> Option<Result<Expr, Exception>> {
+    println!("DEBUG {name} {expected:?} {values:?}");
+    if matches!(expected.get(0), Some(Type::Macro)) {
+        return None
+    }
     if matches!(expected.get(0), Some(Type::List(..))) {
+        // TODO: handle collections parameters
         return None
     }
     if expected.len() != values.len() {
         return Some(Err(Exception::WrongArgumentsNumber(name.to_owned(), expected.len().to_string(), values.len().to_string())))
+    }
+    if matches!(expected.get(0), Some(Type::Any)) {
+        return None
     }
     expected.iter().zip(values.iter()).find(|(e, v)| !v.get_type().matches(*e)).and_then(|p|
         Some(Err(Exception::UnexpectedArgumentType(name.to_owned(), p.1.get_type().to_string())))
@@ -253,6 +266,7 @@ mod tests {
     fn test_print() {
         let expr = Int(1);
         assert_eq!("1", expr.print());
-        assert_eq!("Int(1)", expr.to_string());
+        assert_eq!("Int", expr.to_string());
+        assert_eq!("Int(1)", expr.debug_string());
     }
 }
