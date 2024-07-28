@@ -1,4 +1,5 @@
-use std::fmt::{Debug, Display, Formatter};
+
+use strum_macros::Display;
 
 use crate::exception::Exception;
 use crate::functions::Function;
@@ -7,11 +8,11 @@ use crate::if_else;
 use crate::parser::parse;
 use crate::scope::Scope;
 use crate::types::Type;
-use crate::types::Type::{_Unknown};
+use crate::types::Type::Unknown;
 
-use self::Expr::{Block, Bool, Call, Failure, Float, Fun, Int, List, RawList, Null, RawParams, Str, Symbol, RawType, Map, RawMap};
+use self::Expr::{Block, Bool, Call, Failure, Float, Fun, Int, List, Map, Null, Params, Str, Symbol, TypeOf};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Display)]
 pub enum Expr {
     Null,
     Int(i64),
@@ -19,6 +20,7 @@ pub enum Expr {
     Str(String),
     Bool(bool),
     Symbol(String),
+    TypeOf(Type),
     Block(Vec<Expr>),
     Call(String, Vec<Expr>),
     Failure(Exception),
@@ -26,10 +28,7 @@ pub enum Expr {
     List(Type, Vec<Expr>),
     Map(Type, Type, Vec<(Expr, Expr)>),
     Class(Vec<(String, Type)>),
-    RawType(String),
-    RawList(Vec<Expr>),
-    RawMap(Vec<(Expr, Expr)>),
-    RawParams(Vec<(String, Type)>),
+    Params(Vec<(String, Type)>),
 }
 
 
@@ -37,97 +36,67 @@ pub const TRUE: Expr = Bool(true);
 pub const FALSE: Expr = Bool(false);
 pub const NULL: Expr = Null;
 
-impl Display for Expr {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let str = match self {
-            Bool(x) => x.to_string(),
-            Int(x) => x.to_string(),
-            Str(x) => format!("\"{}\"", x),
-            RawType(x) => format!(":{}", x),
-            Null => "null".to_owned(),
-            Float(x) => format_float(x),
-            Symbol(x) => x.to_owned(),
-            Failure(x) => x.format(),
-            RawParams(v) => format_vec(&v.iter().map(|p| format!("{}:{}", p.0, p.1)).collect::<Vec<_>>(), ",", "(", ")"),
-            RawMap(vec) | Map( _, _, vec) => format_vec(&vec.iter().map(|p| format!("{}:{}", p.0, p.1)).collect::<Vec<_>>(), ",", "{", "}"),
-            RawList(vec) | List(_, vec)=> format_vec(vec, ",", "[", "]"),
-            Block(vec) => format_vec(vec, ";", "{", "}"),
-            Call(name, vec) => format_vec(vec, ",", &(name.to_string() + "("), ")"),
-            _ => format!("{:?}", self),
-        };
-        write!(f, "{}", str)
-    }
-}
-
 
 impl Expr {
     pub fn read(str: &str, _ctx: &Scope) -> Expr {
         parse(str).unwrap_or_else(|s| Failure(Exception::CannotParse(s)))
     }
+    pub fn name(&self) -> String {
+        self.to_string()
+    }
 
-    pub fn failed(&self) -> bool {
+    pub fn is_failure(&self) -> bool {
         matches!(self, Failure(_))
     }
-
-    pub fn to_exception(&self) -> Option<&Exception> {
-        match self {
-            Failure(ex) => Some(ex),
-            _ => None
-        }
-
+    pub fn is_fun(&self) -> bool {
+        matches!(self, Fun(_, _, _))
     }
 
+    pub fn to_exception(&self) -> &Exception {
+        match self { Failure(ex) => ex, _ => panic!("not a failure") }
+    }
+
+    // TODO: return &Type
     pub fn get_type(&self) -> Type {
         match self {
+            Null => Type::Any,
             Bool(_) => Type::Bool,
             Int(_) => Type::Int,
             Float(_) => Type::Float,
             Str(_) => Type::Str,
             List(t, _) => Type::List(Box::new(t.clone())), // TODO: avoid clone
             Map(t, u, _) => Type::Map(Box::new(t.clone()),Box::new(u.clone())),
-            _ => _Unknown,
+            _ => panic!("unknown type {:?}", self)
         }
     }
     pub fn to_str(&self) -> Result<&str, Exception> {
         match self {
-            Str(x) => Ok(x),
+            Str(str) => Ok(str),
             _ => Err(Exception::NotA(Type::Str.to_string(), self.print()))
-        }
-    }
-    pub fn to_int(&self) -> Result<&i64, Exception> {
-        match self {
-            Int(x) => Ok(x),
-            _ => Err(Exception::NotA(Type::Int.to_string(), self.print()))
-        }
-    }
-    pub fn to_float(&self) -> Result<&f64, Exception> {
-        match self {
-            Float(x) => Ok(x),
-            _ => Err(Exception::NotA(Type::Float.to_string(), self.print()))
         }
     }
     pub fn to_bool(&self) -> Result<bool, Exception> {
         match self {
-            Bool(x) => Ok(x.to_owned()),
+            Bool(str) => Ok(str.to_owned()),
             _ => Err(Exception::NotA(Type::Bool.to_string(), self.print()))
         }
     }
     pub fn to_symbol(&self) -> Result<&str, Exception> {
         match self {
-            Symbol(x) => Ok(x),
+            Symbol(str) => Ok(str),
             _ => Err(Exception::UndefinedSymbol(self.print()))
         }
     }
     pub fn to_type(&self) -> Result<Type, Exception> {
         match self {
-            RawType(x) => Ok(Type::new(x)),
-            Null => Ok(_Unknown),
+            TypeOf(t) => Ok(t.clone()),
+            Null => Ok(Unknown),
             _ => Err(Exception::NotA("Type".to_owned(), self.print()))
         }
     }
     pub fn to_params(&self) -> Result<&Vec<(String, Type)>, Exception> {
         match self {
-            RawParams(v) => Ok(v),
+            Params(v) => Ok(v),
             _ => Err(Exception::NotA("Params".to_owned(), self.print()))
         }
     }
@@ -136,8 +105,6 @@ impl Expr {
         match self {
             Failure(e) => Err(e.clone()),
             Null | Int(_) | Float(_) | Str(_) | Bool(_)  | List(_,_ )  | Map(_, _, _)  => Ok(self.clone()),
-            RawList(v) => Ok(List(if_else!(v.is_empty(), _Unknown, v[0].get_type()), v.clone())),
-            RawMap(v) => Ok(Map(if_else!(v.is_empty(), _Unknown, v[0].0.get_type()), if_else!(v.is_empty(), _Unknown, v[0].1.get_type()), v.clone())),
             Symbol(name) => handle_symbol(name, scope),
             Call(name, args) => handle_call(name, args, scope),
             _ => panic!("not implemented {:?}", self),
@@ -172,6 +139,7 @@ impl Expr {
         }
         Ok(self)
     }
+    // TODO: simplify cast
     pub fn cast(self, expected: &Type) -> Result<Expr, Exception> {
         match (self, expected) {
             (List(_, vec), Type::List(t)) => Ok(List(*t.clone(), vec.clone())),
@@ -188,21 +156,32 @@ impl Expr {
     }
 
     pub fn print(&self) -> String {
-        self.to_string()
+        match self {
+            Bool(x) => x.to_string(),
+            Int(x) => x.to_string(),
+            Str(x) => format!("\"{}\"", x),
+            TypeOf(x) => format!(":{}", x.print()),
+            Null => "null".to_owned(),
+            Float(x) => print_float(x),
+            Symbol(x) => x.to_owned(),
+            Failure(x) => x.print(),
+            Params(vec) => print_vec(vec, ",", "(", ")", |p| format!("{}:{}", p.0, p.1)),
+            Map(_, _, vec) => print_vec(vec, ",", "{", "}", |p| format!("{}:{}", p.0.print(), p.1.print())),
+            List(_, vec) => print_vec(vec, ",", "[", "]", Expr::print),
+            Block(vec) => print_vec(vec, ";", "{", "}", Expr::print),
+            Call(name, vec) => print_vec(vec, ",", &(name.to_string() + "("), ")",  Expr::print),
+            _ => format!("{:?}", self),
+        }
     }
 }
 
-fn format_vec<T: ToString>(vec: &[T], separ: &str, prefix: &str, suffix: &str) -> String {
-    format!("{}{}{}", prefix, vec.iter().map(|e| e.to_string()).collect::<Vec<_>>().join(separ), suffix)
+fn print_vec<T>(vec: &[T], separ: &str, prefix: &str, suffix: &str, fmt: fn(t: &T) -> String) -> String {
+    format!("{}{}{}", prefix, vec.iter().map(fmt).collect::<Vec<_>>().join(separ), suffix)
 }
 
-fn format_float(x: &f64) -> String  {
+fn print_float(x: &f64) -> String  {
     let str = x.to_string();
-    if str.contains('.') {
-        str
-    } else {
-        format!("{}.0", str)
-    }
+    if_else!(str.contains('.'), str, format!("{}.0", str))
 }
 
 fn handle_symbol(name: &str, scope: &Scope) -> Result<Expr, Exception> {
@@ -214,11 +193,11 @@ fn handle_call(name: &str, args: &Vec<Expr>, scope: &Scope) -> Result<Expr, Exce
         Some(Fun(name, types, fun)) => apply_fun(name, types, args, fun, scope),
         _ if args.len() == 0 => Err(Exception::UndefinedFunction(name.to_string())),
         _ => {
-            let method_name = args[0].eval(scope)?.get_type().method_name(name);
-            match scope.global().get(&method_name) {
-                Some(Fun(name, types, fun)) => apply_fun(name, types, args, fun, scope),
-                _ => Err(Exception::UndefinedMethod(method_name)),
-            }
+            for method in args[0].eval(scope)?.get_type().all_method_names(name) {
+                if let Some(Fun(name, types, fun)) =  scope.global().get(&method) {
+                    return apply_fun(name, types, args, fun, scope);
+                }}
+            return Err(Exception::UndefinedMethod(name.to_string()));
         }
     }
 }
@@ -254,13 +233,21 @@ fn apply_fun(name: &str, specs: &Type, args: &Vec<Expr>, fun: &Function, scope: 
     })
 }
 
-// TODO: handle collections parameters
+
 fn check_arguments(name: &str, expected: &Vec<Type>, values: &Vec<Expr>) -> Option<Result<Expr, Exception>> {
+    //println!("#check_arguments({name},{expected:?} {values:?})");
+    if matches!(expected.get(0), Some(Type::Macro)) {
+        return None
+    }
     if matches!(expected.get(0), Some(Type::List(..))) {
+        // TODO: handle collections parameters
         return None
     }
     if expected.len() != values.len() {
-        return Some(Err(Exception::WrongArgumentsNumber(name.to_owned(), expected.len(), values.len())))
+        return Some(Err(Exception::WrongArgumentsNumber(name.to_owned(), expected.len().to_string(), values.len().to_string())))
+    }
+    if matches!(expected.get(0), Some(Type::Any)) {
+        return None
     }
     expected.iter().zip(values.iter()).find(|(e, v)| !v.get_type().matches(*e)).and_then(|p|
         Some(Err(Exception::UnexpectedArgumentType(name.to_owned(), p.1.get_type().to_string())))
@@ -268,3 +255,14 @@ fn check_arguments(name: &str, expected: &Vec<Type>, values: &Vec<Expr>) -> Opti
 }
 
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_print() {
+        let expr = Int(1);
+        assert_eq!("1", expr.print());
+        assert_eq!("Int", expr.to_string());
+    }
+}

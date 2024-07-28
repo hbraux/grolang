@@ -7,12 +7,11 @@ use crate::expr::Expr::{Bool, Float, Fun, Int, Null, Symbol};
 use crate::if_else;
 use crate::scope::Scope;
 use crate::types::Type;
-use crate::types::Type::Macro;
 
-use self::Function::{BuiltIn, Stateful, Stateless, Defined};
+use self::Function::{BuiltIn, Defined, Stateful, Stateless};
 
 macro_rules! def {
-    ($scope:expr, $name:expr, $types:expr, $lambda:expr) => {  $scope.add_fun(Fun($name.to_owned(), $types.clone(), $lambda)) };
+    ($scope:expr, $name:expr, $sign:expr, $lambda:expr) => {  $scope.add_fun(Fun($name.to_owned(), Type::from_str($sign).unwrap(), $lambda)) };
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -41,67 +40,50 @@ fn apply_defined(scope: &Scope, body: &Box<Expr>, params: &Vec<String>, vec: &Ve
 }
 
 pub fn add_functions(sc: &mut Scope) {
-    // int arithmetics
-    let types = Type::new("(Int,Int)->Int");
-    def!(sc, "Int.add", types, Stateless(|vec| Ok(Int(vec[0].to_int()? + vec[1].to_int()?))));
-    def!(sc, "Int.sub", types, Stateless(|vec| Ok(Int(vec[0].to_int()? - vec[1].to_int()?))));
-    def!(sc, "Int.mul", types, Stateless(|vec| Ok(Int(vec[0].to_int()? * vec[1].to_int()?))));
-    def!(sc, "Int.div", types, Stateless(|vec| divide_int(vec[0].to_int()?, vec[1].to_int()?)));
-    def!(sc, "Int.mod", types, Stateless(|vec| modulo_int(vec[0].to_int()?, vec[1].to_int()?)));
+    // Any functions
+    def!(sc, "to_str", "(Any)->Str", Stateless(|vec| Ok(Expr::Str(vec[0].print()))));
 
-    // float arithmetics
-    let types = Type::new("(Float,Float)->Float");
-    def!(sc, "Float.add", types, Stateless(|vec| Ok(Float(vec[0].to_float()? + vec[1].to_float()?))));
-    def!(sc, "Float.sub", types, Stateless(|vec| Ok(Float(vec[0].to_float()? - vec[1].to_float()?))));
-    def!(sc, "Float.mul", types, Stateless(|vec| Ok(Float(vec[0].to_float()? * vec[1].to_float()?))));
-    def!(sc, "Float.div", types, Stateless(|vec| divide_float(vec[0].to_float()?, vec[1].to_float()?)));
+    // Number functions
+    let sign = "(Number,Number)->Number";
+    def!(sc, "Number.add", sign, Stateless(|vec| NumberFun::Add.eval(&vec[0], &vec[1])));
+    def!(sc, "Number.sub", sign, Stateless(|vec| NumberFun::Sub.eval(&vec[0], &vec[1])));
+    def!(sc, "Number.mul", sign, Stateless(|vec| NumberFun::Mul.eval(&vec[0], &vec[1])));
+    def!(sc, "Number.div", sign, Stateless(|vec| NumberFun::Div.eval(&vec[0], &vec[1])));
+    def!(sc, "Number.mod", sign, Stateless(|vec| NumberFun::Mod.eval(&vec[0], &vec[1])));
+    let sign = "(Number,Number)->Bool";
+    def!(sc, "Number.eq", sign, Stateless(|vec| NumberFun::Eq.eval(&vec[0], &vec[1])));
+    def!(sc, "Number.neq", sign, Stateless(|vec| NumberFun::Neq.eval(&vec[0], &vec[1])));
+    def!(sc, "Number.ge", sign, Stateless(|vec| NumberFun::Ge.eval(&vec[0], &vec[1])));
+    def!(sc, "Number.gt", sign, Stateless(|vec| NumberFun::Gt.eval(&vec[0], &vec[1])));
+    def!(sc, "Number.lt", sign, Stateless(|vec| NumberFun::Lt.eval(&vec[0], &vec[1])));
+    def!(sc, "Number.le", sign, Stateless(|vec| NumberFun::Le.eval(&vec[0], &vec[1])));
 
-    // boolean operators
-    let types = Type::new("(Bool,Bool)->Bool");
-    def!(sc, "Bool.and", types, Stateless(|vec| Ok(Bool(vec[0].to_bool()? && vec[1].to_bool()?))));
-    def!(sc, "Bool.or", types, Stateless(|vec| Ok(Bool(vec[0].to_bool()? || vec[1].to_bool()?))));
+    // Boolean Functions
+    let sign = "(Bool,Bool)->Bool";
+    def!(sc, "Bool.and", sign, Stateless(|vec| Ok(Bool(vec[0].to_bool()? && vec[1].to_bool()?))));
+    def!(sc, "Bool.or", sign, Stateless(|vec| Ok(Bool(vec[0].to_bool()? || vec[1].to_bool()?))));
 
-    // int comparisons
-    let types = Type::new("(Int,Int)->Bool");
-    def!(sc, "Int.eq", types, Stateless(|vec| Ok(Bool(vec[0].to_int()? == vec[1].to_int()?))));
-    def!(sc, "Int.neq", types, Stateless(|vec| Ok(Bool(vec[0].to_int()? != vec[1].to_int()?))));
-    def!(sc, "Int.gt", types, Stateless(|vec| Ok(Bool(vec[0].to_int()? > vec[1].to_int()?))));
-    def!(sc, "Int.ge", types, Stateless(|vec| Ok(Bool(vec[0].to_int()? >= vec[1].to_int()?))));
-    def!(sc, "Int.lt", types, Stateless(|vec| Ok(Bool(vec[0].to_int()? < vec[1].to_int()?))));
-    def!(sc, "Int.le", types, Stateless(|vec| Ok(Bool(vec[0].to_int()? <= vec[1].to_int()?))));
 
     // String functions
-    def!(sc, "Str.read", Type::new("(Str)->Expr"), Stateful(|vec, scope| Ok(scope.read(vec[0].to_str()?))));
-    def!(sc, "Str.trim", Type::new("(Str)->Str"), Stateless(|vec| Ok(Expr::Str(vec[0].to_str()?.trim().to_owned()))));
+    def!(sc, "Str.read", "(Str)->Expr", Stateful(|vec, scope| Ok(scope.read(vec[0].to_str()?))));
+    def!(sc, "Str.trim", "(Str)->Str", Stateless(|vec| Ok(Expr::Str(vec[0].to_str()?.trim().to_owned()))));
 
     // IO functions
-    def!(sc, "readLine", Type::new("()->Any"), Stateless(|_| read_line()));
-    def!(sc, "print", Type::new("(List<Any>)->Any"), Stateless(|vec,| print(vec)));
-    def!(sc, "eval", Type::new("(Any)->Any"), Stateful(|vec, scope| vec[0].eval(scope)));
+    def!(sc, "readLine", "()->Any", Stateless(|_| read_line()));
+    def!(sc, "print", "(Macro)->Any", Stateless(|vec,| print(vec)));
+    def!(sc, "eval", "(Any)->Any", Stateful(|vec, scope| vec[0].eval(scope)));
 
-    // Misc functions
-    def!(sc, "type", Type::new("(Any)->Str"), Stateless(|vec| Ok(Expr::Str(vec[0].get_type().to_string()))));
 
     // macros
-    def!(sc, "const", Macro, BuiltIn(|vec, scope| def_variable(vec[0].to_symbol()?, vec[2].eval(scope)?.expect(vec[1].to_type()?)?, scope, None)));
-    def!(sc, "var", Macro, BuiltIn(|vec, scope| def_variable(vec[0].to_symbol()?, vec[2].eval(scope)?.expect(vec[1].to_type()?)?, scope, Some(true))));
-    def!(sc, "val", Macro, BuiltIn(|vec, scope| def_variable(vec[0].to_symbol()?, vec[2].eval(scope)?.expect(vec[1].to_type()?)?, scope, Some(false))));
-    def!(sc, "fun", Macro, BuiltIn(|vec, scope| def_function(vec[0].to_symbol()?, vec[1].to_params()?, vec[2].to_type()?, &vec[3], scope)));
-    def!(sc, "struct", Macro, BuiltIn(|vec, scope| def_struct(vec[0].to_symbol()?, vec[1].to_params()?, scope)));
-    def!(sc, "assign", Macro, BuiltIn(|vec, scope| assign(vec[0].to_symbol()?, vec[1].eval_mutable(scope)?, scope)));
-    def!(sc, "while", Macro, BuiltIn(|vec, scope| run_while(&vec[0], vec, scope)));
-    def!(sc, "if", Macro, BuiltIn(|vec, scope| if_else!(vec[0].eval_mutable(scope)?.to_bool()?, vec[1].eval_mutable(scope),vec[2].eval_mutable(scope))));
+    def!(sc, "const", "Macro", BuiltIn(|vec, scope| def_variable(vec[0].to_symbol()?, vec[2].eval(scope)?.expect(vec[1].to_type()?)?, scope, None)));
+    def!(sc, "var", "Macro", BuiltIn(|vec, scope| def_variable(vec[0].to_symbol()?, vec[2].eval(scope)?.expect(vec[1].to_type()?)?, scope, Some(true))));
+    def!(sc, "val", "Macro", BuiltIn(|vec, scope| def_variable(vec[0].to_symbol()?, vec[2].eval(scope)?.expect(vec[1].to_type()?)?, scope, Some(false))));
+    def!(sc, "fun", "Macro", BuiltIn(|vec, scope| def_function(vec[0].to_symbol()?, vec[1].to_params()?, vec[2].to_type()?, &vec[3], scope)));
+    def!(sc, "struct", "Macro", BuiltIn(|vec, scope| def_struct(vec[0].to_symbol()?, vec[1].to_params()?, scope)));
+    def!(sc, "assign", "Macro", BuiltIn(|vec, scope| assign(vec[0].to_symbol()?, vec[1].eval_mutable(scope)?, scope)));
+    def!(sc, "while", "Macro", BuiltIn(|vec, scope| run_while(&vec[0], vec, scope)));
+    def!(sc, "if", "Macro", BuiltIn(|vec, scope| if_else!(vec[0].eval_mutable(scope)?.to_bool()?, vec[1].eval_mutable(scope),vec[2].eval_mutable(scope))));
 
-}
-
-fn divide_int(a: &i64, b: &i64) ->  Result<Expr, Exception> {
-    if *b != 0 { Ok(Int(a/b)) } else { Err(Exception::DivisionByZero)}
-}
-fn modulo_int(a: &i64, b: &i64) ->  Result<Expr, Exception> {
-    if *b != 0 { Ok(Int(a % b)) } else { Err(Exception::DivisionByZero)}
-}
-fn divide_float(a: &f64, b: &f64) ->  Result<Expr, Exception> {
-    if *b != 0.0 { Ok(Float(a/b)) } else { Err(Exception::DivisionByZero)}
 }
 
 
@@ -146,6 +128,61 @@ fn assign(name: &str, value: Expr, scope: &mut Scope) -> Result<Expr, Exception>
     }
 }
 
+#[derive(Debug)]
+pub enum NumberFun {
+    Mul,
+    Div,
+    Add,
+    Sub,
+    Mod,
+    Eq,
+    Neq,
+    Gt,
+    Ge,
+    Lt,
+    Le,
+}
+impl NumberFun {
+    fn eval(&self, left: &Expr, right: &Expr) -> Result<Expr, Exception> {
+        match (left, right) {
+            (Int(a), Int(b))    =>  self.eval_int(*a, *b),
+            (Float(a), Float(b)) => self.eval_float(*a, *b),
+            (Int(a), Float(b))  => self.eval_float(*a as f64, *b),
+            (Float(a), Int(b))  => self.eval_float(*a, *b as f64),
+            _ => Err(Exception::NotA("Number".to_owned(), left.to_string())),
+        }
+    }
+    fn eval_int(&self, a: i64, b: i64) -> Result<Expr, Exception> {
+        match self {
+            NumberFun::Add => Ok(Int(a + b)),
+            NumberFun::Sub => Ok(Int(a - b)),
+            NumberFun::Mul => Ok(Int(a * b)),
+            NumberFun::Mod => if_else!(b != 0, Ok(Int(a % b)), Err(Exception::DivisionByZero)),
+            NumberFun::Div => if_else!(b != 0, Ok(Int(a / b)), Err(Exception::DivisionByZero)),
+            NumberFun::Eq => Ok(Bool(a == b)),
+            NumberFun::Neq => Ok(Bool(a != b)),
+            NumberFun::Gt => Ok(Bool(a > b)),
+            NumberFun::Ge => Ok(Bool(a >= b)),
+            NumberFun::Lt => Ok(Bool(a < b)),
+            NumberFun::Le => Ok(Bool(a <= b)),
+        }
+    }
+    fn eval_float(&self, a: f64, b: f64) -> Result<Expr, Exception> {
+        match self {
+            NumberFun::Add => Ok(Float(a + b)),
+            NumberFun::Sub => Ok(Float(a - b)),
+            NumberFun::Mul => Ok(Float(a * b)),
+            NumberFun::Mod => if_else!(b != 0.0, Ok(Float(a % b)), Err(Exception::DivisionByZero)),
+            NumberFun::Div => if_else!(b != 0.0, Ok(Float(a / b)), Err(Exception::DivisionByZero)),
+            NumberFun::Eq => Ok(Bool(a == b)),
+            NumberFun::Neq => Ok(Bool(a != b)),
+            NumberFun::Gt => Ok(Bool(a > b)),
+            NumberFun::Ge => Ok(Bool(a >= b)),
+            NumberFun::Lt => Ok(Bool(a < b)),
+            NumberFun::Le => Ok(Bool(a <= b)),
+        }
+    }
+}
 
 fn print(vec: &Vec<Expr>) -> Result<Expr, Exception> {
     for x in vec { print!("{}", x) }

@@ -11,7 +11,8 @@ pest = "2.7.10"
 pest_derive = "2.7.10"
 lazy_static = "1.5.0"
 dialoguer = { version = "0.11.0", features=["history","completion"] }
-
-
+rust-embed = "8.5.0"
+sys-locale = "0.3.1"
+regex = "1.10.5"
 
 

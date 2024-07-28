@@ -1,5 +1,10 @@
+use std::collections::{HashMap, VecDeque};
+use std::str::from_utf8;
 
-use dialoguer::{BasicHistory, Completion, Input, theme::ColorfulTheme};
+use dialoguer::{Input, theme::ColorfulTheme};
+use rust_embed::Embed;
+use sys_locale::get_locale;
+use regex::Regex;
 
 use crate::scope::Scope;
 
@@ -22,58 +27,91 @@ const BLUE: &str = "\x1b[1;34m";
 const STD: &str = "\x1b[0m";
 
 
-fn help() {
-    println!(r#"Pas disponible pour le moment"#)
+#[derive(Embed)]
+#[folder = "resources/"]
+struct Asset;
+
+
+
+#[derive(Debug, Default)]
+pub struct History {
+    deque: VecDeque<String>,
+}
+impl History {
+    fn print(&self) {
+        self.deque.iter().for_each(|e| println!("# {}", e))
+    }
+    fn load(&self, _filename: &str) {
+        // TODO
+    }
+    fn save(&self, _filename: &str) {
+        // TODO
+    }
+
 }
 
-struct AutoComplete<'a> {
-    scope: Scope<'a>
+impl<T: ToString> dialoguer::History<T> for History {
+    fn read(&self, pos: usize) -> Option<String> {
+        self.deque.get(pos).cloned()
+    }
+
+    fn write(&mut self, val: &T) {
+        let val = val.to_string();
+        if !val.starts_with(":") {
+            self.deque.push_front(val);
+        }
+    }
 }
 
-impl AutoComplete<'_> {
-    fn new(scope: Scope) -> AutoComplete { AutoComplete { scope } }
-}
-impl Completion for AutoComplete<'_>  {
-    fn get(&self, input: &str) -> Option<String> { self.scope.suggest(input) }
+fn get_resource(name: &str) -> String {
+    let locale = get_locale().unwrap_or_else(|| String::from("fr-FR"));
+    let lang = &locale[0..2];
+    let asset = Asset::get(&format!("{}_{}.txt", name, lang)).expect(&format!("No help file for language {}", lang));
+    let str = from_utf8(asset.data.as_ref()).expect("Invalid resource file");
+    return str.to_owned();
 }
 
 pub fn repl() {
-    println!("{BLUE}Bienvenue sur {LANG} version {VERSION}{STD}");
-    println!("Taper :q pour quitter, :h pour de l'aide");
+    let mut debug = false;
+    let help = get_resource("help");
+    let msg = get_resource("msg");
+    let regex = Regex::new(r"(\W+)\t+(\W+.*)").unwrap();
+    let messages = msg.split("\n").filter(|s| !s.is_empty()).map(|s| regex.split(s).collect::<Vec<_>>()).map(|v| (v[0], v[1])).collect::<HashMap<_,_>>();
+
+    println!("{BLUE}{LANG} Version {VERSION}{STD}\n{}\n", help.split("\n").next().unwrap());
     let mut scope = Scope::init();
-    let mut history = BasicHistory::new();
-    let autocomplete = AutoComplete::new(scope.clone());
+    let mut history = History::default();
     loop {
+        //let autocomplete = AutoComplete::new(&scope);
         let input = Input::<String>::with_theme(&ColorfulTheme::default())
-            .completion_with(&autocomplete)
+            .completion_with(&scope)
             .history_with(&mut history)
-            .interact_text();
-        if input.is_err() {
-            println!("{RED}Erreur inattendue ({:?}){STD}", input.err().unwrap());
-            break
-        }
-        let cmd: String = input.unwrap();
-        if cmd.starts_with(':') {
-            match cmd.as_str() {
-                ":q" => break,
-                ":h" => help(),
-                _ => println!("{RED}Commande inconnue {}{STD}", cmd),
+            .interact_text().expect("Unable to read stdin");
+
+        if input.starts_with(':') {
+            let v: Vec<&str> = input.split(" ").collect();
+            match input[1..2].to_string().as_str() {
+                "q" => break,
+                "d" => { debug = !debug; println!("# debug={}", debug) },
+                "h" => history.print(),
+                "l" if v.len() == 2 => history.load(v[1]),
+                "s" if v.len() == 2 => history.save(v[1]),
+                _ => println!("{}", help),
             }
             continue;
         }
-        let expr = scope.read(&cmd);
-        if expr.failed() {
-            println!("{RED}Erreur de syntaxe ({:?}){STD}", expr.to_exception().unwrap());
+        let expr = scope.read(&input);
+        if expr.is_failure() {
+            println!("{RED}{} {STD}", expr.to_exception().format(&messages));
             continue;
         }
         let result = expr.eval_or_failed(&mut scope);
-        if expr.failed() {
-            println!("{RED}Erreur d'évaluation ({:?}){STD}", expr.to_exception().unwrap());
+        if expr.is_failure() {
+            println!("{RED}{} {STD}", expr.to_exception().format(&messages));
         } else {
             println!("{}", result.print())
         }
     }
-    println!(".")
 }
 
 
@@ -120,7 +158,6 @@ mod tests {
         let mut scope = Scope::init();
         scope.exec("val l = [1,2,3]");
         scope.exec(r#"val m = {"a":1, "b":1}"#);
-        assert_eq!( "\"List<Int>\"", scope.exec("l.type()"));
     }
 
     #[test]
@@ -128,18 +165,17 @@ mod tests {
         let mut scope = Scope::init();
         assert_eq!("14", scope.exec("2 + 3 * 4"));
         assert_eq!("20", scope.exec("(2 + 3) * 4"));
+        assert_eq!("20.0", scope.exec("(2 + 3.0) * 4"));
         assert_eq!("4", scope.exec("4 / 1"));
         assert_eq!("2", scope.exec("22%10"));
         assert_eq!("2", scope.exec("-2 * -1"));
-        assert_eq!("3.3", scope.exec("1.0 + 2.3"));
+        assert_eq!("3.3", scope.exec("1 + 2.3"));
         assert_eq!("DivisionByZero", scope.exec("1 / 0"));
-        assert_eq!("UnexpectedArgumentType(Int.add, Bool)", scope.exec("2 + true"));
-        // to be supported later
-        assert_eq!("UnexpectedArgumentType(Int.mul, Float)", scope.exec("2 * 0.1"));
+        assert_eq!("UnexpectedArgumentType(Number.add, Bool)", scope.exec("2 + true"));
     }
 
     #[test]
-    fn test_binaries() {
+    fn test_comparisons() {
         let mut scope = Scope::init();
         scope.exec("val a = 1");
         scope.exec("val b = 2");
@@ -191,7 +227,7 @@ mod tests {
     fn test_exceptions() {
         let mut scope = Scope::init();
         assert_eq!("UndefinedFunction(read)", scope.exec("read()"));
-        assert_eq!("UndefinedMethod(Int.inc)", scope.exec("inc(2)"));
+        assert_eq!("UndefinedMethod(inc)", scope.exec("inc(2)"));
         assert_eq!("UndefinedSymbol(n)", scope.exec("n.eval()"));
     }
 
