@@ -61,7 +61,7 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
         Rule::Special => to_literal(pair.as_str()),
         Rule::String => Expr::Str(un_quote(pair.as_str())),
         Rule::Symbol | Rule::VarType => Expr::Symbol(pair.as_str().to_owned()),
-        Rule::RawType => Expr::TypeOf(Type::from_str(remove_first(pair.as_str()).trim()).unwrap()), // TODO: handle failure
+        Rule::RawType => Expr::TypeOf(Type::from_str(remove_first(pair.as_str()).trim()).unwrap()), // TODO: handle unwrap
         Rule::Operator => Expr::Symbol(pair.as_str().to_owned()),
         Rule::Expr =>  parse_pairs(pair.into_inner()),
         Rule::CallExpr => build_call(to_vec(pair, 0, 0)),

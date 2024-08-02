@@ -185,6 +185,7 @@ fn handle_symbol(name: &str, scope: &Scope) -> Result<Expr, Exception> {
     scope.get_value(name).ok_or_else(|| Exception::UndefinedSymbol(name.to_string()))
 }
 
+// TODO: impl a better solution to find the eligible functions
 fn handle_call(name: &str, args: &Vec<Expr>, scope: &Scope) -> Result<Expr, Exception> {
     match scope.find(name) {
         Some(Fun(name, types, fun)) => apply_fun(name, types, args, fun, scope),
