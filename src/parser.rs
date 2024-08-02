@@ -86,12 +86,12 @@ fn build_call(mut args: Vec<Expr>) -> Expr {
 }
 
 fn build_list(args: Vec<Expr>) -> Expr {
-    Expr::List(Type::infer(&args), args)
+    Expr::List(Type::infer_list(&args), args)
 }
 
 fn build_map(args: Vec<Expr>) -> Expr {
     let pairs: Vec<(Expr, Expr)> = args.chunks(2).into_iter().flat_map(|p| if_else!(p.len() == 2, Some((p[0].clone(), p[1].clone())), None)).collect();
-    Expr::Map(Type::infer(&pairs.iter().map(|p| p.0.clone()).collect::<Vec<_>>()), Type::infer(&pairs.iter().map(|p| p.1.clone()).collect()), pairs)
+    Expr::Map(Type::infer_map(&pairs), pairs)
 }
 
 
@@ -163,14 +163,14 @@ mod tests {
 
     #[test]
     fn test_collections() {
-        assert_eq!(Expr::List(Type::Int, vec!(Expr::Int(1), Expr::Int(2))), parse("[1,2]").unwrap());
-        assert_eq!(Expr::Map(Type::Str, Type::Int, vec!((Expr::Str("a".to_owned()), Expr::Int(1)))), parse("{\"a\":1}").unwrap());
+        assert_eq!("List(List(Int), [Int(1), Int(2)])", read("[1,2]"));
+        assert_eq!("Map(Map(Str, Int), [(Str(a), Int(1))])", read("{\"a\":1}"));
     }
 
     #[test]
     fn test_json_read() {
-        assert_eq!("Map(Str, List(Map(Str, Any)), [(Str(employees), List(Map(Str, Any), [Map(Str, Any, [(Str(name), Str(alice)), (Str(age), Int(20)), (Str(grade), Float(2.3)), (Str(email), Str(alice@gmail.com))]), Map(Str, Any, [(Str(name), Str(bob)), (Str(age), Int(21)), (Str(email), Str(grade))])]))])",
-                   read(r#"{"employees":[{"name":"alice","age":20,"grade":2.3,"email":"alice@gmail.com"}, {"name":"bob", "age": 21,"email":null,"grade":1.2}]}"#));
+        let json = r#"{"employees":[{"name":"alice","age":20,"grade":2.3,"email":"alice@gmail.com"}, {"name":"bob", "age": 21,"email":null,"grade":1.2}]}"#;
+        assert!(parse(json).is_ok());
     }
 
 

@@ -13,7 +13,7 @@ RawType = @{ ":" ~ WHITESPACE* ~ Symbol ~ ( "<" ~ Symbol ~( "," ~ Symbol )? ~ ">
 
 Literal = _{ Special | Float | Int | String | RawType }
 
-// null is only recognized in JSON expressions and filtered out
+// null is only recognized in JSON expressions
 Pair = _{ Literal ~ ":" ~ ( LiteralOrCollection | "null") }
 
 LiteralOrCollection = _{ Literal | List | Map }

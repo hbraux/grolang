@@ -72,18 +72,13 @@ impl Type {
         *expected == Any || self == expected || (*expected == Number && self.is_number())
     }
 
-    pub fn infer(vec: &Vec<Expr>) -> Type {
-        if vec.is_empty() { Unknown } else {
-            let mut current = vec[0].get_type();
-            for e in vec[1..].iter() {
-                let other = e.get_type();
-                if current != other && current != Any {
-                    current = if_else!(current.is_number() && other.is_number(), Number, Any)
-                    }
-            }
-            current
-        }
+    pub fn infer_list(vec: &Vec<Expr>) -> Type {
+        List(Box::new(infer(vec)))
     }
+    pub fn infer_map(vec: &Vec<(Expr, Expr)>) -> Type {
+        Map(Box::new(infer(&vec.iter().map(|p| p.0.clone()).collect::<Vec<_>>())), Box::new(infer(&vec.iter().map(|p| p.1.clone()).collect::<Vec<_>>())))
+    }
+
     pub fn print(&self) -> String {
         match self {
             List(t) => format!("List<{}>", t.print()),
@@ -112,9 +107,19 @@ impl Type {
             _ => true
         }
     }
+}
 
-
-
+fn infer(vec: &Vec<Expr>) -> Type {
+    if vec.is_empty() { Unknown } else {
+        let mut current = vec[0].get_type();
+        for e in vec[1..].iter() {
+            let other = e.get_type();
+            if current != other && current != Any {
+                current = if_else!(current.is_number() && other.is_number(), Number, Any)
+            }
+        }
+        current
+    }
 }
 
 #[cfg(test)]
@@ -146,9 +151,9 @@ mod tests {
 
     #[test]
     fn test_infer() {
-        assert_eq!(Unknown, Type::infer(&vec!()));
-        assert_eq!(Int, Type::infer(&vec!(Expr::Int(1), Expr::Int(2))));
-        assert_eq!(Number, Type::infer(&vec!(Expr::Int(1), Expr::Float(2.0))));
-        assert_eq!(Any, Type::infer(&vec!(Expr::Int(1), TRUE)));
+        assert_eq!(Unknown, infer(&vec!()));
+        assert_eq!(Int, infer(&vec!(Expr::Int(1), Expr::Int(2))));
+        assert_eq!(Number, infer(&vec!(Expr::Int(1), Expr::Float(2.0))));
+        assert_eq!(Any, infer(&vec!(Expr::Int(1), TRUE)));
     }
 }

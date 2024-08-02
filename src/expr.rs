@@ -26,7 +26,7 @@ pub enum Expr {
     Failure(Exception),
     Fun(String, Type, Function),
     List(Type, Vec<Expr>),
-    Map(Type, Type, Vec<(Expr, Expr)>),
+    Map(Type, Vec<(Expr, Expr)>),
     Struct(String, Vec<(String, Type)>),
     Params(Vec<(String, Type)>),
 }
@@ -64,8 +64,8 @@ impl Expr {
             Int(_) => Type::Int,
             Float(_) => Type::Float,
             Str(_) => Type::Str,
-            List(t, _) => Type::List(Box::new(t.clone())), // TODO: avoid clone
-            Map(t, u, _) => Type::Map(Box::new(t.clone()),Box::new(u.clone())),
+            List(t, _) => t.clone(),
+            Map(t, _) => t.clone(),
             _ => panic!("unknown type {:?}", self)
         }
     }
@@ -104,7 +104,7 @@ impl Expr {
     pub fn eval(&self, scope: &Scope) -> Result<Expr, Exception> {
         match self {
             Failure(e) => Err(e.clone()),
-            Nil | Int(_) | Float(_) | Str(_) | Bool(_)  | List(_,_ )  | Map(_, _, _)  => Ok(self.clone()),
+            Nil | Int(_) | Float(_) | Str(_) | Bool(_)  | List(_,_ )  | Map(_, _)  => Ok(self.clone()),
             Symbol(name) => handle_symbol(name, scope),
             Call(name, args) => handle_call(name, args, scope),
             _ => panic!("not implemented {:?}", self),
@@ -143,7 +143,7 @@ impl Expr {
     pub fn cast(self, expected: &Type) -> Result<Expr, Exception> {
         match (self, expected) {
             (List(_, vec), Type::List(t)) => Ok(List(*t.clone(), vec.clone())),
-            (Map(_, _, vec), Type::Map(t, u)) => Ok(Map(*t.clone(), *u.clone(), vec.clone())),
+          //  (Map(_, vec), Type::Map(t, u)) => Ok(Map(*t.clone(), *u.clone(), vec.clone())),
             _ => Err(Exception::CannotCastType(expected.to_string())),
         }
     }
@@ -166,7 +166,7 @@ impl Expr {
             Symbol(x) => x.to_owned(),
             Failure(x) => x.print(),
             Params(vec) => print_vec(vec, ",", "(", ")", |p| format!("{}:{}", p.0, p.1)),
-            Map(_, _, vec) => print_vec(vec, ",", "{", "}", |p| format!("{}:{}", p.0.print(), p.1.print())),
+            Map(_, vec) => print_vec(vec, ",", "{", "}", |p| format!("{}:{}", p.0.print(), p.1.print())),
             List(_, vec) => print_vec(vec, ",", "[", "]", Expr::print),
             Block(vec) => print_vec(vec, ";", "{", "}", Expr::print),
             Call(name, vec) => print_vec(vec, ",", &(name.to_string() + "("), ")",  Expr::print),
