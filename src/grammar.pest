@@ -51,13 +51,13 @@ Declaration = { VarType ~ Symbol ~ RawType? ~ "=" ~ Expr }
 Parameter = { Symbol ~ RawType }
 Parameters = { "(" ~ Parameter? ~ ( "," ~ Parameter )* ~ ")" }
 Definition = { "fun" ~ Symbol ~ Parameters ~ RawType ~ "=" ~ ( Expr | Block) }
-Class = { "class" ~ Symbol ~ Parameters }
+Struct = { "struct" ~ Symbol ~ Parameters }
 Assignment = { Symbol ~ "=" ~ Expr }
 
 Block = { "{" ~ NEWLINE* ~ Statement ~ ( (NEWLINE | ";") ~ Statement)* ~ NEWLINE* ~ "}" }
 IfElse = { "if" ~ "(" ~ Expr ~ ")" ~ ( Expr | Block) ~ ( "else" ~ ( Expr | Block))? }
 While = { "while" ~ "(" ~ Expr ~ ")" ~ Block  }
-Statement = _{ Declaration | Definition | Class | Assignment | IfElse | While | Expr }
+Statement = _{ Declaration | Definition | Struct | Assignment | IfElse | While | Expr }
 
 equation = _{ SOI ~ Expr ~ EOI }
 WHITESPACE = _{ " " }

@@ -74,7 +74,7 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
         Rule::List  => build_list(to_vec(pair, 0, 0)),
         Rule::Map  =>  build_map(to_vec(pair, 0, 0)),
         Rule::Parameters  => build_params(pair.into_inner()),
-        Rule::Class  =>  Expr::Call("class".to_owned(), to_vec(pair, 0, 0)),
+        Rule::Struct  =>  Expr::Call("struct".to_owned(), to_vec(pair, 0, 0)),
         _ => panic!("Rule '{}' not implemented", to_operator_name(pair))
     }
 }
@@ -175,8 +175,8 @@ mod tests {
 
 
     #[test]
-    fn test_class() {
-        assert_eq!("Call(class, [Symbol(Point), Params([(x, Float), (y, Float)])])", read("class Point(x: Float, y:Float)"));
+    fn test_struct() {
+        assert_eq!("Call(struct, [Symbol(Point), Params([(x, Float), (y, Float)])])", read("struct Point(x: Float, y:Float)"));
     }
 
     #[test]

@@ -110,7 +110,7 @@ fn def_struct(name: &str, params: &Vec<(String, Type)>, scope: &mut Scope) -> Re
     if scope.is_defined(&name, true) {
         Err(Exception::AlreadyDefined(name.to_owned()))
     } else {
-        scope.set(name, Expr::Class(params.clone()), None);
+        scope.set(name, Expr::Struct(name.to_owned(), params.clone()), None);
         Ok(Symbol(name.to_owned()))
     }
 }
