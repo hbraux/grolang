@@ -189,8 +189,8 @@ mod tests {
         assert_eq!("Call(val, [Symbol(f), TypeOf(Float), Float(1.0)])", read("val f: Float = 1.0"));
         assert_eq!("Call(val, [Symbol(f), TypeOf(Float), Float(1.0)])", read("val(f,:Float,1.0)"));
         assert_eq!("Call(var, [Symbol(a), Nil, Int(1)])", read("var a = 1"));
-        assert_eq!("Call(var, [Symbol(l), Nil, List(Int, [Int(1), Int(2), Int(3)])])", read("var l = [1,2,3]"));
-        assert_eq!("Call(var, [Symbol(l), TypeOf(List(Int)), List(Int, [Int(1), Int(2), Int(3)])])", read("var l :List<Int> = [1,2,3]"));
+        assert_eq!("Call(var, [Symbol(l), Nil, List(List(Int), [Int(1), Int(2), Int(3)])])", read("var l = [1,2,3]"));
+        assert_eq!("Call(var, [Symbol(l), TypeOf(List(Int)), List(List(Int), [Int(1), Int(2), Int(3)])])", read("var l :List<Int> = [1,2,3]"));
     }
 
     #[test]
