@@ -1,5 +1,4 @@
 use std::collections::{HashMap, HashSet};
-use std::string::ToString;
 
 use dialoguer::Completion;
 
@@ -51,7 +50,7 @@ impl Scope<'_> {
     }
     pub fn add_args(&mut self, vars: &Vec<String>, values: &Vec<Expr>) {
         values.iter().zip(vars.iter()).for_each(|(v ,n)| {
-            self.values.insert(n.to_string(), v.clone());
+            self.values.insert(n.to_owned(), v.clone());
         });
     }
 
@@ -69,14 +68,13 @@ impl Scope<'_> {
 
     pub fn set(&mut self, name: &str, value: Expr, is_mutable: Option<bool>) {
         if is_mutable == Some(true) {
-            self.mutables.insert(name.to_string());
+            self.mutables.insert(name.to_owned());
         }
         self.values.insert(name.to_owned(), value);
     }
     pub fn read(&self, str: &str) -> Expr { Expr::read(str, self) }
 
     pub fn exec(&mut self, str: &str) -> String { self.read(str).eval_or_failed(self).print() }
-
 
     pub fn find_fun(&self, prefix: &str) -> Option<String> {
         if_else!(prefix.is_empty(), None, self.values.iter().find(|i| i.1.is_fun() && i.0.starts_with(prefix)).map(|i| i.0.clone()))

@@ -71,13 +71,13 @@ impl Expr {
     pub fn to_str(&self) -> Result<&str, Exception> {
         match self {
             Str(str) => Ok(str),
-            _ => Err(Exception::NotA(Type::Str.to_string(), self.print()))
+            _ => Err(Exception::NotA(Type::Str.name(), self.print()))
         }
     }
     pub fn to_bool(&self) -> Result<bool, Exception> {
         match self {
             Bool(str) => Ok(str.to_owned()),
-            _ => Err(Exception::NotA(Type::Bool.to_string(), self.print()))
+            _ => Err(Exception::NotA(Type::Bool.name(), self.print()))
         }
     }
     pub fn to_symbol(&self) -> Result<&str, Exception> {
@@ -128,18 +128,18 @@ impl Expr {
         if *expected != Type::Any {
             if *value_type != Type::Any {
                 if *expected != *value_type {
-                    return Err(Exception::UnexpectedType(value_type.to_string()));
+                    return Err(Exception::UnexpectedType(value_type.print()));
                 }
             } else {
                 // soft cast
                 return match self {
                     List(_, vec) => Ok(List(expected.clone(), vec.clone())),
                     Map(_, vec) => Ok(Map(expected.clone(), vec.clone())),
-                    _ => Err(Exception::CannotCastType(expected.to_string())),
+                    _ => Err(Exception::CannotCastType(expected.print())),
                 }
             }
         } else if *value_type == Type::Any {
-            return Err(Exception::CannotInferType(value_type.to_string()));
+            return Err(Exception::CannotInferType(value_type.print()));
         }
         Ok(self)
     }
@@ -166,8 +166,8 @@ impl Expr {
             Map(_, vec) => print_vec(vec, ",", "{", "}", |p| format!("{}:{}", p.0.print(), p.1.print())),
             List(_, vec) => print_vec(vec, ",", "[", "]", Expr::print),
             Block(vec) => print_vec(vec, ";", "{", "}", Expr::print),
-            Call(name, vec) => print_vec(vec, ",", &(name.to_string() + "("), ")",  Expr::print),
-            _ => format!("{:?}", self),
+            Call(name, vec) => print_vec(vec, ",", &(name.to_owned() + "("), ")",  Expr::print),
+            _ => self.name()
         }
     }
 }
@@ -182,20 +182,20 @@ fn print_float(x: &f64) -> String  {
 }
 
 fn handle_symbol(name: &str, scope: &Scope) -> Result<Expr, Exception> {
-    scope.get_value(name).ok_or_else(|| Exception::UndefinedSymbol(name.to_string()))
+    scope.get_value(name).ok_or_else(|| Exception::UndefinedSymbol(name.to_owned()))
 }
 
 // TODO: impl a better solution to find the eligible functions
 fn handle_call(name: &str, args: &Vec<Expr>, scope: &Scope) -> Result<Expr, Exception> {
     match scope.find(name) {
         Some(Fun(name, types, fun)) => apply_fun(name, types, args, fun, scope),
-        _ if args.len() == 0 => Err(Exception::UndefinedFunction(name.to_string())),
+        _ if args.len() == 0 => Err(Exception::UndefinedFunction(name.to_owned())),
         _ => {
             for method in args[0].eval(scope)?.get_type().all_method_names(name) {
                 if let Some(Fun(name, types, fun)) =  scope.global().get(&method) {
                     return apply_fun(name, types, args, fun, scope);
                 }}
-            return Err(Exception::UndefinedMethod(name.to_string()));
+            return Err(Exception::UndefinedMethod(name.to_owned()));
         }
     }
 }
@@ -206,7 +206,7 @@ fn handle_macro(scope: &mut Scope, name: &String, args: &Vec<Expr>) -> Result<Ex
     if let Some(Fun(_, _, BuiltIn(lambda))) = scope.global().get(name) {
         lambda(args, scope)
     } else {
-        Err(Exception::NotDefined(name.to_string()))
+        Err(Exception::NotDefined(name.to_owned()))
     }
 }
 
@@ -226,7 +226,7 @@ fn apply_fun(name: &str, specs: &Type, args: &Vec<Expr>, fun: &Function, scope: 
     args.iter().map(|e| e.eval(scope)).collect::<Result<Vec<Expr>, Exception>>().and_then(|values| {
         match specs {
             Type::Fun(input, _output) => check_arguments(name, input, &values).or(Some(fun.apply(&values, scope))).unwrap(),
-            _ => Err(Exception::NotA("Fun".to_owned(), specs.to_string())),
+            _ => Err(Exception::NotA("Fun".to_owned(), specs.print())),
         }
     })
 }
@@ -248,7 +248,7 @@ fn check_arguments(name: &str, expected: &Vec<Type>, values: &Vec<Expr>) -> Opti
         return None
     }
     expected.iter().zip(values.iter()).find(|(e, v)| !v.get_type().matches(*e)).and_then(|p|
-        Some(Err(Exception::UnexpectedArgumentType(name.to_owned(), p.1.get_type().to_string())))
+        Some(Err(Exception::UnexpectedArgumentType(name.to_owned(), p.1.get_type().print())))
     )
 }
 
@@ -262,5 +262,6 @@ mod tests {
         let expr = Int(1);
         assert_eq!("1", expr.print());
         assert_eq!("Int", expr.to_string());
+        assert_eq!("Int", expr.name());
     }
 }

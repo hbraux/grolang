@@ -8,25 +8,20 @@
 **GroLang** (ou **Gro**) est un langage de programmation expérimental et à usage éducatif ; son objectif est de
 proposer une (modeste) alternative à [python](https://www.python.org/) pour apprendre à coder, tout en comblant certaines de ses lacunes.
 En particulier, les points fort de Gro sont :
-* une syntaxe simple (pas d'indentation, séparateur optionel)
-* un interpréteur convivial (auto complétion, couleurs)
+* une syntaxe simple (pas d'indentation, séparateur optionnel)
+* un interpréteur convivial (auto complétion, couleurs, débuggage)
 * un typage fort
 * des objets immutables
-* la gestion des optionnels (à venir)
-* le support de la programmation fonctionnelle (à venir)
+* le support de la programmation fonctionnelle
+* la gestion explicite des options et des exceptions (à venir)
 
-
-Quelques exemples de code:
-
+Quelques lignes de code:
 ```
-print("hello world!")
-
+print("hello world")
 const PI = 3.14159
 val circ = PI * 2.0
-
 def fact(n: Int) = if (n <= 1) 1 else n*fact(n-1)
 fact(5)
-
 val notes = [12 4 18 16 11 9]
 val moy = notes.sum()/notes.size() # ou bien sum(notes)/size(notes)
 ```

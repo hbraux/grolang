@@ -4,7 +4,6 @@ use std::str::from_utf8;
 use dialoguer::{Input, theme::ColorfulTheme};
 use rust_embed::Embed;
 use sys_locale::get_locale;
-use regex::Regex;
 
 use crate::scope::Scope;
 
@@ -71,13 +70,14 @@ fn get_resource(name: &str) -> String {
     return str.to_owned();
 }
 
+fn get_messages(resource: &str) -> HashMap<String, String> {
+    get_resource(resource).split("\n").filter(|s| !s.is_empty()).map(|s| s.split("\t").collect::<Vec<_>>()).map(|v| (v[0].to_string(), v.last().unwrap().to_string())).collect::<HashMap<_,_>>()
+}
+
 pub fn repl() {
     let mut debug = false;
     let help = get_resource("help");
-    let msg = get_resource("msg");
-    let regex = Regex::new(r"(\W+)\t+(\W+.*)").unwrap();
-    let messages = msg.split("\n").filter(|s| !s.is_empty()).map(|s| regex.split(s).collect::<Vec<_>>()).map(|v| (v[0], v[1])).collect::<HashMap<_,_>>();
-
+    let messages = get_messages("msg");
     println!("{BLUE}{LANG} Version {VERSION}{STD}\n{}\n", help.split("\n").next().unwrap());
     let mut scope = Scope::init();
     let mut history = History::default();
