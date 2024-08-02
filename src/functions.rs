@@ -3,7 +3,7 @@ use std::io;
 
 use crate::exception::Exception;
 use crate::expr::Expr;
-use crate::expr::Expr::{Bool, Float, Fun, Int, Null, Symbol};
+use crate::expr::Expr::{Bool, Float, Fun, Int, Nil, Symbol};
 use crate::if_else;
 use crate::scope::Scope;
 use crate::types::Type;
@@ -187,12 +187,12 @@ impl NumberFun {
 fn print(vec: &Vec<Expr>) -> Result<Expr, Exception> {
     for x in vec { print!("{}", x) }
     println!();
-    Ok(Null)
+    Ok(Nil)
 }
 
 fn run_while(cond: &Expr, body: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
     let mut count = 0;
-    let mut result = Ok(Null);
+    let mut result = Ok(Nil);
     loop {
         count += 1;
         if count >= 1000000 {

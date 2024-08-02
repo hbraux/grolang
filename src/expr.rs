@@ -10,11 +10,11 @@ use crate::scope::Scope;
 use crate::types::Type;
 use crate::types::Type::Unknown;
 
-use self::Expr::{Block, Bool, Call, Failure, Float, Fun, Int, List, Map, Null, Params, Str, Symbol, TypeOf};
+use self::Expr::{Block, Bool, Call, Failure, Float, Fun, Int, List, Map, Nil, Params, Str, Symbol, TypeOf};
 
 #[derive(Debug, Clone, PartialEq, Display)]
 pub enum Expr {
-    Null,
+    Nil,
     Int(i64),
     Float(f64),
     Str(String),
@@ -34,7 +34,7 @@ pub enum Expr {
 
 pub const TRUE: Expr = Bool(true);
 pub const FALSE: Expr = Bool(false);
-pub const NULL: Expr = Null;
+pub const NULL: Expr = Nil;
 
 
 impl Expr {
@@ -59,7 +59,7 @@ impl Expr {
     // TODO: return &Type
     pub fn get_type(&self) -> Type {
         match self {
-            Null => Type::Any,
+            Nil => Type::Any,
             Bool(_) => Type::Bool,
             Int(_) => Type::Int,
             Float(_) => Type::Float,
@@ -90,7 +90,7 @@ impl Expr {
     pub fn to_type(&self) -> Result<Type, Exception> {
         match self {
             TypeOf(t) => Ok(t.clone()),
-            Null => Ok(Unknown),
+            Nil => Ok(Unknown),
             _ => Err(Exception::NotA("Type".to_owned(), self.print()))
         }
     }
@@ -104,7 +104,7 @@ impl Expr {
     pub fn eval(&self, scope: &Scope) -> Result<Expr, Exception> {
         match self {
             Failure(e) => Err(e.clone()),
-            Null | Int(_) | Float(_) | Str(_) | Bool(_)  | List(_,_ )  | Map(_, _, _)  => Ok(self.clone()),
+            Nil | Int(_) | Float(_) | Str(_) | Bool(_)  | List(_,_ )  | Map(_, _, _)  => Ok(self.clone()),
             Symbol(name) => handle_symbol(name, scope),
             Call(name, args) => handle_call(name, args, scope),
             _ => panic!("not implemented {:?}", self),
@@ -161,7 +161,7 @@ impl Expr {
             Int(x) => x.to_string(),
             Str(x) => format!("\"{}\"", x),
             TypeOf(x) => format!(":{}", x.print()),
-            Null => "null".to_owned(),
+            Nil => "nil".to_owned(),
             Float(x) => print_float(x),
             Symbol(x) => x.to_owned(),
             Failure(x) => x.print(),
@@ -214,7 +214,7 @@ fn handle_macro(scope: &mut Scope, name: &String, args: &Vec<Expr>) -> Result<Ex
 
 
 fn handle_block(body: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
-    let mut result = Ok(Null);
+    let mut result = Ok(Nil);
     for expr in body {
         result = expr.eval_mutable(scope);
         if result.is_err() {
