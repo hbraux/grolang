@@ -8,7 +8,7 @@ use pest::pratt_parser::{Op, PrattParser};
 use pest::pratt_parser::Assoc::Left;
 use pest_derive::Parser;
 
-use crate::expr::{Expr, FALSE, NULL, TRUE};
+use crate::expr::{Expr, FALSE, NIL, TRUE};
 use crate::if_else;
 use crate::types::Type;
 
@@ -132,7 +132,7 @@ fn to_literal(str: &str) -> Expr {
     match str {
         "true" => TRUE,
         "false" => FALSE,
-        "nil" => NULL,
+        "nil" => NIL,
         _ => panic!("unsupported literal '{}'", str),
     }
 }
@@ -153,7 +153,7 @@ mod tests {
         assert_eq!(Expr::Float(0.12), parse("1.2e-1").unwrap());
         assert_eq!(TRUE, parse("true").unwrap());
         assert_eq!(FALSE, parse("false").unwrap());
-        assert_eq!(NULL, parse("nil").unwrap());
+        assert_eq!(NIL, parse("nil").unwrap());
         assert_eq!(Expr::Str("abc".to_owned()), parse(r#""abc""#).unwrap());
         assert_eq!(Expr::Str("true".to_owned()), parse(r#""true""#).unwrap());
         assert_eq!(Expr::Str("escaped \\n \\t \\\" \\\\ string".to_owned()), parse(r#""escaped \n \t \" \\ string""#).unwrap());

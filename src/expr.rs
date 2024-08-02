@@ -33,7 +33,7 @@ pub enum Expr {
 
 pub const TRUE: Expr = Bool(true);
 pub const FALSE: Expr = Bool(false);
-pub const NULL: Expr = Nil;
+pub const NIL: Expr = Nil;
 
 
 
