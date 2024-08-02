@@ -1,4 +1,4 @@
-
+use std::cmp::PartialEq;
 use strum_macros::Display;
 
 use crate::exception::Exception;
@@ -8,7 +8,6 @@ use crate::if_else;
 use crate::parser::parse;
 use crate::scope::Scope;
 use crate::types::Type;
-use crate::types::Type::Unknown;
 
 use self::Expr::{Block, Bool, Call, Failure, Float, Fun, Int, List, Map, Nil, Params, Str, Symbol, TypeOf};
 
@@ -37,6 +36,7 @@ pub const FALSE: Expr = Bool(false);
 pub const NULL: Expr = Nil;
 
 
+
 impl Expr {
     pub fn read(str: &str, _ctx: &Scope) -> Expr {
         parse(str).unwrap_or_else(|s| Failure(Exception::CannotParse(s)))
@@ -56,16 +56,15 @@ impl Expr {
         match self { Failure(ex) => ex, _ => panic!("not a failure") }
     }
 
-    // TODO: return &Type
-    pub fn get_type(&self) -> Type {
+    pub fn get_type(&self) -> &Type {
         match self {
-            Nil => Type::Any,
-            Bool(_) => Type::Bool,
-            Int(_) => Type::Int,
-            Float(_) => Type::Float,
-            Str(_) => Type::Str,
-            List(t, _) => t.clone(),
-            Map(t, _) => t.clone(),
+            Nil => &Type::Any,
+            Bool(_) => &Type::Bool,
+            Int(_) => &Type::Int,
+            Float(_) => &Type::Float,
+            Str(_) => &Type::Str,
+            List(t, _) => t,
+            Map(t, _) => t,
             _ => panic!("unknown type {:?}", self)
         }
     }
@@ -87,10 +86,10 @@ impl Expr {
             _ => Err(Exception::UndefinedSymbol(self.print()))
         }
     }
-    pub fn to_type(&self) -> Result<Type, Exception> {
+    pub fn to_type(&self) -> Result<&Type, Exception> {
         match self {
-            TypeOf(t) => Ok(t.clone()),
-            Nil => Ok(Unknown),
+            TypeOf(t) => Ok(t),
+            Nil => Ok(&Type::Any),
             _ => Err(Exception::NotA("Type".to_owned(), self.print()))
         }
     }
@@ -124,29 +123,27 @@ impl Expr {
             expr => expr.eval_mutable(scope).unwrap_or_else(|ex| Failure(ex))
         }
     }
-    pub fn expect(self, expected: Type) -> Result<Expr, Exception> {
+    pub fn expect(self, expected: &Type) -> Result<Expr, Exception> {
         let value_type = self.get_type();
-        if expected.is_defined() {
-            if value_type.is_defined()  {
-                if expected != Type::Any && expected != value_type {
+        if *expected != Type::Any {
+            if *value_type != Type::Any {
+                if *expected != *value_type {
                     return Err(Exception::UnexpectedType(value_type.to_string()));
                 }
             } else {
-                return self.cast(&value_type);
+                // soft cast
+                return match self {
+                    List(_, vec) => Ok(List(expected.clone(), vec.clone())),
+                    Map(_, vec) => Ok(Map(expected.clone(), vec.clone())),
+                    _ => Err(Exception::CannotCastType(expected.to_string())),
+                }
             }
-        } else if !value_type.is_defined() {
+        } else if *value_type == Type::Any {
             return Err(Exception::CannotInferType(value_type.to_string()));
         }
         Ok(self)
     }
-    // TODO: simplify cast
-    pub fn cast(self, expected: &Type) -> Result<Expr, Exception> {
-        match (self, expected) {
-            (List(_, vec), Type::List(t)) => Ok(List(*t.clone(), vec.clone())),
-          //  (Map(_, vec), Type::Map(t, u)) => Ok(Map(*t.clone(), *u.clone(), vec.clone())),
-            _ => Err(Exception::CannotCastType(expected.to_string())),
-        }
-    }
+
 
     pub fn as_block(&self) -> Expr {
         match self {

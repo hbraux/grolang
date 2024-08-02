@@ -63,7 +63,7 @@ impl Scope<'_> {
             Some(self.mutables.contains(name))
         } else { None }
     }
-    pub fn get_type(&self, name: &str) -> Type {
+    pub fn get_type(&self, name: &str) -> &Type {
         self.values.get(name).unwrap().get_type()
     }
 

@@ -96,7 +96,7 @@ fn def_variable(name: &str, value: Expr, scope: &mut Scope, is_mutable: Option<b
     }
 }
 
-fn def_function(name: &str, params: &Vec<(String, Type)>, output: Type, expr: &Expr, scope: &mut Scope) -> Result<Expr, Exception> {
+fn def_function(name: &str, params: &Vec<(String, Type)>, output: &Type, expr: &Expr, scope: &mut Scope) -> Result<Expr, Exception> {
     if scope.is_defined(&name, name.contains(".")) {
         Err(Exception::AlreadyDefined(name.to_owned()))
     } else {

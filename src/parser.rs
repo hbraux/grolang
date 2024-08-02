@@ -165,6 +165,7 @@ mod tests {
     fn test_collections() {
         assert_eq!("List(List(Int), [Int(1), Int(2)])", read("[1,2]"));
         assert_eq!("Map(Map(Str, Int), [(Str(a), Int(1))])", read("{\"a\":1}"));
+        assert_eq!("List(List(Any), [])", read("[]"));
     }
 
     #[test]
