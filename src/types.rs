@@ -6,11 +6,13 @@ use strum_macros::Display;
 use crate::exception::Exception;
 use crate::expr::Expr;
 use crate::if_else;
+use crate::types::Type::_Undefined;
 
 use self::Type::{Any, Bool, Float, Fun, Int, List, Map, Option, Str, Try, Struct, Macro, Number};
 
 #[derive(Debug, Eq, PartialEq, Clone, Display)]
 pub enum Type {
+    _Undefined,
     Any,
     Int,
     Bool,
@@ -67,8 +69,11 @@ impl Type {
     pub fn is_number(&self) -> bool {
         *self == Int || *self == Float || *self == Number
     }
+
+    pub fn is_defined(&self) -> bool { *self != _Undefined }
+
     pub fn matches(&self, expected: &Type) -> bool {
-        *expected == Any || self == expected || (*expected == Number && self.is_number())
+        *expected == Any || *self == *expected || (*expected == Number && self.is_number())
     }
 
     pub fn infer_list(vec: &Vec<Expr>) -> Type {

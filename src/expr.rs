@@ -89,7 +89,7 @@ impl Expr {
     pub fn to_type(&self) -> Result<&Type, Exception> {
         match self {
             TypeOf(t) => Ok(t),
-            Nil => Ok(&Type::Any),
+            Nil => Ok(&Type::_Undefined),
             _ => Err(Exception::NotA("Type".to_owned(), self.print()))
         }
     }
@@ -125,9 +125,9 @@ impl Expr {
     }
     pub fn expect(self, expected: &Type) -> Result<Expr, Exception> {
         let value_type = self.get_type();
-        if *expected != Type::Any {
-            if *value_type != Type::Any {
-                if *expected != *value_type {
+        if expected.is_defined() {
+            if value_type.is_defined() {
+                if !value_type.matches(expected) {
                     return Err(Exception::UnexpectedType(value_type.print()));
                 }
             } else {
@@ -138,7 +138,7 @@ impl Expr {
                     _ => Err(Exception::CannotCastType(expected.print())),
                 }
             }
-        } else if *value_type == Type::Any {
+        } else if !value_type.is_defined() {
             return Err(Exception::CannotInferType(value_type.print()));
         }
         Ok(self)
