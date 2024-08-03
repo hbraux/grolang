@@ -6,12 +6,13 @@ use strum_macros::Display;
 use crate::exception::Exception;
 use crate::expr::Expr;
 use crate::if_else;
+use crate::types::Type::_Undefined;
 
-use self::Type::{Unknown, Any, Bool, Float, Fun, Int, List, Map, Option, Str, Try, Class, Macro, Number};
+use self::Type::{Any, Bool, Float, Fun, Int, List, Map, Option, Str, Try, Struct, Macro, Number};
 
 #[derive(Debug, Eq, PartialEq, Clone, Display)]
 pub enum Type {
-    Unknown,
+    _Undefined,
     Any,
     Int,
     Bool,
@@ -24,7 +25,7 @@ pub enum Type {
     Map(Box<Type>, Box<Type>),
     Fun(Vec<Type>, Box<Type>),
     Macro,
-    Class(String)
+    Struct(String)
 }
 
 impl Type {
@@ -58,7 +59,7 @@ impl Type {
                 "Float" => Ok(Float),
                 "Number" => Ok(Number),
                 "Macro" => Ok(Macro),
-                _ => if_else!(str.chars().all(|c| c.is_alphabetic()), Ok(Class(str.to_string())), Err(Exception::CannotParse(str.to_owned())))
+                _ => if_else!(str.chars().all(|c| c.is_alphabetic()), Ok(Struct(str.to_string())), Err(Exception::CannotParse(str.to_owned())))
             }
         }
     }
@@ -68,22 +69,20 @@ impl Type {
     pub fn is_number(&self) -> bool {
         *self == Int || *self == Float || *self == Number
     }
+
+    pub fn is_defined(&self) -> bool { *self != _Undefined }
+
     pub fn matches(&self, expected: &Type) -> bool {
-        *expected == Any || self == expected || (*expected == Number && self.is_number())
+        *expected == Any || *self == *expected || (*expected == Number && self.is_number())
     }
 
-    pub fn infer(vec: &Vec<Expr>) -> Type {
-        if vec.is_empty() { Unknown } else {
-            let mut current = vec[0].get_type();
-            for e in vec[1..].iter() {
-                let other = e.get_type();
-                if current != other && current != Any {
-                    current = if_else!(current.is_number() && other.is_number(), Number, Any)
-                    }
-            }
-            current
-        }
+    pub fn infer_list(vec: &Vec<Expr>) -> Type {
+        List(Box::new(infer(vec).clone()))
     }
+    pub fn infer_map(vec: &Vec<(Expr, Expr)>) -> Type {
+        Map(Box::new(infer(&vec.iter().map(|p| p.0.clone()).collect::<Vec<_>>()).clone()), Box::new(infer(&vec.iter().map(|p| p.1.clone()).collect::<Vec<_>>()).clone()))
+    }
+
     pub fn print(&self) -> String {
         match self {
             List(t) => format!("List<{}>", t.print()),
@@ -94,7 +93,6 @@ impl Type {
     pub fn method_name(&self, name: &str) -> String {
         self.name().to_owned() + if_else!(name.starts_with("."), "", ".") + name
     }
-    // TODO: return an iter
     pub fn all_method_names(&self, name: &str) -> Vec<String> {
         let mut vec = vec!(self.method_name(name));
         if self.is_number() {
@@ -103,18 +101,19 @@ impl Type {
         vec.push(Any.method_name(name));
         vec
     }
+}
 
-    pub fn is_defined(&self) -> bool {
-        match self {
-            Unknown => false,
-            List(x) => x.is_defined(),
-            Map(x, y) => x.is_defined() && y.is_defined(),
-            _ => true
+fn infer(vec: &Vec<Expr>) -> &Type {
+    if vec.is_empty() { &Any } else {
+        let mut current = vec[0].get_type();
+        for e in vec[1..].iter() {
+            let other = e.get_type();
+            if *current != *other && *current != Any {
+                current = if_else!(current.is_number() && other.is_number(), &Number, &Any)
+            }
         }
+        current
     }
-
-
-
 }
 
 #[cfg(test)]
@@ -133,7 +132,7 @@ mod tests {
         assert_eq!(Option(Box::new(Int)), read("Int?"));
         assert_eq!(Try(Box::new(Int)), read("Int!"));
         assert_eq!(Fun(vec!(Int, Float), Box::new(Float)), read("(Int,Float)->Float"));
-        assert_eq!(Class("Point".to_owned()), read("Point"));
+        assert_eq!(Struct("Point".to_owned()), read("Point"));
         assert_eq!(Err(Exception::CannotParse("Poi!nt".to_string())), Type::from_str("Poi!nt"));
     }
 
@@ -146,9 +145,9 @@ mod tests {
 
     #[test]
     fn test_infer() {
-        assert_eq!(Unknown, Type::infer(&vec!()));
-        assert_eq!(Int, Type::infer(&vec!(Expr::Int(1), Expr::Int(2))));
-        assert_eq!(Number, Type::infer(&vec!(Expr::Int(1), Expr::Float(2.0))));
-        assert_eq!(Any, Type::infer(&vec!(Expr::Int(1), TRUE)));
+        assert_eq!(&Any, infer(&vec!()));
+        assert_eq!(&Int, infer(&vec!(Expr::Int(1), Expr::Int(2))));
+        assert_eq!(&Number, infer(&vec!(Expr::Int(1), Expr::Float(2.0))));
+        assert_eq!(&Any, infer(&vec!(Expr::Int(1), TRUE)));
     }
 }

@@ -3,7 +3,7 @@ use std::io;
 
 use crate::exception::Exception;
 use crate::expr::Expr;
-use crate::expr::Expr::{Bool, Float, Fun, Int, Null, Symbol};
+use crate::expr::Expr::{Bool, Float, Fun, Int, Nil, Symbol};
 use crate::if_else;
 use crate::scope::Scope;
 use crate::types::Type;
@@ -96,7 +96,7 @@ fn def_variable(name: &str, value: Expr, scope: &mut Scope, is_mutable: Option<b
     }
 }
 
-fn def_function(name: &str, params: &Vec<(String, Type)>, output: Type, expr: &Expr, scope: &mut Scope) -> Result<Expr, Exception> {
+fn def_function(name: &str, params: &Vec<(String, Type)>, output: &Type, expr: &Expr, scope: &mut Scope) -> Result<Expr, Exception> {
     if scope.is_defined(&name, name.contains(".")) {
         Err(Exception::AlreadyDefined(name.to_owned()))
     } else {
@@ -110,7 +110,7 @@ fn def_struct(name: &str, params: &Vec<(String, Type)>, scope: &mut Scope) -> Re
     if scope.is_defined(&name, true) {
         Err(Exception::AlreadyDefined(name.to_owned()))
     } else {
-        scope.set(name, Expr::Class(params.clone()), None);
+        scope.set(name, Expr::Struct(name.to_owned(), params.clone()), None);
         Ok(Symbol(name.to_owned()))
     }
 }
@@ -187,12 +187,12 @@ impl NumberFun {
 fn print(vec: &Vec<Expr>) -> Result<Expr, Exception> {
     for x in vec { print!("{}", x) }
     println!();
-    Ok(Null)
+    Ok(Nil)
 }
 
 fn run_while(cond: &Expr, body: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
     let mut count = 0;
-    let mut result = Ok(Null);
+    let mut result = Ok(Nil);
     loop {
         count += 1;
         if count >= 1000000 {

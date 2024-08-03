@@ -1,6 +1,6 @@
 CannotParse         Erreur de syntaxe: {1}
 DivisionByZero      Division par 0
 IOError             Erreur entrée sortie
-UndefinedSymbol     Le symbole '{1}' n'est pas définie
+UndefinedSymbol     Le symbole '{1}' n'est pas défini
 UndefinedFunction   La fonction '{1}' n'est pas définie
 UndefinedMethod     La méthode '{1}' n'est pas définie

@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use strum_macros::Display;
+use crate::utils::Resources;
 
 use self::Exception::{CannotParse, UndefinedFunction, UndefinedMethod, UndefinedSymbol, NotDefined, NotMutable, UnexpectedType, CannotInferType, CannotCastType, AlreadyDefined, NotA, UnexpectedArgumentType, WrongArgumentsNumber};
 
@@ -30,8 +30,8 @@ impl Exception {
     // warning, print rely on debug string
     pub fn print(&self) -> String { format!("{:?}", self).replace("\"","") }
 
-    pub fn format(&self, messages: &HashMap<&str, &str>) -> String {
-        if let Some(msg) = messages.get(self.to_string().as_str()) {
+    pub fn format(&self, resources: &Resources) -> String {
+        if let Some(msg) = resources.get(self.name().as_str()) {
             format!("{}", match self {
                 CannotParse(x) |
                 UndefinedSymbol(x) |
@@ -63,7 +63,7 @@ mod tests {
         assert_eq!("UndefinedSymbol", UndefinedSymbol("a".to_owned()).name());
         assert_eq!("UndefinedSymbol(a)", UndefinedSymbol("a".to_owned()).print());
 
-        let messages = HashMap::from([("UndefinedSymbol", "the symbol '{1}' is not defined")]);
-        assert_eq!("the symbol 'a' is not defined", UndefinedSymbol("a".to_owned()).format(&messages));
+        let resources = Resources::init("FR");
+        assert_eq!("Le symbole 'a' n'est pas défini", UndefinedSymbol("a".to_owned()).format(&resources));
     }
 }

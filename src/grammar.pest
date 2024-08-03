@@ -1,6 +1,5 @@
-// Pest grammar: https://pest.rs/book/grammars/peg.html)
 
-Special = { "true" | "false" | "null" }
+Special = { "true" | "false" | "nil" }
 
 Int = @{  "-"? ~ ASCII_DIGIT+  ~ ( "_" ~ ASCII_DIGIT+)* }
 Float = @{ "-"? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ ~ (^"e" ~ "-"? ~ ASCII_DIGIT+)? }
@@ -13,7 +12,9 @@ Symbol = @{ ASCII_ALPHA ~ ASCII_ALPHANUMERIC* }
 RawType = @{ ":" ~ WHITESPACE* ~ Symbol ~ ( "<" ~ Symbol ~( "," ~ Symbol )? ~ ">")? }
 
 Literal = _{ Special | Float | Int | String | RawType }
-Pair = _{ Literal ~ ":" ~ LiteralOrCollection }
+
+// null is only recognized in JSON expressions
+Pair = _{ Literal ~ ":" ~ ( LiteralOrCollection | "null") }
 
 LiteralOrCollection = _{ Literal | List | Map }
 List = { "[" ~ LiteralOrCollection? ~ ( "," ~ LiteralOrCollection )*  ~ "]" }
@@ -50,13 +51,13 @@ Declaration = { VarType ~ Symbol ~ RawType? ~ "=" ~ Expr }
 Parameter = { Symbol ~ RawType }
 Parameters = { "(" ~ Parameter? ~ ( "," ~ Parameter )* ~ ")" }
 Definition = { "fun" ~ Symbol ~ Parameters ~ RawType ~ "=" ~ ( Expr | Block) }
-Class = { "class" ~ Symbol ~ Parameters }
+Struct = { "struct" ~ Symbol ~ Parameters }
 Assignment = { Symbol ~ "=" ~ Expr }
 
 Block = { "{" ~ NEWLINE* ~ Statement ~ ( (NEWLINE | ";") ~ Statement)* ~ NEWLINE* ~ "}" }
 IfElse = { "if" ~ "(" ~ Expr ~ ")" ~ ( Expr | Block) ~ ( "else" ~ ( Expr | Block))? }
 While = { "while" ~ "(" ~ Expr ~ ")" ~ Block  }
-Statement = _{ Declaration | Definition | Class | Assignment | IfElse | While | Expr }
+Statement = _{ Declaration | Definition | Struct | Assignment | IfElse | While | Expr }
 
 equation = _{ SOI ~ Expr ~ EOI }
 WHITESPACE = _{ " " }

@@ -8,7 +8,8 @@ use pest::pratt_parser::{Op, PrattParser};
 use pest::pratt_parser::Assoc::Left;
 use pest_derive::Parser;
 
-use crate::expr::{Expr, FALSE, NULL, TRUE};
+use crate::expr::{Expr, FALSE, NIL, TRUE};
+use crate::if_else;
 use crate::types::Type;
 
 #[derive(Parser)]
@@ -60,7 +61,7 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
         Rule::Special => to_literal(pair.as_str()),
         Rule::String => Expr::Str(un_quote(pair.as_str())),
         Rule::Symbol | Rule::VarType => Expr::Symbol(pair.as_str().to_owned()),
-        Rule::RawType => Expr::TypeOf(Type::from_str(remove_first(pair.as_str()).trim()).unwrap()), // TODO: handle failure
+        Rule::RawType => Expr::TypeOf(Type::from_str(remove_first(pair.as_str()).trim()).unwrap()), // TODO: handle unwrap
         Rule::Operator => Expr::Symbol(pair.as_str().to_owned()),
         Rule::Expr =>  parse_pairs(pair.into_inner()),
         Rule::CallExpr => build_call(to_vec(pair, 0, 0)),
@@ -73,7 +74,7 @@ fn parse_primary(pair: Pair<Rule>) -> Expr {
         Rule::List  => build_list(to_vec(pair, 0, 0)),
         Rule::Map  =>  build_map(to_vec(pair, 0, 0)),
         Rule::Parameters  => build_params(pair.into_inner()),
-        Rule::Class  =>  Expr::Call("class".to_owned(), to_vec(pair, 0, 0)),
+        Rule::Struct  =>  Expr::Call("struct".to_owned(), to_vec(pair, 0, 0)),
         _ => panic!("Rule '{}' not implemented", to_operator_name(pair))
     }
 }
@@ -85,13 +86,14 @@ fn build_call(mut args: Vec<Expr>) -> Expr {
 }
 
 fn build_list(args: Vec<Expr>) -> Expr {
-    Expr::List(Type::infer(&args), args)
+    Expr::List(Type::infer_list(&args), args)
 }
 
 fn build_map(args: Vec<Expr>) -> Expr {
-    let pairs: Vec<(Expr, Expr)> = args.chunks(2).into_iter().map(|p| (p[0].clone(), p[1].clone())).collect();
-    Expr::Map(Type::infer(&pairs.iter().map(|p| p.0.clone()).collect::<Vec<_>>()), Type::infer(&pairs.iter().map(|p| p.1.clone()).collect()), pairs)
+    let pairs: Vec<(Expr, Expr)> = args.chunks(2).into_iter().flat_map(|p| if_else!(p.len() == 2, Some((p[0].clone(), p[1].clone())), None)).collect();
+    Expr::Map(Type::infer_map(&pairs), pairs)
 }
+
 
 
 fn build_params(pairs: Pairs<Rule>) -> Expr {
@@ -105,9 +107,9 @@ fn to_vec(pair: Pair<Rule>, expected_len: usize, optional_pos: usize) -> Vec<Exp
     let mut args: Vec<Expr> = pair.into_inner().into_iter().map(|p| parse_primary(p)).collect();
     if expected_len > 0 && args.len() < expected_len {
         if optional_pos > 0 {
-            args.insert(optional_pos, Expr::Null)
+            args.insert(optional_pos, Expr::Nil)
         } else {
-            args.resize(expected_len, Expr::Null)
+            args.resize(expected_len, Expr::Nil)
         }
     }
     args
@@ -130,7 +132,7 @@ fn to_literal(str: &str) -> Expr {
     match str {
         "true" => TRUE,
         "false" => FALSE,
-        "null" => NULL,
+        "nil" => NIL,
         _ => panic!("unsupported literal '{}'", str),
     }
 }
@@ -151,7 +153,7 @@ mod tests {
         assert_eq!(Expr::Float(0.12), parse("1.2e-1").unwrap());
         assert_eq!(TRUE, parse("true").unwrap());
         assert_eq!(FALSE, parse("false").unwrap());
-        assert_eq!(NULL, parse("null").unwrap());
+        assert_eq!(NIL, parse("nil").unwrap());
         assert_eq!(Expr::Str("abc".to_owned()), parse(r#""abc""#).unwrap());
         assert_eq!(Expr::Str("true".to_owned()), parse(r#""true""#).unwrap());
         assert_eq!(Expr::Str("escaped \\n \\t \\\" \\\\ string".to_owned()), parse(r#""escaped \n \t \" \\ string""#).unwrap());
@@ -161,15 +163,21 @@ mod tests {
 
     #[test]
     fn test_collections() {
-        assert_eq!(Expr::List(Type::Int, vec!(Expr::Int(1), Expr::Int(2))), parse("[1,2]").unwrap());
-        assert_eq!(Expr::Map(Type::Str, Type::Int, vec!((Expr::Str("a".to_owned()), Expr::Int(1)))), parse("{\"a\":1}").unwrap());
-        assert_eq!("Map(Str, List(Map(Str, Any)), [(Str(employees), List(Map(Str, Any), [Map(Str, Any, [(Str(name), Str(alice)), (Str(age), Int(20)), (Str(grade), Float(2.3)), (Str(email), Str(alice@gmail.com))]), Map(Str, Any, [(Str(name), Str(bob)), (Str(age), Int(21)), (Str(grade), Float(1.2)), (Str(email), Null)])]))])",
-                   read(r#"{"employees":[{"name":"alice","age":20,"grade":2.3,"email":"alice@gmail.com"}, {"name":"bob", "age": 21,"grade":1.2,"email":null}]}"#));
+        assert_eq!("List(List(Int), [Int(1), Int(2)])", read("[1,2]"));
+        assert_eq!("Map(Map(Str, Int), [(Str(a), Int(1))])", read("{\"a\":1}"));
+        assert_eq!("List(List(Any), [])", read("[]"));
     }
 
     #[test]
-    fn test_class() {
-        assert_eq!("Call(class, [Symbol(Point), Params([(x, Float), (y, Float)])])", read("class Point(x: Float, y:Float)"));
+    fn test_json_read() {
+        let json = r#"{"employees":[{"name":"alice","age":20,"grade":2.3,"email":"alice@gmail.com"}, {"name":"bob", "age": 21,"email":null,"grade":1.2}]}"#;
+        assert!(parse(json).is_ok());
+    }
+
+
+    #[test]
+    fn test_struct() {
+        assert_eq!("Call(struct, [Symbol(Point), Params([(x, Float), (y, Float)])])", read("struct Point(x: Float, y:Float)"));
     }
 
     #[test]
@@ -181,9 +189,9 @@ mod tests {
     fn test_declarations() {
         assert_eq!("Call(val, [Symbol(f), TypeOf(Float), Float(1.0)])", read("val f: Float = 1.0"));
         assert_eq!("Call(val, [Symbol(f), TypeOf(Float), Float(1.0)])", read("val(f,:Float,1.0)"));
-        assert_eq!("Call(var, [Symbol(a), Null, Int(1)])", read("var a = 1"));
-        assert_eq!("Call(var, [Symbol(l), Null, List(Int, [Int(1), Int(2), Int(3)])])", read("var l = [1,2,3]"));
-        assert_eq!("Call(var, [Symbol(l), TypeOf(List(Int)), List(Int, [Int(1), Int(2), Int(3)])])", read("var l :List<Int> = [1,2,3]"));
+        assert_eq!("Call(var, [Symbol(a), Nil, Int(1)])", read("var a = 1"));
+        assert_eq!("Call(var, [Symbol(l), Nil, List(List(Int), [Int(1), Int(2), Int(3)])])", read("var l = [1,2,3]"));
+        assert_eq!("Call(var, [Symbol(l), TypeOf(List(Int)), List(List(Int), [Int(1), Int(2), Int(3)])])", read("var l :List<Int> = [1,2,3]"));
     }
 
     #[test]
@@ -205,7 +213,7 @@ mod tests {
 
     #[test]
     fn test_block() {
-        assert_eq!("Block([Call(val, [Symbol(a), Null, Int(2)]), Symbol(a)])", read(r#"{
+        assert_eq!("Block([Call(val, [Symbol(a), Nil, Int(2)]), Symbol(a)])", read(r#"{
   val a = 2
   a
  }"#));
@@ -215,7 +223,7 @@ mod tests {
     #[test]
     fn test_if_while() {
         assert_eq!("Call(if, [Call(eq, [Symbol(a), Int(1)]), Int(2), Int(3)])", read("if (a == 1) 2 else 3"));
-        assert_eq!("Call(if, [Bool(true), Block([Int(1)]), Null])", read("if (true) { 1 } "));
+        assert_eq!("Call(if, [Bool(true), Block([Int(1)]), Nil])", read("if (true) { 1 } "));
         assert_eq!("Call(while, [Call(le, [Symbol(a), Int(10)]), Block([Call(print, [Symbol(a)]), Call(assign, [Symbol(a), Call(add, [Symbol(a), Int(1)])])])])",
                    read("while (a <= 10) { print(a) ; a = a + 1 }"));
     }

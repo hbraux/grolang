@@ -1,4 +1,4 @@
-
+use std::cmp::PartialEq;
 use strum_macros::Display;
 
 use crate::exception::Exception;
@@ -8,13 +8,12 @@ use crate::if_else;
 use crate::parser::parse;
 use crate::scope::Scope;
 use crate::types::Type;
-use crate::types::Type::Unknown;
 
-use self::Expr::{Block, Bool, Call, Failure, Float, Fun, Int, List, Map, Null, Params, Str, Symbol, TypeOf};
+use self::Expr::{Block, Bool, Call, Failure, Float, Fun, Int, List, Map, Nil, Params, Str, Symbol, TypeOf};
 
 #[derive(Debug, Clone, PartialEq, Display)]
 pub enum Expr {
-    Null,
+    Nil,
     Int(i64),
     Float(f64),
     Str(String),
@@ -26,15 +25,16 @@ pub enum Expr {
     Failure(Exception),
     Fun(String, Type, Function),
     List(Type, Vec<Expr>),
-    Map(Type, Type, Vec<(Expr, Expr)>),
-    Class(Vec<(String, Type)>),
+    Map(Type, Vec<(Expr, Expr)>),
+    Struct(String, Vec<(String, Type)>),
     Params(Vec<(String, Type)>),
 }
 
 
 pub const TRUE: Expr = Bool(true);
 pub const FALSE: Expr = Bool(false);
-pub const NULL: Expr = Null;
+pub const NIL: Expr = Nil;
+
 
 
 impl Expr {
@@ -56,29 +56,28 @@ impl Expr {
         match self { Failure(ex) => ex, _ => panic!("not a failure") }
     }
 
-    // TODO: return &Type
-    pub fn get_type(&self) -> Type {
+    pub fn get_type(&self) -> &Type {
         match self {
-            Null => Type::Any,
-            Bool(_) => Type::Bool,
-            Int(_) => Type::Int,
-            Float(_) => Type::Float,
-            Str(_) => Type::Str,
-            List(t, _) => Type::List(Box::new(t.clone())), // TODO: avoid clone
-            Map(t, u, _) => Type::Map(Box::new(t.clone()),Box::new(u.clone())),
+            Nil => &Type::Any,
+            Bool(_) => &Type::Bool,
+            Int(_) => &Type::Int,
+            Float(_) => &Type::Float,
+            Str(_) => &Type::Str,
+            List(t, _) => t,
+            Map(t, _) => t,
             _ => panic!("unknown type {:?}", self)
         }
     }
     pub fn to_str(&self) -> Result<&str, Exception> {
         match self {
             Str(str) => Ok(str),
-            _ => Err(Exception::NotA(Type::Str.to_string(), self.print()))
+            _ => Err(Exception::NotA(Type::Str.name(), self.print()))
         }
     }
     pub fn to_bool(&self) -> Result<bool, Exception> {
         match self {
             Bool(str) => Ok(str.to_owned()),
-            _ => Err(Exception::NotA(Type::Bool.to_string(), self.print()))
+            _ => Err(Exception::NotA(Type::Bool.name(), self.print()))
         }
     }
     pub fn to_symbol(&self) -> Result<&str, Exception> {
@@ -87,10 +86,10 @@ impl Expr {
             _ => Err(Exception::UndefinedSymbol(self.print()))
         }
     }
-    pub fn to_type(&self) -> Result<Type, Exception> {
+    pub fn to_type(&self) -> Result<&Type, Exception> {
         match self {
-            TypeOf(t) => Ok(t.clone()),
-            Null => Ok(Unknown),
+            TypeOf(t) => Ok(t),
+            Nil => Ok(&Type::_Undefined),
             _ => Err(Exception::NotA("Type".to_owned(), self.print()))
         }
     }
@@ -104,7 +103,7 @@ impl Expr {
     pub fn eval(&self, scope: &Scope) -> Result<Expr, Exception> {
         match self {
             Failure(e) => Err(e.clone()),
-            Null | Int(_) | Float(_) | Str(_) | Bool(_)  | List(_,_ )  | Map(_, _, _)  => Ok(self.clone()),
+            Nil | Int(_) | Float(_) | Str(_) | Bool(_)  | List(_,_ )  | Map(_, _)  => Ok(self.clone()),
             Symbol(name) => handle_symbol(name, scope),
             Call(name, args) => handle_call(name, args, scope),
             _ => panic!("not implemented {:?}", self),
@@ -124,29 +123,27 @@ impl Expr {
             expr => expr.eval_mutable(scope).unwrap_or_else(|ex| Failure(ex))
         }
     }
-    pub fn expect(self, expected: Type) -> Result<Expr, Exception> {
+    pub fn expect(self, expected: &Type) -> Result<Expr, Exception> {
         let value_type = self.get_type();
         if expected.is_defined() {
-            if value_type.is_defined()  {
-                if expected != Type::Any && expected != value_type {
-                    return Err(Exception::UnexpectedType(value_type.to_string()));
+            if value_type.is_defined() {
+                if !value_type.matches(expected) {
+                    return Err(Exception::UnexpectedType(value_type.print()));
                 }
             } else {
-                return self.cast(&value_type);
+                // soft cast
+                return match self {
+                    List(_, vec) => Ok(List(expected.clone(), vec.clone())),
+                    Map(_, vec) => Ok(Map(expected.clone(), vec.clone())),
+                    _ => Err(Exception::CannotCastType(expected.print())),
+                }
             }
         } else if !value_type.is_defined() {
-            return Err(Exception::CannotInferType(value_type.to_string()));
+            return Err(Exception::CannotInferType(value_type.print()));
         }
         Ok(self)
     }
-    // TODO: simplify cast
-    pub fn cast(self, expected: &Type) -> Result<Expr, Exception> {
-        match (self, expected) {
-            (List(_, vec), Type::List(t)) => Ok(List(*t.clone(), vec.clone())),
-            (Map(_, _, vec), Type::Map(t, u)) => Ok(Map(*t.clone(), *u.clone(), vec.clone())),
-            _ => Err(Exception::CannotCastType(expected.to_string())),
-        }
-    }
+
 
     pub fn as_block(&self) -> Expr {
         match self {
@@ -161,16 +158,16 @@ impl Expr {
             Int(x) => x.to_string(),
             Str(x) => format!("\"{}\"", x),
             TypeOf(x) => format!(":{}", x.print()),
-            Null => "null".to_owned(),
+            Nil => "nil".to_owned(),
             Float(x) => print_float(x),
             Symbol(x) => x.to_owned(),
             Failure(x) => x.print(),
             Params(vec) => print_vec(vec, ",", "(", ")", |p| format!("{}:{}", p.0, p.1)),
-            Map(_, _, vec) => print_vec(vec, ",", "{", "}", |p| format!("{}:{}", p.0.print(), p.1.print())),
+            Map(_, vec) => print_vec(vec, ",", "{", "}", |p| format!("{}:{}", p.0.print(), p.1.print())),
             List(_, vec) => print_vec(vec, ",", "[", "]", Expr::print),
             Block(vec) => print_vec(vec, ";", "{", "}", Expr::print),
-            Call(name, vec) => print_vec(vec, ",", &(name.to_string() + "("), ")",  Expr::print),
-            _ => format!("{:?}", self),
+            Call(name, vec) => print_vec(vec, ",", &(name.to_owned() + "("), ")",  Expr::print),
+            _ => self.name()
         }
     }
 }
@@ -185,19 +182,20 @@ fn print_float(x: &f64) -> String  {
 }
 
 fn handle_symbol(name: &str, scope: &Scope) -> Result<Expr, Exception> {
-    scope.get_value(name).ok_or_else(|| Exception::UndefinedSymbol(name.to_string()))
+    scope.get_value(name).ok_or_else(|| Exception::UndefinedSymbol(name.to_owned()))
 }
 
+// TODO: impl a better solution to find the eligible functions
 fn handle_call(name: &str, args: &Vec<Expr>, scope: &Scope) -> Result<Expr, Exception> {
     match scope.find(name) {
         Some(Fun(name, types, fun)) => apply_fun(name, types, args, fun, scope),
-        _ if args.len() == 0 => Err(Exception::UndefinedFunction(name.to_string())),
+        _ if args.len() == 0 => Err(Exception::UndefinedFunction(name.to_owned())),
         _ => {
             for method in args[0].eval(scope)?.get_type().all_method_names(name) {
                 if let Some(Fun(name, types, fun)) =  scope.global().get(&method) {
                     return apply_fun(name, types, args, fun, scope);
                 }}
-            return Err(Exception::UndefinedMethod(name.to_string()));
+            return Err(Exception::UndefinedMethod(name.to_owned()));
         }
     }
 }
@@ -208,13 +206,13 @@ fn handle_macro(scope: &mut Scope, name: &String, args: &Vec<Expr>) -> Result<Ex
     if let Some(Fun(_, _, BuiltIn(lambda))) = scope.global().get(name) {
         lambda(args, scope)
     } else {
-        Err(Exception::NotDefined(name.to_string()))
+        Err(Exception::NotDefined(name.to_owned()))
     }
 }
 
 
 fn handle_block(body: &Vec<Expr>, scope: &mut Scope) -> Result<Expr, Exception> {
-    let mut result = Ok(Null);
+    let mut result = Ok(Nil);
     for expr in body {
         result = expr.eval_mutable(scope);
         if result.is_err() {
@@ -228,7 +226,7 @@ fn apply_fun(name: &str, specs: &Type, args: &Vec<Expr>, fun: &Function, scope: 
     args.iter().map(|e| e.eval(scope)).collect::<Result<Vec<Expr>, Exception>>().and_then(|values| {
         match specs {
             Type::Fun(input, _output) => check_arguments(name, input, &values).or(Some(fun.apply(&values, scope))).unwrap(),
-            _ => Err(Exception::NotA("Fun".to_owned(), specs.to_string())),
+            _ => Err(Exception::NotA("Fun".to_owned(), specs.print())),
         }
     })
 }
@@ -250,7 +248,7 @@ fn check_arguments(name: &str, expected: &Vec<Type>, values: &Vec<Expr>) -> Opti
         return None
     }
     expected.iter().zip(values.iter()).find(|(e, v)| !v.get_type().matches(*e)).and_then(|p|
-        Some(Err(Exception::UnexpectedArgumentType(name.to_owned(), p.1.get_type().to_string())))
+        Some(Err(Exception::UnexpectedArgumentType(name.to_owned(), p.1.get_type().print())))
     )
 }
 
@@ -264,5 +262,6 @@ mod tests {
         let expr = Int(1);
         assert_eq!("1", expr.print());
         assert_eq!("Int", expr.to_string());
+        assert_eq!("Int", expr.name());
     }
 }
