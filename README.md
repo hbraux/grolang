@@ -25,7 +25,7 @@ fact(10)
 
 ## Installation
 
-> GroLang est encore **en développement** et même si l'interpréteur est opérationel, il n'est fourni qu'à titre de _sandbox_
+> GroLang est **en développement** (version beta++) et même si l'interpréteur est opérationnel, il n'est fourni qu'à titre de _sandbox_
 (bas à sable).
 
 
