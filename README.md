@@ -8,22 +8,18 @@
 **GroLang** (ou **Gro**) est un langage de programmation expérimental et à usage éducatif ; son objectif est de
 proposer une (modeste) alternative à [python](https://www.python.org/) pour apprendre à coder, tout en comblant certaines de ses lacunes.
 En particulier, les points fort de Gro sont :
-* une syntaxe simple (pas d'indentation, séparateur optionnel)
+* une syntaxe simple inspirée de Scala et Kotlin (pas d'indentation, séparateur optionnel)
 * un interpréteur convivial (auto complétion, couleurs, débuggage)
 * un typage fort
-* des objets immutables
 * le support de la programmation fonctionnelle
-* la gestion explicite des options et des exceptions (à venir)
 
-Quelques lignes de code:
+Quelques exemples:
 ```
 print("hello world")
 const PI = 3.14159
-val circ = PI * 2.0
-def fact(n: Int) = if (n <= 1) 1 else n*fact(n-1)
-fact(5)
-val notes = [12 4 18 16 11 9]
-val moy = notes.sum()/notes.size() # ou bien sum(notes)/size(notes)
+val p = 2*PI
+fun fact(n: Int) = if (n <= 1) 1 else n*fact(n-1)
+fact(10)
 ```
 
 
@@ -37,17 +33,73 @@ val moy = notes.sum()/notes.size() # ou bien sum(notes)/size(notes)
 
 ### Variables
 
-à documenter
+Les mots clés `const`, `val` et `val` permettent de définir une constante globale, une variable immutable et
+une variable mutable. On peut préciser le type de la variable ; sinon il est inféré automatiquement.
+
+```
+const PI = 3.14159
+val perim : Float = PI * 2
+var scoreTotal: Int = 1200
+```
+
+Le parser n'impose pas de règle de nommage particulière, mais les conventions sont les mêmes qu'en Java:
+* constantes en majuscules
+* variables en [camelCase](https://en.wikipedia.org/wiki/Camel_case) commençant par une minuscule
+* types en camelCase commençant par une majuscule
 
 ### Types de base
-à documenter
 
-### Collections
-à documenter
+Gro supporte les types `Int` (entier sur 8 bytes), `Float` (nombre décimal sur 8 bytes), `bool` (true/false),
+`str` (chaine de caractères) :
+
+```
+val unEntier: Int = 123
+val unEntierTresGrand = 123_456_789_000 # le séparateur _ améliore la lecture.
+val unDecimal: Float = 123.45
+val unDecimalAvecExposant = 1.23e45
+val unBoolen: Bool = true
+val uneChaine: Str = "hello"
+val uneAutreChaine = "on peut echaper un \" en le prefixant avec \\."
+```
+
+### Collections et Structures
+
+Gro supporte les types `List`, `Map` (dictionnaire) et permet de définir un type custom avec `Struct`.
+Le type est optionnel et inféré à partir de la valeur.
+
+```
+val uneListeDentiers = [12, 4, 18, 16, 11]
+val uneListeDeDecimaux: List<Float> = [ 1.23, 4.56 ] 
+val uneMap: Map<String,Int> = { "paul": 12, "eric": 9 }
+
+struct Point(x: Float, y: Float)
+```
 
 ### Fonctions
 
-à documenter
+Les opérateurs standards comme +, *, / >=, !=, ==, etc sont supportés en mode in-fixé naturel, comme en maths.
+Par exemple `a + b`.
+
+Mais on peut également appeler directement la fonction correspondante, ou bien la méthode sur le premier élément :
+```
+add(a, b)
+a.add(b)
+```
+
+Dans les 3 cas, le parser produit la même expression :
+```
+> read("a + b")
+add(a,b)
+> read("a.add(b)")
+add(a,b)
+```
+
+L'opérateur `fun` permet de définir une fonction. Les paramètres sont spécifiés avec leur type ; le type de
+retour de la fonction est optionel. Le corps de la fonction est soit un block { .. }, soit une expression retournant
+une valeur.
+```
+fun fact(n: Int) : Int = { if (n <= 1) 1 else n*fact(n-1) }
+```
 
 ## Développement
 
@@ -70,4 +122,4 @@ Les grandes lignes du code :
 
 **Reste à faire**
 
-Trop de choses (voir les TODOs dans le code). Toute contribution est la bienvenue
+Beaucoup trop de choses. Toute contribution est la bienvenue
