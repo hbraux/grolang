@@ -1,11 +1,11 @@
-use std::collections::{HashMap, VecDeque};
-use std::str::from_utf8;
+use std::collections::VecDeque;
 
 use dialoguer::{Input, theme::ColorfulTheme};
 use rust_embed::Embed;
 use sys_locale::get_locale;
 
 use crate::scope::Scope;
+use crate::utils::Resources;
 
 mod parser;
 mod types;
@@ -13,6 +13,7 @@ mod exception;
 mod functions;
 mod expr;
 mod scope;
+mod utils;
 
 #[macro_export]
 macro_rules! if_else {
@@ -62,23 +63,12 @@ impl<T: ToString> dialoguer::History<T> for History {
     }
 }
 
-fn get_resource(name: &str) -> String {
-    let locale = get_locale().unwrap_or_else(|| String::from("fr-FR"));
-    let lang = &locale[0..2];
-    let asset = Asset::get(&format!("{}_{}.txt", name, lang)).expect(&format!("No help file for language {}", lang));
-    let str = from_utf8(asset.data.as_ref()).expect("Invalid resource file");
-    return str.to_owned();
-}
-
-fn get_messages(resource: &str) -> HashMap<String, String> {
-    get_resource(resource).split("\n").filter(|s| !s.is_empty()).map(|s| s.split("\t").collect::<Vec<_>>()).map(|v| (v[0].to_string(), v.last().unwrap().to_string())).collect::<HashMap<_,_>>()
-}
 
 pub fn repl() {
     let mut debug = false;
-    let help = get_resource("help");
-    let messages = get_messages("msg");
-    println!("{BLUE}{LANG} Version {VERSION}{STD}\n{}\n", help.split("\n").next().unwrap());
+    let locale = get_locale().unwrap_or_else(|| String::from("fr-FR"));
+    let resources = Resources::init(&locale[0..2]);
+    println!("{BLUE}{LANG} Version {VERSION}{STD}\n{}\n", resources.help.split("\n").next().unwrap());
     let mut scope = Scope::init();
     let mut history = History::default();
     loop {
@@ -96,18 +86,18 @@ pub fn repl() {
                 "h" => history.print(),
                 "l" if v.len() == 2 => history.load(v[1]),
                 "s" if v.len() == 2 => history.save(v[1]),
-                _ => println!("{}", help),
+                _ => println!("{}", resources.help),
             }
             continue;
         }
         let expr = scope.read(&input);
         if expr.is_failure() {
-            println!("{RED}{} {STD}", expr.to_exception().format(&messages));
+            println!("{RED}{} {STD}", expr.to_exception().format(&resources));
             continue;
         }
         let result = expr.eval_or_failed(&mut scope);
         if expr.is_failure() {
-            println!("{RED}{} {STD}", expr.to_exception().format(&messages));
+            println!("{RED}{} {STD}", expr.to_exception().format(&resources));
         } else {
             println!("{}", result.print())
         }
@@ -250,6 +240,7 @@ mod tests {
         assert_eq!("1", scope.exec("fact(0)"));
         assert_eq!("24", scope.exec("fact(4)"));
     }
+
 
 
 }
