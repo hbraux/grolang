@@ -63,7 +63,8 @@ impl<T: ToString> dialoguer::History<T> for History {
 
 pub fn eval_line(line: &str) {
     let mut scope = Scope::init();
-    scope.exec(line);
+    let result = scope.exec(line);
+    println!("{}", result)
 }
 
 pub fn repl() {
