@@ -1,7 +1,6 @@
 use std::collections::VecDeque;
 
 use dialoguer::{Input, theme::ColorfulTheme};
-use rust_embed::Embed;
 use sys_locale::get_locale;
 
 use crate::scope::Scope;
@@ -27,11 +26,6 @@ const BLUE: &str = "\x1b[1;34m";
 const STD: &str = "\x1b[0m";
 
 
-#[derive(Embed)]
-#[folder = "resources/"]
-struct Asset;
-
-
 
 #[derive(Debug, Default)]
 pub struct History {
@@ -39,13 +33,17 @@ pub struct History {
 }
 impl History {
     fn print(&self) {
-        self.deque.iter().for_each(|e| println!("# {}", e))
+        self.deque.iter().rev().for_each(|e| println!("# {}", e))
     }
     fn load(&self, _filename: &str) {
         // TODO
     }
     fn save(&self, _filename: &str) {
         // TODO
+    }
+    fn drop_last(&mut self) {
+        self.deque.pop_front()
+        ;
     }
 
 }
@@ -63,21 +61,28 @@ impl<T: ToString> dialoguer::History<T> for History {
     }
 }
 
+pub fn eval_line(line: &str) {
+    let mut scope = Scope::init();
+    scope.exec(line);
+}
 
 pub fn repl() {
     let mut debug = false;
-    let locale = get_locale().unwrap_or_else(|| String::from("fr-FR"));
-    let resources = Resources::init(&locale[0..2]);
+    let locale = get_locale().unwrap_or_else(|| String::from("FR"));
+    let resources = Resources::init(&locale[0..2].to_uppercase());
     println!("{BLUE}{LANG} Version {VERSION}{STD}\n{}\n", resources.help.split("\n").next().unwrap());
     let mut scope = Scope::init();
     let mut history = History::default();
     loop {
-        //let autocomplete = AutoComplete::new(&scope);
         let input = Input::<String>::with_theme(&ColorfulTheme::default())
             .completion_with(&scope)
+            .with_prompt("gro")
             .history_with(&mut history)
             .interact_text().expect("Unable to read stdin");
-
+        if input.starts_with('#') {
+            history.drop_last();
+            continue
+        }
         if input.starts_with(':') {
             let v: Vec<&str> = input.split(" ").collect();
             match input[1..2].to_string().as_str() {

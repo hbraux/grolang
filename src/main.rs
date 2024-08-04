@@ -1,5 +1,5 @@
 use std::{env};
-use grolang::{LANG, repl, VERSION};
+use grolang::{eval_line, LANG, repl, VERSION};
 
 
 fn main() {
@@ -9,8 +9,9 @@ fn main() {
     } else {
         match args[1].as_ref() {
             "-v" => println!("{} v{}", LANG, VERSION),
-            _ => println!("paramètre non supporté: {}", args[1]),
-        }
+            "-e" => args.get(2).map(|e| eval_line(e)).unwrap_or(()),
+            _ => println!("Unknown command: {}", args[1]),
+        };
     }
 }
 

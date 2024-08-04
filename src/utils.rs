@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 use std::str::from_utf8;
+use rust_embed::Embed;
 
-use crate::Asset;
+#[derive(Embed)]
+#[folder = "resources/"]
+struct Asset;
 
 #[derive(Debug)]
 pub struct Resources {
