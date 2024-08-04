@@ -25,6 +25,8 @@ fact(10)
 
 ## Installation
 
+Windows: télécharger la dernière vesion de grolang.exe depuis la page de [releases](https://github.com/hbraux/grolang/releases) puis lancer l'exécutable depuis PowerShell
+
 > GroLang est **en développement** (version beta++) et même si l'interpréteur est opérationnel, il n'est fourni qu'à titre de _sandbox_
 (bas à sable).
 
