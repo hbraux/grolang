@@ -2,7 +2,7 @@
 
 **_Le langage de programmation pour les grolandaises et grolandais._**
 
-![Build](https://github.com/hbraux/grolang/workflows/maven/badge.svg)
+![Build](https://github.com/hbraux/grolang/actions/workflows/rust.yml/badge.svg)
 
 
 **GroLang** (ou **Gro**) est un langage de programmation expérimental et à usage éducatif ; son objectif est de
