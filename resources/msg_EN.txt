@@ -1,0 +1,6 @@
+CannotParse         Syntax error: {1}
+DivisionByZero      Division by 0
+IOError             Input/output error
+UndefinedSymbol     The symbol '{1}' is not defined
+UndefinedFunction   The function '{1}' is not defined
+UndefinedMethod     The method '{1}' is not defined

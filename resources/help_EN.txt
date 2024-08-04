@@ -1,0 +1,8 @@
+Type :q to quit, :? for help, up/down arrows to navigate through history, Tab for auto-completion
+All commands can be abbreviated, for example :q for :quit
+:quit             quits the interpreter
+:history          displays the complete history
+:load <FILE>      loads the FILE.gro file
+:save <FILE>      saves the history commands to the FILE.gro file
+:debug            toggles debug mode on or off
+:? [command]      displays this message or help related to a command
